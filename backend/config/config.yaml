@@ -1,0 +1,16 @@
+MODEL:
+  TEMPERATURE: 0.2
+  STREAM: True
+
+  SERVICE: "openai" # [ ollama, openai, groq, gemini ]
+
+  EMBEDDING_MODEL_NAME: text-embedding-3-small
+  EMBEDDING_SERVICE: openai # [ollama, openai, hf]
+
+  MODEL_ID: "gpt-4o-mini"
+
+  VECTOR_STORE: "qdrant" # currently support [qdrant, chroma]
+
+  ENABLE_QUESTION_RECOMMENDER: False
+  QR_SERVICE: "openai" # [ ollama, openai, groq, gemini ]
+  QR_MODEL_ID: "gpt-4o-mini"
