@@ -1,4 +1,4 @@
-name: Test Frontend Installation and Build
+name: Frontend (install and build)
 
 on:
     push:
@@ -12,30 +12,21 @@ jobs:
 
         strategy:
             matrix:
-                node-version: [18.x, 20.x, 22.x]
+                node-version: [20.x, 22.x]
 
         steps:
-            - uses: actions/checkout@v4
-
             - name: Use Node.js ${{ matrix.node-version }}
               uses: actions/setup-node@v4
               with:
                   node-version: ${{ matrix.node-version }}
-                  cache: "npm"
 
-            - name: Cd
+            - uses: actions/checkout@v4
+            - name: Run
               run: |
                   cd frontend/
-                  ls
 
-            - name: Pwd
-              run: |
-                  pwd
-            - name: Install Dependencies
-              run: |
+                  export NEXT_PUBLIC_API_URL=http://localhost:8000
+
                   npm install
 
-            - name: Build
-              run: |
-                  cd frontend/
                   npm run build
