@@ -2,6 +2,7 @@ import os
 from mmengine import Config
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+from typing import Optional
 
 load_dotenv()
 
@@ -17,8 +18,8 @@ class APIKeys(BaseModel):
         LLAMA_PARSE_API_KEY (str): Llama Parse API key
     """
 
-    OPENAI_API_KEY: str
-    LLAMA_PARSE_API_KEY: str
+    OPENAI_API_KEY: Optional[str] = None
+    LLAMA_PARSE_API_KEY: Optional[str] = None
 
 
 class MinioConfig(BaseModel):
