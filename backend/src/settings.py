@@ -14,8 +14,8 @@ class APIKeys(BaseModel):
     API keys configuration.
 
     Attributes:
-        OPENAI_API_KEY (str): OpenAI API key
-        LLAMA_PARSE_API_KEY (str): Llama Parse API key
+        OPENAI_API_KEY (Optional[str]): OpenAI API key
+        LLAMA_PARSE_API_KEY (Optional[str]): Llama Parse API key
     """
 
     OPENAI_API_KEY: Optional[str] = None
@@ -27,16 +27,16 @@ class MinioConfig(BaseModel):
     Minio configuration.
 
     Attributes:
-        url (str): Minio url
-        access_key (str): Minio access key
-        secret_key (str): Minio secret key
+        url (Optional[str]): Minio url
+        access_key (Optional[str]): Minio access key
+        secret_key (Optional[str]): Minio secret key
         secure (bool): Enable secure connection
     """
 
-    url: str
-    access_key: str
-    secret_key: str
-    secure: bool
+    url: Optional[str] = None
+    access_key: Optional[str] = None
+    secret_key: Optional[str] = None
+    secure: bool = False
 
 
 class SQLConfig(BaseModel):
@@ -44,10 +44,10 @@ class SQLConfig(BaseModel):
     SQL configuration.
 
     Attributes:
-        url (str): SQL database url
+        url (Optional[str]): SQL database url
     """
 
-    url: str
+    url: Optional[str] = None
 
 
 class QdrantConfig(BaseModel):
@@ -55,10 +55,10 @@ class QdrantConfig(BaseModel):
     Qdrant configuration.
 
     Attributes:
-        url (str): Qdrant database url
+        url (Optional[str]): Qdrant url
     """
 
-    url: str
+    url: Optional[str] = None
 
 
 class EmbeddingConfig(BaseModel):
