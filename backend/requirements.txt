@@ -28,3 +28,5 @@ fastapi==0.115.0
 sqlmodel==0.0.22
 psycopg2-binary==2.9.9
 pydantic[email]==2.9.2
+minio==7.2.9
+mmengine==0.10.5

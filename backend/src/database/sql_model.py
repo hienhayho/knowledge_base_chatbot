@@ -66,6 +66,7 @@ class Users(SQLModel, table=True):
 
     assistants: List["Assistants"] = Relationship(back_populates="user")
     conversations: List["Conversations"] = Relationship(back_populates="user")
+    knowledge_bases: List["KnowledgeBases"] = Relationship(back_populates="user")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -143,6 +144,7 @@ class KnowledgeBases(SQLModel, table=True):
 
     documents: List["Documents"] = Relationship(back_populates="knowledge_base")
     assistant: "Assistants" = Relationship(back_populates="knowledge_base")
+    user: "Users" = Relationship(back_populates="knowledge_bases")
 
 
 class Documents(SQLModel, table=True):

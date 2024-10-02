@@ -19,6 +19,9 @@ from llama_index.readers.file import (
 from .kotaemon import DocxReader, HtmlReader, TxtReader  # noqa
 from src.constants import SUPPORTED_FILE_EXTENSIONS
 from src.utils import get_formatted_logger
+from src.settings import GlobalSettings
+
+setting = GlobalSettings()
 
 load_dotenv()
 logger = get_formatted_logger(__file__)
@@ -71,7 +74,8 @@ def get_files_from_folder_or_file_paths(files_or_folders: list[str]) -> list[str
 def get_extractor():
     return {
         ".pdf": LlamaParse(
-            result_type="markdown", api_key=os.getenv("LLAMA_PARSE_API_KEY")
+            result_type="markdown",
+            api_key=setting.api_keys.LLAMA_PARSE_API_KEY,
         ),
         ".docx": DocxReader(),
         ".html": UnstructuredReader(),

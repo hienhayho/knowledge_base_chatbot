@@ -1,21 +1,30 @@
+from .minio import MinioClient
 from .sql_model import Users, init_db
 from .validators import validate_email
 from sqlmodel import Session, select, or_
+from .vector_database import BaseVectorDatabase
 
 
 class DatabaseManager:
-    def __init__(self, sql_url: str = None):
+    def __init__(
+        self,
+        sql_url: str,
+        minioClient: MinioClient,
+        vector_db: BaseVectorDatabase,
+    ):
         engine = init_db(sql_url)
         self.session = Session(engine)
+        self.minioClient = minioClient
+        self.vector_db = vector_db
 
     def create_user(self, username: str, email: str, hashed_password: str):
         """
         Create a new user
 
         Args:
-            username: str: Username
-            email: str: Email address
-            hashed_password: str: Hashed password
+            username (str): Username
+            email (str): Email address
+            hashed_password (str): Hashed password
 
         Returns:
             uuid: User ID
