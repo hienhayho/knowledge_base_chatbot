@@ -2,15 +2,15 @@ name: Backend (install)
 
 on:
     push:
-        branches: ["main"]
+        branches: ["main", "hien_dev"]
     pull_request:
-        branches: ["main"]
+        branches: ["main", "hien_dev"]
 
 permissions:
     contents: read
 
 jobs:
-    build:
+    install-and-test:
         runs-on: ubuntu-latest
 
         strategy:
@@ -29,3 +29,10 @@ jobs:
                   cd backend/
                   pip install --upgrade pip
                   pip install -r requirements.txt
+
+                  bash scripts/nltk_download.sh
+
+            - name: Test
+              run: |
+                  cd backend/
+                  pytest
