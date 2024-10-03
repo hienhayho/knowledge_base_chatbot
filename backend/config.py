@@ -10,3 +10,8 @@ embeddings_config = dict(
 )
 
 llm_config = dict(service="openai", model="gpt-4o-mini")
+
+contextual_rag_config = dict(
+    semantic_weight=0.8,
+    bm25_weight=0.2,
+)

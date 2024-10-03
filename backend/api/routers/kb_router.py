@@ -21,6 +21,7 @@ from src.database import (
     get_session,
     KnowledgeBases,
     DatabaseManager,
+    get_db_manager,
     Documents,
     is_valid_uuid,
 )
@@ -36,8 +37,6 @@ setting = GlobalSettings()
 
 UPLOAD_FOLDER = Path(setting.upload_temp_folder)
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-
-db_manager = DatabaseManager(setting=setting)
 
 
 @kb_router.post("/create", response_model=KnowledgeBaseResponse)
@@ -99,6 +98,7 @@ async def upload_file(
     file: Annotated[UploadFile, File(...)],
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
     """
     Upload file to knowledge base for the current user
@@ -167,6 +167,7 @@ async def upload_file(
         Path(file_path).unlink()
 
         return UploadFileResponse(
+            doc_id=document.id,
             file_name=document.file_name,
             file_type=document.file_type,
             status=document.status,
@@ -179,6 +180,7 @@ async def process_document(
     document_id: str,
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
     """
     Process document
@@ -190,7 +192,7 @@ async def process_document(
 
         if not document:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
             )
 
         if document.knowledge_base.user_id != current_user.id:
@@ -205,7 +207,17 @@ async def process_document(
             object_name=document.file_path_in_minio, file_path=str(temp_file_path)
         )
 
-        task = parse_document.delay(temp_file_path)
+        task = parse_document.delay(
+            str(temp_file_path),
+            document.id,
+            document.knowledge_base_id,
+            document.file_path_in_minio,
+        )
+
+        document.task_id = task.id
+
+        session.add(document)
+        session.commit()
 
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,

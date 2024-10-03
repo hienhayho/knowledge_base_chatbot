@@ -102,6 +102,19 @@ class LLMConfig(BaseModel):
     name: str
 
 
+class ContextualRAGConfig(BaseModel):
+    """
+    Contextual RAG configuration.
+
+    Attributes:
+        semantic_weight (float): Semantic weight for rank fusion
+        bm25_weight (float): BM25 weight for rank fusion
+    """
+
+    semantic_weight: float
+    bm25_weight: float
+
+
 class GlobalSettings(BaseModel):
     """
     Global settings.
@@ -176,6 +189,14 @@ class GlobalSettings(BaseModel):
             name=config.llm_config.model,
         ),
         description="LLM configuration",
+    )
+
+    contextual_rag_config: ContextualRAGConfig = Field(
+        default=ContextualRAGConfig(
+            semantic_weight=config.contextual_rag_config.semantic_weight,
+            bm25_weight=config.contextual_rag_config.bm25_weight,
+        ),
+        description="Contextual RAG configuration",
     )
 
 

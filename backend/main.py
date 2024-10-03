@@ -1,43 +1,31 @@
+import os
+import qdrant_client
 from dotenv import load_dotenv
-from src.database import (
-    DatabaseManager,
-    MinioClient,
-    QdrantVectorDatabase,
-    ElasticSearch,
-)
-from src.settings import GlobalSettings
+from llama_index.core import VectorStoreIndex, StorageContext, Settings
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from llama_index.embeddings.openai import OpenAIEmbedding
 
 load_dotenv()
 
-# task = parse_document.delay("sample/dummy.csv")
-# print(task.id)
-
-# while True:
-#     result = AsyncResult(task.id)
-#     print(result.state)
-#     print(result.info)
-#     if result.state == "SUCCESS":
-#         break
-
-setting = GlobalSettings()
-
-minioClient = MinioClient(
-    url=setting.minio_config.url,
-    access_key=setting.minio_config.access_key,
-    secret_key=setting.minio_config.secret_key,
-    secure=setting.minio_config.secure,
+client = qdrant_client.QdrantClient(
+    os.getenv("QDRANT_URL"),
 )
 
-qdrant_vector_db = QdrantVectorDatabase(
-    url=setting.qdrant_config.url,
-)
-elastic_search_db = ElasticSearch(
-    url=setting.elastic_search_config.url,
+Settings.embed_model = OpenAIEmbedding()
+
+vector_store = QdrantVectorStore(
+    client=client,
+    collection_name="205380b9-90e9-4a14-818c-72d566d9093c",
 )
 
-db = DatabaseManager(
-    setting.sql_config.url,
-    minio_client=minioClient,
-    vector_db_client=qdrant_vector_db,
-    elastic_search_client=elastic_search_db,
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+index = VectorStoreIndex.from_vector_store(
+    vector_store=vector_store,
+    storage_context=storage_context,
+    embed_model=Settings.embed_model,
 )
+
+query_engine = index.as_query_engine()
+
+print(query_engine.query("ChainBuddy là gì ? Chi tiết"))

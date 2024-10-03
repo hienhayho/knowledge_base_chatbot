@@ -53,11 +53,20 @@ class ElasticSearch:
             },
         }
 
-        if not self.es_client.indices.exists(index=index_name):
-            self.es_client.indices.create(index=index_name, body=index_settings)
-            logger.info(f"Index: {index_name} created successfully !!!")
-        else:
-            logger.info(f"Index: {index_name} already exists !!!")
+        self.es_client.indices.create(index=index_name, body=index_settings)
+        logger.info(f"Index: {index_name} created successfully !!!")
+
+    def check_index_exists(self, index_name: str) -> bool:
+        """
+        Check if the index exists in the ElasticSearch.
+
+        Args:
+            index_name (str): Name of the index to check
+
+        Returns:
+            bool: True if index exists, False otherwise
+        """
+        return self.es_client.indices.exists(index=index_name)
 
     def index_documents(
         self, index_name: str, documents_metadata: list[DocumentMetadata]
@@ -70,10 +79,16 @@ class ElasticSearch:
             documents_metadata (list[DocumentMetadata]): List of documents metadata to index.
         """
         logger.debug(
-            "Index: %s - len(documents_metadata): %s",
+            "index_name: %s - len(documents_metadata): %s",
             index_name,
             len(documents_metadata),
         )
+
+        if not self.check_index_exists(index_name):
+            logger.debug(
+                f"Index: {index_name} does not exist. Automatically creating index..."
+            )
+            self.create_index(index_name)
 
         actions = [
             {
@@ -89,7 +104,7 @@ class ElasticSearch:
 
         success, _ = bulk(self.es_client, actions)
 
-        self.es_client.indices.refresh(index=self.index_name)
+        self.es_client.indices.refresh(index=index_name)
 
         return success
 

@@ -3,7 +3,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from pydantic import BaseModel
 from qdrant_client.http import models
@@ -60,7 +60,7 @@ class QdrantPayload(BaseModel):
     Payload for the vector
 
     Args:
-        file_path (str): File path saved in Minio's bucket (Object name)
+        file_path (str): File path saved in Minio
     """
 
     file_path: str
@@ -68,40 +68,28 @@ class QdrantPayload(BaseModel):
 
 class QdrantVectorDatabase(BaseVectorDatabase):
     """
-    Qdrant client to index and search vectors for contextual RAG.
+    QdrantVectorDatabase client
     """
 
-    def __init__(
-        self, url: str, distance: models.Distance = models.Distance.COSINE
-    ) -> None:
-        """
-        Initialize the Qdrant client.
-
-        Args:
-            url (str): URL of the Qdrant server
-            distance (Distance): Distance metric to use. Default is `COSINE`
-        """
+    def __init__(self, url: str, distance: str = models.Distance.COSINE) -> None:
         self.url = url
         self.client = QdrantClient(url)
         self.distance = distance
 
-        logger.info("Qdrant client initialized successfully !!!")
+        logger.info(f"Qdrant client created with URL: {url}")
 
     def check_collection_exists(self, collection_name: str):
         return self.client.collection_exists(collection_name)
 
     def create_collection(self, collection_name: str, vector_size: int):
         if not self.client.collection_exists(collection_name):
-            logger.info(f"Creating collection {collection_name} ...")
+            logger.info(f"Creating collection {collection_name}")
             self.client.create_collection(
                 collection_name,
                 vectors_config=models.VectorParams(
                     size=vector_size, distance=self.distance
                 ),
             )
-
-        else:
-            logger.info(f"Collection {collection_name} already exists !!!")
 
     def add_vector(
         self,
@@ -119,7 +107,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             vector (List[float]): Vector embedding
             payload (QdrantPayload): Payload for the vector
         """
-        if not self.client.collection_exists(collection_name):
+        if not self.check_collection_exists(collection_name):
             self.create_collection(collection_name, len(vector))
 
         self.client.upsert(
@@ -127,10 +115,8 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             points=[
                 models.PointStruct(
                     id=vector_id,
-                    payload=payload,
+                    payload=payload.model_dump(),
                     vector=vector,
                 )
             ],
         )
-
-        logger.info(f"Collection: {collection_name} - Vector: {vector_id}")

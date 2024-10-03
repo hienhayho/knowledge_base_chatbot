@@ -58,6 +58,11 @@ class KnowledgeBaseResponse(BaseModel):
 
 
 class UploadFileResponse(BaseModel):
+    doc_id: UUID = Field(
+        ...,
+        title="Document ID",
+        description="Document ID",
+    )
     file_name: str = Field(
         ...,
         title="File Name",

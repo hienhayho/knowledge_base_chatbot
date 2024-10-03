@@ -4,8 +4,6 @@ import json
 import uuid
 from tqdm import tqdm
 from pathlib import Path
-from typing import Literal
-from icecream import ic
 from dotenv import load_dotenv
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -28,13 +26,11 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.postprocessor.cohere_rerank import CohereRerank
-from llama_index.core.base.base_query_engine import BaseQueryEngine
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 
 from .core import ElasticSearch
 from src.utils import get_formatted_logger
-from src.readers.file_reader import parse_multiple_files
 from src.settings import GlobalSettings, defaul_settings
 from src.constants import (
     CONTEXTUAL_PROMPT,
@@ -42,7 +38,6 @@ from src.constants import (
     DocumentMetadata,
     LLMService,
     EmbeddingService,
-    RAGType,
 )
 
 logger = get_formatted_logger(__file__)
@@ -176,7 +171,7 @@ class ContextualRAG:
         self,
         origin_document: Document,
         splited_documents: list[Document],
-    ) -> list[Document]:
+    ) -> tuple[list[Document], list[DocumentMetadata]]:
         """
         Add contextual content to the splited documents.
 
@@ -185,7 +180,7 @@ class ContextualRAG:
             splited_documents (list[Document]): The splited documents from the original document.
 
         Returns:
-            list[Document]: List of documents with contextual content.
+            (tuple[list[Document], list[DocumentMetadata]]): Tuple of contextual documents and its metadata.
         """
 
         whole_document = origin_document.text
@@ -264,25 +259,40 @@ class ContextualRAG:
 
         return documents, documents_metadata
 
+    def es_index_document(
+        self, index_name: str, documents_metadata: list[DocumentMetadata]
+    ):
+        """
+        Index the documents in the ElasticSearch.
+
+        Args:
+            index_name (str): Name of the index to index documents.
+            documents_metadata (list[DocumentMetadata]): List of documents metadata to index.
+        """
+        logger.info(
+            "index_name: %s - len(documents_metadata): %s",
+            index_name,
+            len(documents_metadata),
+        )
+        self.es.index_documents(
+            index_name=index_name, documents_metadata=documents_metadata
+        )
+
     def ingest_data(
         self,
+        collection_name: str,
         documents: list[Document],
         show_progress: bool = True,
-        type: Literal["origin", "contextual"] = "contextual",
     ):
         """
         Ingest the data to the QdrantVectorStore.
 
         Args:
+            collection_name (str): The collection name.
             documents (list[Document]): List of documents to ingest.
             show_progress (bool): Show the progress bar.
-            type (Literal["origin", "contextual"]): The type of RAG to ingest.
         """
-
-        if type == "origin":
-            collection_name = self.setting.original_rag_collection_name
-        else:
-            collection_name = self.setting.contextual_rag_collection_name
+        logger.info("collection_name: %s", collection_name)
 
         vector_store = QdrantVectorStore(
             client=self.qdrant_client, collection_name=collection_name
@@ -298,29 +308,37 @@ class ContextualRAG:
 
     def insert_data(
         self,
+        collection_name: str,
         documents: list[Document],
         show_progress: bool = True,
-        type: Literal["origin", "contextual"] = "contextual",
     ):
-        if type == "origin":
-            collection_name = self.setting.original_rag_collection_name
-        else:
-            collection_name = self.setting.contextual_rag_collection_name
+        """
+        Insert data to the QdrantVectorStore.
 
-        ic(type, collection_name)
+        Args:
+            collection_name (str): The collection name.
+            documents (list[Document]): List of documents to insert.
+            show_progress (bool): Show the progress bar.
+        """
+        logger.info("collection_name: %s", collection_name)
 
-        vector_store_index = self.get_qdrant_vector_store_index(
-            client=self.qdrant_client,
-            collection_name=collection_name,
+        vector_store = QdrantVectorStore(
+            client=self.qdrant_client, collection_name=collection_name
+        )
+
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+        index = VectorStoreIndex.from_vector_store(
+            vector_store=vector_store, storage_context=storage_context
         )
 
         documents = (
-            tqdm(documents, desc=f"Adding more data to {type} ...")
+            tqdm(documents, desc=f"Inserting data to: {collection_name} ...")
             if show_progress
             else documents
         )
         for document in documents:
-            vector_store_index.insert(document)
+            index.insert(document)
 
     def get_qdrant_vector_store_index(
         self, client: QdrantClient, collection_name: str
@@ -335,7 +353,7 @@ class ContextualRAG:
         Returns:
             VectorStoreIndex: The VectorStoreIndex from the QdrantVectorStore.
         """
-        ic(collection_name)
+        logger.info("collection_name: %s", collection_name)
 
         vector_store = QdrantVectorStore(client=client, collection_name=collection_name)
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
@@ -344,150 +362,14 @@ class ContextualRAG:
             vector_store=vector_store, storage_context=storage_context
         )
 
-    def get_query_engine(
-        self, type: Literal["origin", "contextual", "both"]
-    ) -> BaseQueryEngine | dict[str, BaseQueryEngine]:
-        """
-        Get the query engine for the RAG.
-
-        Args:
-            type (Literal["origin", "contextual", "both"]): The type of RAG.
-
-        Returns:
-            BaseQueryEngine | dict[str, BaseQueryEngine]: The query engine.
-        """
-        ic(type)
-
-        if type == RAGType.ORIGIN:
-            return self.get_qdrant_vector_store_index(
-                client=self.qdrant_client,
-                collection_name=self.setting.original_rag_collection_name,
-            ).as_query_engine()
-
-        elif type == RAGType.CONTEXTUAL:
-            return self.get_qdrant_vector_store_index(
-                client=self.qdrant_client,
-                collection_name=self.setting.contextual_rag_collection_name,
-            ).as_query_engine()
-
-        elif type == RAGType.BOTH:
-            return {
-                "origin": self.get_qdrant_vector_store_index(
-                    client=self.qdrant_client,
-                    collection_name=self.setting.original_rag_collection_name,
-                ).as_query_engine(),
-                "contextual": self.get_qdrant_vector_store_index(
-                    client=self.qdrant_client,
-                    collection_name=self.setting.contextual_rag_collection_name,
-                ).as_query_engine(),
-            }
-
-    def run_ingest(
-        self,
-        folder_dir: str | Path,
-        type: Literal["origin", "contextual", "both"] = "contextual",
-    ) -> None:
-        """
-        Run the ingest process for the RAG.
-
-        Args:
-            folder_dir (str | Path): The folder directory containing the papers.
-            type (Literal["origin", "contextual", "both"]): The type to ingest. Default to `contextual`.
-        """
-        ic(folder_dir, type)
-
-        raw_documents = parse_multiple_files(folder_dir)
-        splited_documents = self.split_document(raw_documents)
-
-        ingest_documents: list[Document] = []
-        if type == RAGType.BOTH or type == RAGType.ORIGIN:
-            for each_splited in splited_documents:
-                ingest_documents.extend(each_splited)
-
-        if type == RAGType.ORIGIN:
-            self.ingest_data(ingest_documents, type=RAGType.ORIGIN)
-
-        else:
-            if type == RAGType.BOTH:
-                self.ingest_data(ingest_documents, type=RAGType.ORIGIN)
-
-            contextual_documents, contextual_documents_metadata = (
-                self.get_contextual_documents(
-                    raw_documents=raw_documents, splited_documents=splited_documents
-                )
-            )
-
-            assert len(contextual_documents) == len(contextual_documents_metadata)
-
-            self.ingest_data(contextual_documents, type=RAGType.CONTEXTUAL)
-
-            self.es.index_documents(contextual_documents_metadata)
-
-            ic(f"Ingested data for {type}")
-
-    def run_add_files(
-        self, files_or_folders: list[str], type: Literal["origin", "contextual", "both"]
-    ):
-        """
-        Add files to the database.
-
-        Args:
-            files_or_folders (list[str]): List of file paths or folder to be ingested.
-            type (Literal["origin", "contextual", "both"]): Type of RAG type to ingest.
-        """
-        ic(files_or_folders, type)
-
-        raw_documents = parse_multiple_files(files_or_folders)
-        splited_documents = self.split_document(raw_documents)
-
-        ingest_documents: list[Document] = []
-        if type == RAGType.BOTH or type == RAGType.ORIGIN:
-            for each_splited in splited_documents:
-                ingest_documents.extend(each_splited)
-
-        if type == RAGType.ORIGIN:
-            self.insert_data(ingest_documents, type=RAGType.ORIGIN)
-
-        else:
-            if type == RAGType.BOTH:
-                self.insert_data(ingest_documents, type=RAGType.ORIGIN)
-
-            contextual_documents, contextual_documents_metadata = (
-                self.get_contextual_documents(
-                    raw_documents=raw_documents, splited_documents=splited_documents
-                )
-            )
-
-            assert len(contextual_documents) == len(contextual_documents_metadata)
-
-            self.insert_data(contextual_documents, type=RAGType.CONTEXTUAL)
-
-            self.es.index_documents(contextual_documents_metadata)
-
-            ic(f"Added data for {type}")
-
-    def origin_rag_search(self, query: str) -> str:
-        """
-        Search the query in the Origin RAG.
-
-        Args:
-            query (str): The query to search.
-
-        Returns:
-            str: The search results.
-        """
-        ic(query)
-
-        index = self.get_query_engine(RAGType.ORIGIN)
-        return index.query(query)
-
     def contextual_rag_search(
-        self, query: str, k: int = 150, debug: bool = False
+        self, collection_name: str, query: str, k: int = 150, debug: bool = False
     ) -> str:
         """
         Search the query with the Contextual RAG.
 
         Args:
+            collection_name (str): The qdrant collection name.
             query (str): The query to search.
             k (int): The number of documents to return. Default to `150`.
             debug (bool): debug mode.
@@ -495,13 +377,15 @@ class ContextualRAG:
         Returns:
             str: The search results.
         """
-        ic(query, k, debug)
+        logger.info(
+            "collection_name: %s - k: %s - query: %s", collection_name, k, query
+        )
 
-        semantic_weight = self.setting.semantic_weight
-        bm25_weight = self.setting.bm25_weight
+        bm25_weight = self.setting.contextual_rag_config.bm25_weight
+        semantic_weight = self.setting.contextual_rag_config.semantic_weight
 
         index = self.get_qdrant_vector_store_index(
-            self.qdrant_client, self.setting.contextual_rag_collection_name
+            self.qdrant_client.client, collection_name=collection_name
         )
 
         retriever = VectorIndexRetriever(
@@ -512,7 +396,6 @@ class ContextualRAG:
         query_engine = RetrieverQueryEngine(retriever=retriever)
 
         semantic_results: Response = query_engine.query(query)
-
         semantic_doc_id = [
             node.metadata["doc_id"] for node in semantic_results.source_nodes
         ]
@@ -566,7 +449,12 @@ class ContextualRAG:
             )
 
         if debug:
-            ic(semantic_count, bm25_count, both_count)
+            logger.info(
+                "semantic_count: %s - bm25_count: %s - both_count: %s",
+                semantic_count,
+                bm25_count,
+                both_count,
+            )
 
         reranker = CohereRerank(
             top_n=self.setting.top_n,

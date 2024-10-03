@@ -10,7 +10,7 @@ from .sql_model import (
 )
 from .elastic_search import ElasticSearch
 from .minio import MinioClient, get_minio_client
-from .vector_database import BaseVectorDatabase, QdrantVectorDatabase
+from .vector_database import BaseVectorDatabase, QdrantVectorDatabase, QdrantPayload
 
 
 __all__ = [
@@ -24,7 +24,8 @@ __all__ = [
     "MinioClient",
     "get_minio_client",
     "ElasticSearch",
+    "get_session",
     "BaseVectorDatabase",
     "QdrantVectorDatabase",
-    "get_session",
+    "QdrantPayload",
 ]

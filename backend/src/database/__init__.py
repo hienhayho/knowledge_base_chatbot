@@ -6,24 +6,24 @@ from .core import (
     Documents,
     Assistants,
     Messages,
-    BaseVectorDatabase,
-    QdrantVectorDatabase,
     MinioClient,
     get_minio_client,
     ElasticSearch,
     get_session,
+    QdrantPayload,
+    BaseVectorDatabase,
+    QdrantVectorDatabase,
 )
-from .db_manager import DatabaseManager
+from .db_manager import DatabaseManager, get_db_manager
 from .utils import get_embedding, validate_email, is_valid_uuid
 
 __all__ = [
     "validate_email",
     "get_embedding",
     "DatabaseManager",
+    "get_db_manager",
     "MinioClient",
     "get_minio_client",
-    "BaseVectorDatabase",
-    "QdrantVectorDatabase",
     "Users",
     "KnowledgeBases",
     "Conversations",
@@ -34,4 +34,7 @@ __all__ = [
     "ElasticSearch",
     "get_session",
     "is_valid_uuid",
+    "QdrantPayload",
+    "BaseVectorDatabase",
+    "QdrantVectorDatabase",
 ]
