@@ -20,7 +20,7 @@ def get_formatted_logger(name: str, file_path: str | None = None):
     Returns:
         logging.Logger: The logger object.
 
-    **Note:** Name is only use to prevent from being root logger.
+    **Note:** Name is only used to prevent from being root logger.
     """
     logger = logging.getLogger(name=name)
     logger.setLevel(TRACE_LOG_LEVEL)
