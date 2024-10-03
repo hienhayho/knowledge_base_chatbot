@@ -3,6 +3,7 @@ import sys
 from typing import List
 import uuid as uuid_pkg
 from pathlib import Path
+from fastapi import Depends
 from sqlalchemy import Column
 from dotenv import load_dotenv
 from datetime import datetime, UTC
@@ -11,14 +12,16 @@ from sqlalchemy.dialects.postgresql import TEXT
 from sqlmodel import SQLModel, Field, String, create_engine, Session, Relationship
 
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
-from src.constants import DocumentStatus, SenderType
+from src.constants import FileStatus, SenderType
+from src.settings import get_default_setting, GlobalSettings
 
 load_dotenv()
 
 
-def init_db(sql_url: str = None):
+def get_session(setting: GlobalSettings = Depends(get_default_setting)):
+    sql_url = setting.sql_config.url
 
     if not sql_url:
         sql_url = os.getenv("SQL_DB_URL")
@@ -27,13 +30,7 @@ def init_db(sql_url: str = None):
 
     engine = create_engine(sql_url)
     SQLModel.metadata.create_all(engine)
-    return engine
-
-
-def get_session():
-    engine = create_engine(os.getenv("SQL_DB_URL"))
-    with Session(engine) as session:
-        yield session
+    return Session(engine, expire_on_commit=False)
 
 
 class Users(SQLModel, table=True):
@@ -160,7 +157,7 @@ class Documents(SQLModel, table=True):
         nullable=False,
         description="File Name of the Document",
     )
-    file_path: str = Field(
+    file_path_in_minio: str = Field(
         nullable=False,
         description="Path of the Document",
     )
@@ -168,7 +165,7 @@ class Documents(SQLModel, table=True):
         nullable=False,
         description="File extension",
     )
-    status: DocumentStatus = Field(
+    status: FileStatus = Field(
         nullable=False,
         description="Status of the Document",
     )
@@ -295,3 +292,14 @@ class Messages(SQLModel, table=True):
     )
 
     conversation: Conversations = Relationship(back_populates="messages")
+
+
+def init_db():
+    sql_url = os.getenv("SQL_DB_URL")
+    assert sql_url, "SQL_DB_URL is not set"
+
+    engine = create_engine(sql_url)
+    SQLModel.metadata.create_all(engine)
+
+
+init_db()

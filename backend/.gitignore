@@ -3,3 +3,5 @@ __pycache__/
 env/
 postgres-data/
 minio_storage/
+logs/
+uploads/

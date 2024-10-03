@@ -1,8 +1,8 @@
 import os
 from mmengine import Config
+from typing import Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from typing import Optional
 
 load_dotenv()
 
@@ -15,11 +15,13 @@ class APIKeys(BaseModel):
 
     Attributes:
         OPENAI_API_KEY (Optional[str]): OpenAI API key
-        LLAMA_PARSE_API_KEY (Optional[str]): Llama Parse API key
+        LLAMA_PARSE_API_KEY (Optional[str]): LlamaParse API key for parsing .pdf files
+        COHERE_API_KEY (Optional[str]): Cohere API key for reranking
     """
 
     OPENAI_API_KEY: Optional[str] = None
     LLAMA_PARSE_API_KEY: Optional[str] = None
+    COHERE_API_KEY: Optional[str] = None
 
 
 class MinioConfig(BaseModel):
@@ -61,15 +63,28 @@ class QdrantConfig(BaseModel):
     url: Optional[str] = None
 
 
+class ElasticSearchConfig(BaseModel):
+    """
+    ElasticSearch configuration.
+
+    Attributes:
+        url (Optional[str]): ElasticSearch url
+    """
+
+    url: Optional[str] = None
+
+
 class EmbeddingConfig(BaseModel):
     """
     Embedding configuration.
 
     Attributes:
+        chunk_size (int): Embedding chunk size
         service (str): Embedding service
         model_name (str): Embedding model
     """
 
+    chunk_size: int
     service: str
     name: str
 
@@ -105,6 +120,7 @@ class GlobalSettings(BaseModel):
         default=APIKeys(
             OPENAI_API_KEY=os.getenv("OPENAI_API_KEY"),
             LLAMA_PARSE_API_KEY=os.getenv("LLAMA_PARSE_API_KEY"),
+            COHERE_API_KEY=os.getenv("COHERE_API_KEY"),
         ),
         description="API keys configuration",
     )
@@ -123,7 +139,7 @@ class GlobalSettings(BaseModel):
         default=SQLConfig(
             url=os.getenv("SQL_DB_URL"),
         ),
-        description="SQL configuration",
+        description="SQL Database configuration",
     )
 
     qdrant_config: QdrantConfig = Field(
@@ -133,10 +149,21 @@ class GlobalSettings(BaseModel):
         description="Qdrant configuration",
     )
 
+    elastic_search_config: ElasticSearchConfig = Field(
+        default=ElasticSearchConfig(
+            url=os.getenv("ELASTIC_SEARCH_URL"),
+        ),
+        description="ElasticSearch configuration",
+    )
+
     upload_bucket_name: str = Field(default=config.minio_config.upload_bucket_name)
+    upload_temp_folder: str = Field(
+        default="uploads", description="Temporary upload folder before moving to Minio"
+    )
 
     embedding_config: EmbeddingConfig = Field(
         default=EmbeddingConfig(
+            chunk_size=config.embeddings_config.chunk_size,
             service=config.embeddings_config.service,
             name=config.embeddings_config.model,
         ),
@@ -150,3 +177,13 @@ class GlobalSettings(BaseModel):
         ),
         description="LLM configuration",
     )
+
+
+defaul_settings = GlobalSettings()
+
+
+def get_default_setting():
+    """
+    Get default settings
+    """
+    return defaul_settings

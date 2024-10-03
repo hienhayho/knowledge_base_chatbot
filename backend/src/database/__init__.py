@@ -1,7 +1,4 @@
-from .manager import DatabaseManager
-from .minio import MinioClient, get_minio_client
-from .vector_database import BaseVectorDatabase, QdrantVectorDatabase
-from .sql_model import (
+from .core import (
     Users,
     KnowledgeBases,
     Conversations,
@@ -9,9 +6,15 @@ from .sql_model import (
     Documents,
     Assistants,
     Messages,
+    BaseVectorDatabase,
+    QdrantVectorDatabase,
+    MinioClient,
+    get_minio_client,
+    ElasticSearch,
+    get_session,
 )
-from .embedding import get_embedding
-from .validators import validate_email
+from .db_manager import DatabaseManager
+from .utils import get_embedding, validate_email, is_valid_uuid
 
 __all__ = [
     "validate_email",
@@ -28,4 +31,7 @@ __all__ = [
     "Documents",
     "Assistants",
     "Messages",
+    "ElasticSearch",
+    "get_session",
+    "is_valid_uuid",
 ]

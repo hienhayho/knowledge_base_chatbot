@@ -5,16 +5,16 @@ services:
         container_name: redis
         restart: always
         ports:
-            - 6379:6379
-    
+            - "6379:6379"
+
     qdrant:
         image: qdrant/qdrant:latest
         container_name: qdrant
         restart: always
         ports:
-          - 6333:6333
-          - 6334:6334
-      
+          - "6333:6333"
+          - "6334:6334"
+
     postgres:
         image: postgres:latest
         container_name: postgres
@@ -24,10 +24,10 @@ services:
             POSTGRES_PASSWORD: 123456
             POSTGRES_DB: db
         ports:
-            - 5432:5432
+            - "5432:5432"
         volumes:
             - ./postgres-data:/var/lib/postgresql/data
-    
+
     minio:
         image: minio/minio
         container_name: minio
@@ -41,3 +41,24 @@ services:
             MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
             MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
         command: server --console-address ":9001" /data
+
+    elastic-search:
+        image: elasticsearch:8.8.0
+        container_name: elastic-search
+        restart: always
+        environment:
+            - discovery.type=single-node
+            - xpack.security.enabled=false
+        ports:
+            - "9200:9200"
+            - "9300:9300"
+
+    kibana:
+        image: kibana:8.8.0
+        container_name: kibana
+        environment:
+            - ELASTICSEARCH_HOSTS=http://elastic-search:9200
+        depends_on:
+            - elastic-search
+        ports:
+            - "5601:5601"

@@ -1,10 +1,11 @@
 import sys
-from pathlib import Path
 from minio import Minio
+from pathlib import Path
+from tenacity import retry, stop_after_attempt
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
-from src.utils import get_formatted_logger
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from src.settings import GlobalSettings
+from src.utils import get_formatted_logger
 
 logger = get_formatted_logger(__file__)
 
@@ -31,14 +32,24 @@ class MinioClient:
 
         Args:
             url (str): Minio url
-            access_key (str): Minio access key
-            secret_key (str): Minio secret key
+            access_key (str): Minio access key - **MINIO_ROOT_USER** (docker-compose.yml)
+            secret_key (str): Minio secret key - **MINIO_ROOT_PASSWORD** (docker-compose.yml)
             secure (bool): Enable secure connection
         """
+
         self.client = Minio(
             endpoint=url, access_key=access_key, secret_key=secret_key, secure=secure
         )
-        logger.info("Minio client initialized successfully !!!")
+        logger.info("MinioClient initialized successfully !!!")
+
+    @classmethod
+    def from_setting(cls, setting: GlobalSettings) -> "MinioClient":
+        return cls(
+            url=setting.minio_config.url,
+            access_key=setting.minio_config.access_key,
+            secret_key=setting.minio_config.secret_key,
+            secure=setting.minio_config.secure,
+        )
 
     def check_bucket_exists(self, bucket_name) -> bool:
         """
@@ -62,6 +73,7 @@ class MinioClient:
         self.client.make_bucket(bucket_name)
         logger.info(f"Bucket {bucket_name} created successfully !!!")
 
+    @retry(stop=stop_after_attempt(3))
     def upload_file(self, bucket_name: str, object_name: str, file_path: str) -> None:
         """
         Upload file to Minio

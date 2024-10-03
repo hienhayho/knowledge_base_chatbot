@@ -1,6 +1,5 @@
 # This file contains utility functions for the readers module.
 
-import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv

@@ -1,17 +1,20 @@
-import time
 import sys
 import celery
 from pathlib import Path
+from sqlmodel import Session
 
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from src.readers import parse_multiple_files
 from src.celery import celery_app
+from src.database import DatabaseManager
+from src.readers import parse_multiple_files
 
 
 @celery_app.task(bind=True)
-def parse_document(self: celery.Task, file: str):
+def parse_document(
+    self: celery.Task, file: str, db_session: Session, db_manager: DatabaseManager
+):
     """
     Parse a document.
 
@@ -23,13 +26,9 @@ def parse_document(self: celery.Task, file: str):
     """
     document = parse_multiple_files(file)
 
-    self.update_state(state="PROGRESS", meta={"status": "Parsing document"})
+    self.update_state(state="PROGRESS", meta={"progress": 0})
 
-    i = 0
-    while i < 10:
-        time.sleep(1)
-        self.update_state(state="PROGRESS", meta={"status": f"Processing {i}"})
-        i += 1
+    chunks = db_manager.get_contextual_rag_chunks(document)  # noqa
 
     return {
         "task_id": self.request.id,
