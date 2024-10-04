@@ -12,7 +12,7 @@ from src.utils import get_formatted_logger
 from src.constants import DocumentMetadata
 from src.settings import GlobalSettings, get_default_setting
 
-logger = get_formatted_logger(__file__, file_path="logs/database_manager.log")
+logger = get_formatted_logger(__file__)
 
 
 class DatabaseManager:

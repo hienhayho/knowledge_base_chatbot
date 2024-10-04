@@ -1,4 +1,5 @@
 import os
+import enum
 from mmengine import Config
 from typing import Optional
 from dotenv import load_dotenv
@@ -109,10 +110,38 @@ class ContextualRAGConfig(BaseModel):
     Attributes:
         semantic_weight (float): Semantic weight for rank fusion
         bm25_weight (float): BM25 weight for rank fusion
+        top_k (int): Top K documents for reranking
+        top_n (int): Top N documents after reranking
     """
 
     semantic_weight: float
     bm25_weight: float
+    top_k: int
+    top_n: int
+
+
+class LLMCollection(str, enum.Enum):
+    """
+    LLM collection configuration.
+
+    Attributes:
+        OPENAI (str): OpenAI
+        REACT (str): React
+    """
+
+    OPENAI = "openai"
+    REACT = "react"
+
+
+class AgentConfig(BaseModel):
+    """
+    Agent configuration.
+
+    Attributes:
+        type (LLMCollection): LLM collection type
+    """
+
+    type: LLMCollection
 
 
 class GlobalSettings(BaseModel):
@@ -195,8 +224,17 @@ class GlobalSettings(BaseModel):
         default=ContextualRAGConfig(
             semantic_weight=config.contextual_rag_config.semantic_weight,
             bm25_weight=config.contextual_rag_config.bm25_weight,
+            top_k=config.contextual_rag_config.top_k,
+            top_n=config.contextual_rag_config.top_n,
         ),
         description="Contextual RAG configuration",
+    )
+
+    agent_config: AgentConfig = Field(
+        default=AgentConfig(
+            type=config.agent_config.type,
+        ),
+        description="Agent configuration",
     )
 
 

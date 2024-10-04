@@ -2,6 +2,7 @@ from pathlib import Path
 from sqlmodel import select
 from sqlmodel import Session
 from typing import Annotated
+from celery.result import AsyncResult
 from fastapi.responses import JSONResponse
 from fastapi import (
     Body,
@@ -15,7 +16,12 @@ from fastapi import (
 
 from .user_router import get_current_user
 from src.settings import GlobalSettings
-from api.models import KnowledgeBaseRequest, KnowledgeBaseResponse, UploadFileResponse
+from api.models import (
+    KnowledgeBaseRequest,
+    KnowledgeBaseResponse,
+    UploadFileResponse,
+    GetDocumentStatusReponse,
+)
 from src.database import (
     Users,
     get_session,
@@ -25,6 +31,7 @@ from src.database import (
     Documents,
     is_valid_uuid,
 )
+from src.celery import celery_app
 from src.tasks import parse_document
 from src.utils import get_formatted_logger
 from src.constants import FileStatus, ErrorResponse
@@ -211,10 +218,10 @@ async def process_document(
             str(temp_file_path),
             document.id,
             document.knowledge_base_id,
-            document.file_path_in_minio,
         )
 
         document.task_id = task.id
+        document.status = FileStatus.PROCESSING
 
         session.add(document)
         session.commit()
@@ -223,3 +230,66 @@ async def process_document(
             status_code=status.HTTP_202_ACCEPTED,
             content={"task_id": task.id, "status": "Processing"},
         )
+
+
+@kb_router.get("/document_status/{document_id}")
+async def get_document_status(
+    document_id: str,
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+):
+    with db_session as session:
+        query = select(Documents).where(Documents.id == document_id)
+
+        document = session.exec(query).first()
+
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
+            )
+
+        if document.knowledge_base.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to access this document",
+            )
+
+        task_id = document.task_id
+
+        if document.status != FileStatus.PROCESSING:
+            return GetDocumentStatusReponse(
+                doc_id=document.id, status=document.status, task_id=task_id, metadata={}
+            )
+
+        if not task_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Task ID not found !"
+            )
+
+        task = AsyncResult(task_id, app=celery_app)
+
+        state = task.state
+
+        response = {
+            "doc_id": document.id,
+            "task_id": task_id,
+        }
+
+        if state == "SUCCESS":
+            response["status"] = FileStatus.PROCESSED
+            response["metadata"] = {}
+            document.status = FileStatus.PROCESSED
+
+        elif state == "FAILURE":
+            response["status"] = FileStatus.FAILED
+            response["metadata"] = {}
+            document.status = FileStatus.FAILED
+
+        elif state == "PROGRESS":
+            response["status"] = FileStatus.PROCESSING
+            response["metadata"] = task.info
+
+        session.add(document)
+        session.commit()
+
+        return response

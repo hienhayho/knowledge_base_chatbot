@@ -3,6 +3,7 @@ from .knowledge_bases import (
     KnowledgeBaseRequest,
     KnowledgeBaseResponse,
     UploadFileResponse,
+    GetDocumentStatusReponse,
 )
 
 __all__ = [
@@ -11,4 +12,5 @@ __all__ = [
     "KnowledgeBaseRequest",
     "KnowledgeBaseResponse",
     "UploadFileResponse",
+    "GetDocumentStatusReponse",
 ]

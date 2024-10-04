@@ -14,6 +14,7 @@ from .core import (
     BaseVectorDatabase,
     QdrantVectorDatabase,
 )
+from .contextual_rag_manager import ContextualRAG
 from .db_manager import DatabaseManager, get_db_manager
 from .utils import get_embedding, validate_email, is_valid_uuid
 
@@ -32,6 +33,7 @@ __all__ = [
     "Assistants",
     "Messages",
     "ElasticSearch",
+    "ContextualRAG",
     "get_session",
     "is_valid_uuid",
     "QdrantPayload",

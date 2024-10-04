@@ -1,7 +1,7 @@
 import os
 import sys
-from typing import List
 import uuid as uuid_pkg
+from typing import List
 from pathlib import Path
 from fastapi import Depends
 from sqlalchemy import Column

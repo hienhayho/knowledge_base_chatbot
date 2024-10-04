@@ -2,7 +2,7 @@ import sys
 from uuid import UUID
 from pathlib import Path
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -83,3 +83,28 @@ class UploadFileResponse(BaseModel):
         title="Knowledge Base",
         description="Knowledge Base",
     )
+
+
+class GetDocumentStatusReponse(BaseModel):
+    doc_id: UUID = Field(
+        ...,
+        title="Document ID",
+        description="Document ID",
+    )
+    status: FileStatus = Field(
+        ...,
+        title="Status of the Document",
+        description="Status of the Document",
+    )
+    task_id: str = Field(
+        ...,
+        title="Task ID from celery",
+        description="Task ID from celery",
+    )
+    metadata: dict = Field(
+        ...,
+        title="Metadata",
+        description="Metadata",
+    )
+
+    model_config = ConfigDict(from_attributes=True)

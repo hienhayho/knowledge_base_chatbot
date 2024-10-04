@@ -109,7 +109,7 @@ class ElasticSearch:
         return success
 
     def search(
-        self, index_name: str, query: str, k: int = 20
+        self, index_name: str, query: str, top_k: int = 20
     ) -> list[ElasticSearchResponse]:
         """
         Search the documents relevant to the query.
@@ -117,12 +117,12 @@ class ElasticSearch:
         Args:
             index_name (str): Name of the index to search
             query (str): Query to search
-            k (int): Number of documents to return
+            top_k (int): Number of documents to return
 
         Returns:
             list[ElasticSearchResponse]: List of ElasticSearch response objects.
         """
-        logger.debug("Index: %s - Query: %s - k: %s", index_name, query, k)
+        logger.info("index_name: %s - query: %s - top_k: %s", index_name, query, top_k)
 
         self.es_client.indices.refresh(
             index=index_name
@@ -134,7 +134,7 @@ class ElasticSearch:
                     "fields": ["content", "contextualized_content"],
                 }
             },
-            "size": k,
+            "size": top_k,
         }
         response = self.es_client.search(index=index_name, body=search_body)
 

@@ -37,7 +37,7 @@ def parse_document(
         knowledge_base_id (str): The knowledge base ID as collection name for vector database and also index name for elasticsearch.
 
     Returns:
-        dict: The parsed document.
+        dict: The task ID and status.
     """
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
@@ -86,7 +86,7 @@ def parse_document(
             self.update_state(
                 state="PROGRESS",
                 meta={
-                    "progress": 20
+                    "progress": 80
                     + math.ceil(20 / len(contextual_documents) * (idx + 1))
                 },
             )

@@ -86,6 +86,7 @@ class ContextualRAG:
         self.qdrant_client = QdrantClient(
             url=setting.qdrant_config.url,
         )
+        logger.info("Qdrant client initialized successfully !!!")
 
         logger.info("ContextualRAG initialized successfully !!!")
 
@@ -363,7 +364,12 @@ class ContextualRAG:
         )
 
     def contextual_rag_search(
-        self, collection_name: str, query: str, k: int = 150, debug: bool = False
+        self,
+        collection_name: str,
+        query: str,
+        top_k: int = 150,
+        top_n: int = 3,
+        debug: bool = False,
     ) -> str:
         """
         Search the query with the Contextual RAG.
@@ -371,26 +377,27 @@ class ContextualRAG:
         Args:
             collection_name (str): The qdrant collection name.
             query (str): The query to search.
-            k (int): The number of documents to return. Default to `150`.
+            top_k (int): The top K documents to retrieve. Default to `150`.
+            top_n (int): The top N documents to return after reranking. Default to `3`.
             debug (bool): debug mode.
 
         Returns:
             str: The search results.
         """
         logger.info(
-            "collection_name: %s - k: %s - query: %s", collection_name, k, query
+            "collection_name: %s - top_k: %s - query: %s", collection_name, top_k, query
         )
 
         bm25_weight = self.setting.contextual_rag_config.bm25_weight
         semantic_weight = self.setting.contextual_rag_config.semantic_weight
 
         index = self.get_qdrant_vector_store_index(
-            self.qdrant_client.client, collection_name=collection_name
+            self.qdrant_client, collection_name=collection_name
         )
 
         retriever = VectorIndexRetriever(
             index=index,
-            similarity_top_k=k,
+            similarity_top_k=top_k,
         )
 
         query_engine = RetrieverQueryEngine(retriever=retriever)
@@ -406,7 +413,9 @@ class ContextualRAG:
                     return node.text
             return ""
 
-        bm25_results = self.es.search(query, k=k)
+        bm25_results = self.es.search(
+            index_name=collection_name, query=query, top_k=top_k
+        )
         bm25_doc_id = [result.doc_id for result in bm25_results]
 
         combined_nodes: list[NodeWithScore] = []
@@ -457,7 +466,7 @@ class ContextualRAG:
             )
 
         reranker = CohereRerank(
-            top_n=self.setting.top_n,
+            top_n=top_n,
             api_key=os.getenv("COHERE_API_KEY"),
         )
 
@@ -470,7 +479,7 @@ class ContextualRAG:
         messages = [
             ChatMessage(
                 role="system",
-                content="You are a helpful assistant.",
+                content="You should answer in markdown format.",
             ),
             ChatMessage(
                 role="user",
