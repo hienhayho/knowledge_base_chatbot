@@ -23,6 +23,11 @@ class KnowledgeBaseRequest(BaseModel):
         title="Description of the Knowledge Base",
         description="Description of the Knowledge Base",
     )
+    is_contextual_rag: bool = Field(
+        ...,
+        title="Contextual RAG Flag",
+        description="Use this flag to mark the Knowledge Base use Contextual RAG",
+    )
 
 
 class KnowledgeBaseResponse(BaseModel):

@@ -44,6 +44,12 @@ const DatasetView = ({ knowledgeBaseID }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [documents, setDocuments] = useState([]);
+    const token = getCookie("access_token");
+
+    if (!token) {
+        const redirectURL = encodeURIComponent(`/knowledge/${knowledgeBaseID}`);
+        window.location.href = `/login?redirect=${redirectURL}`;
+    }
 
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
@@ -214,9 +220,12 @@ const DatasetView = ({ knowledgeBaseID }) => {
         if (window.confirm("Are you sure you want to delete this document?")) {
             try {
                 const response = await fetch(
-                    `${API_BASE_URL}/api/knowledge_base/delete_document/${documentId}`,
+                    `${API_BASE_URL}/api/kb/delete/${documentId}`,
                     {
                         method: "DELETE",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
                     }
                 );
                 if (!response.ok) {
@@ -235,7 +244,10 @@ const DatasetView = ({ knowledgeBaseID }) => {
     const handleProcessDocument = async (documentId) => {
         const token = getCookie("access_token");
         if (!token) {
-            window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+            const redirectURL = encodeURIComponent(
+                `/knowledge/${knowledgeBaseID}`
+            );
+            window.location.href = `/login?redirect=${redirectURL}`;
         }
         try {
             const response = await fetch(

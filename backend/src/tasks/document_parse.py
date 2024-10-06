@@ -69,15 +69,19 @@ def parse_document(
 
     self.update_state(state="PROGRESS", meta={"progress": 60})
 
+    new_chunks = []
+    for chunk in chunks:
+        new_chunks.extend(chunk)
+
     db_manager.index_to_vector_db(
         collection_name=str(knowledge_base_id),
-        chunks_documents=contextual_documents if is_contextual_rag else chunks[0],
+        chunks_documents=contextual_documents if is_contextual_rag else new_chunks,
         document_id=document_id,
     )
 
     self.update_state(state="PROGRESS", meta={"progress": 80})
 
-    indexed_document = contextual_documents if is_contextual_rag else chunks[0]
+    indexed_document = contextual_documents if is_contextual_rag else new_chunks
 
     with db_session as session:
         for idx, chunk in enumerate(indexed_document):

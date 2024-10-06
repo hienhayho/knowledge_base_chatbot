@@ -2,7 +2,7 @@ import sys
 from uuid import UUID
 from pathlib import Path
 from fastapi import Depends
-from sqlmodel import Session, select
+from sqlmodel import select
 from llama_index.core import Document
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -22,9 +22,7 @@ class DatabaseManager:
     Database manager to handle all the database operations
     """
 
-    def __init__(
-        self, setting: GlobalSettings, sql_db_session: Session = Depends(get_session)
-    ):
+    def __init__(self, setting: GlobalSettings):
         """
         Initialize the database manager
 
@@ -33,7 +31,6 @@ class DatabaseManager:
             sql_db_session (Session): SQL Database session
         """
         self.setting = setting
-        self.sql_db_session = sql_db_session
 
         self.minio_client = MinioClient.from_setting(setting)
         self.contextual_rag_client = ContextualRAG.from_setting(setting)
@@ -70,7 +67,9 @@ class DatabaseManager:
             file_path=file_path,
         )
 
-    def get_chunks(self, document: Document, document_id: UUID) -> list[list[Document]]:
+    def get_chunks(
+        self, document: list[Document], document_id: UUID
+    ) -> list[list[Document]]:
         """
         Get contextual RAG chunks
 
@@ -181,14 +180,16 @@ class DatabaseManager:
         )
 
         logger.debug("Removing from SQL Database ...")
-        with self.sql_db_session as session:
+        with get_session(setting=get_default_setting()) as session:
             query_document_chunks = select(DocumentChunks).where(
                 DocumentChunks.document_id == document_id
             )
             document_chunks = session.exec(query_document_chunks).all()
 
             # Delete the document chunks before deleting the document
-            session.delete(document_chunks)
+            for document_chunk in document_chunks:
+                session.delete(document_chunk)
+
             session.commit()
 
             self.contextual_rag_client.qdrant_client.delete_vector(

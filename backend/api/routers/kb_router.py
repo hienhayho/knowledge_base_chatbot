@@ -44,6 +44,12 @@ kb_router = APIRouter()
 
 setting = GlobalSettings()
 
+use_contextual_rag = setting.use_contextual_rag
+if not use_contextual_rag:
+    logger.critical(
+        "ContextualRAG is disabled in the settings. So all the knowledge bases will be original RAG"
+    )
+
 UPLOAD_FOLDER = Path(setting.upload_temp_folder)
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
@@ -60,11 +66,18 @@ async def create_new_knowledge_base(
     """
     Create new knowledge base
     """
+
+    # Check if the system is using ContextualRAG or not
+    # If not, then all the knowledge bases will be original RAG
+    if not use_contextual_rag:
+        kb_info.is_contextual_rag = False
+
     with db_session as session:
         kb = KnowledgeBases(
             name=kb_info.name,
             description=kb_info.description,
             user=current_user,
+            is_contextual_rag=kb_info.is_contextual_rag,
         )
 
         session.add(kb)

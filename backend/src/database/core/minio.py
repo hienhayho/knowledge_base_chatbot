@@ -123,7 +123,7 @@ class MinioClient:
             return
 
         self.client.remove_object(bucket_name=bucket_name, object_name=object_name)
-        logger.info(f"Removed: {bucket_name}/{object_name}")
+        logger.debug(f"Removed: {bucket_name}/{object_name}")
 
     def remove_bucket(self, bucket_name: str) -> None:
         """

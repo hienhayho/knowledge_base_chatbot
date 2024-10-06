@@ -1,9 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { setCookie } from "cookies-next";
 import React from "react";
 import { Button, Form, Input } from "antd";
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation';
 
 
 const onFinish = async (values) => {
@@ -40,8 +40,8 @@ const onFinish = async (values) => {
       });
 
       window.location.href = path;
-  } else {
-      console.error("Failed to login");
+  } else if (result.status === 401) {
+        alert("Invalid username or password");
   }
 };
 
@@ -50,14 +50,13 @@ const onFinishFailed = (errorInfo) => {
     console.log("Failed:", errorInfo);
 };
 
-const SignIn = () => {
+const SignInContent = () => {
     const searchParams = useSearchParams();
 
     useEffect(() => {
         const redirectPath = searchParams.get("redirect") || "/knowledge";
         localStorage.setItem("redirectPath", redirectPath);
     }, [searchParams]);
-
 
     return (
       <div style={styles.container}>
@@ -106,13 +105,21 @@ const SignIn = () => {
             </Form>
 
             <div style={styles.footer}>
-              Don't have an account?
-              <a href="/register" className="text-blue-500 block ml-4">Sign Up</a>
+            Don&#39;t have an account?
+            <a href="/register" className="text-blue-500 block ml-4">Sign Up</a>
             </div>
         </div>
     </div>
     )
   };
+
+const SignIn = () => {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <SignInContent />
+        </Suspense>
+    );
+};
 
 const styles = {
     container: {

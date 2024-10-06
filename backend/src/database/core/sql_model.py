@@ -6,6 +6,7 @@ from fastapi import Depends
 from sqlalchemy import Column
 from dotenv import load_dotenv
 from datetime import datetime, UTC
+from contextlib import contextmanager
 from typing import List, Dict, Optional
 from pydantic import EmailStr, ConfigDict
 from sqlalchemy.dialects.postgresql import TEXT, JSON
@@ -31,6 +32,14 @@ def get_session(setting: GlobalSettings = Depends(get_default_setting)):
     engine = create_engine(sql_url)
     SQLModel.metadata.create_all(engine)
     return Session(engine, expire_on_commit=False)
+
+
+@contextmanager
+def get_session_manager(session: Session):
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 class Users(SQLModel, table=True):
@@ -319,7 +328,16 @@ def init_db():
     sql_url = os.getenv("SQL_DB_URL")
     assert sql_url, "SQL_DB_URL is not set"
 
-    engine = create_engine(sql_url)
+    engine = create_engine(
+        sql_url,
+        pool_pre_ping=True,
+        connect_args={
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        },
+    )
     SQLModel.metadata.create_all(engine)
 
 

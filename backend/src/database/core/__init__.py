@@ -7,6 +7,7 @@ from .sql_model import (
     Assistants,
     Messages,
     get_session,
+    get_session_manager,
 )
 from .elastic_search import ElasticSearch
 from .minio import MinioClient, get_minio_client
@@ -28,4 +29,5 @@ __all__ = [
     "BaseVectorDatabase",
     "QdrantVectorDatabase",
     "QdrantPayload",
+    "get_session_manager",
 ]

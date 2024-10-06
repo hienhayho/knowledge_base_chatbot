@@ -18,19 +18,16 @@ BACKEND_PORT = int(os.getenv("BACKEND_PORT"))
 RELOAD = os.getenv("MODE") == "development"
 
 
-# Define the lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup event
     asyncio.create_task(delete_old_files())
     yield
-    # Shutdown event (if you need to do something during shutdown)
     logger.info("Shutting down application ...")
 
 
 app = FastAPI(
     title="NoCodeAgentSystem",
-    lifespan=lifespan,  # Using lifespan instead of on_event
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -42,15 +39,14 @@ app.add_middleware(
 )
 
 
-# Background task to delete old files
 async def delete_old_files():
     while True:
         logger.warning("Cleaning up download folder ...")
-        interval = 20  # seconds
+        interval = 20
         current_time = datetime.now()
 
         for file in Path(DOWNLOAD_FOLDER).iterdir():
-            if file.is_file():  # Only process files, not directories
+            if file.is_file():
                 file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
                 age = (current_time - file_mod_time).total_seconds()
 
@@ -63,7 +59,7 @@ async def delete_old_files():
                 else:
                     logger.info(f"Skipping file: {file}")
 
-        await asyncio.sleep(120)  # Wait for 120 seconds before the next run
+        await asyncio.sleep(5 * 60)  # 5 minutes
 
 
 @app.get("/", tags=["health_check"])

@@ -46,15 +46,20 @@ const KnowledgeBasePage = () => {
         fetchKnowledgeBases();
     }, []);
 
-    const handleCreateKnowledgeBase = async (name, description) => {
+    const handleCreateKnowledgeBase = async (formData) => {
         try {
+            console.log(formData);
             const response = await fetch(`${API_BASE_URL}/api/kb/create`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${getCookie("access_token")}`,
                 },
-                body: JSON.stringify({ name, description }),
+                body: JSON.stringify({
+                    name: formData.name,
+                    description: formData.description,
+                    is_contextual_rag: formData.useContextualRag,
+                }),
             });
 
             if (!response.ok) {

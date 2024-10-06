@@ -1,5 +1,3 @@
-## Installation
-
 ### Setup Environment
 
 ```bash
@@ -18,24 +16,30 @@ pip install -r requirements.txt
 
 Please create `.env` file from `.env.example` and fill in your API keys.
 
+### Choose to use ContextualRAG or not:
+
+> Note: ContextualRAG is a little bit expensive, so it's disabled by default.
+
+Please set `use_contextual_rag` to `True` in [config.py](config.py) to use ContextualRAG.
+
 ### Database Setup
 
+-   If you use ContextualRAG, run this:
+
 ```bash
-docker compose up -d
+docker compose -f contextual_rag_services.yml up -d
+```
+
+-   Otherwise, run this:
+
+```bash
+docker compose -f original_rag_services.yml up -d
 ```
 
 ### Run celery worker
 
 ```bash
 celery -A src worker --loglevel=info
-```
-
-### Monitoring (Optional)
-
-Run this and open brower at port `5555` with `username = admin`, `password = admin123`
-
-```bash
-celery -A src flower --loglevel=info --basic-auth=admin:amdin123
 ```
 
 ### Run backend server

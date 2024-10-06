@@ -8,6 +8,13 @@ const API_BASE_URL =
 
 const ChatArea = ({ conversation, assistantId }) => {
     const token = getCookie("access_token");
+
+    if (!token) {
+        const redirect = encodeURIComponent(
+            `/chat/${assistantId}?conversation=${conversation.id}`
+        );
+        window.location.href = `/login?redirect=${redirect}`;
+    }
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -159,7 +166,14 @@ const ChatArea = ({ conversation, assistantId }) => {
     };
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        const scrollableDiv = messagesEndRef.current?.parentNode;
+        const isUserNearBottom =
+            scrollableDiv.scrollHeight - scrollableDiv.scrollTop <=
+            scrollableDiv.clientHeight + 100;
+
+        if (isUserNearBottom) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
     };
 
     const handleInputChange = (e) => {
@@ -216,8 +230,11 @@ const ChatArea = ({ conversation, assistantId }) => {
 
     return (
         <div className="flex flex-col h-full bg-white">
-            <div className="flex-1 overflow-y-auto p-4">
-                <div className="max-w-4xl mx-auto">
+            <div
+                className="flex-1 overflow-y-auto p-4"
+                style={{ maxHeight: "80vh" }}
+            >
+                <div className="max-w-4xl mx-auto mt-20">
                     {messages.map((message, index) => (
                         <div
                             key={index}
@@ -271,9 +288,9 @@ const ChatArea = ({ conversation, assistantId }) => {
             </div>
             <form
                 onSubmit={sendMessage}
-                className="p-4 border-t border-gray-200"
+                className="p-1 border-t border-gray-200"
             >
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-4xl mx-auto max-h-10">
                     <div className="flex items-end bg-white rounded-3xl shadow-lg border border-gray-300">
                         <textarea
                             ref={textareaRef}
@@ -281,8 +298,12 @@ const ChatArea = ({ conversation, assistantId }) => {
                             onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
                             placeholder="Message Assistant (Press Enter to send, Shift+Enter for new line)"
-                            className="flex-1 bg-transparent border-none rounded-3xl py-4 px-5 focus:outline-none resize-none text-gray-800 min-h-[60px]"
+                            className="flex-1 bg-transparent border-none rounded-3xl py-4 px-5 focus:outline-none resize-none text-gray-800"
                             rows={1}
+                            style={{
+                                maxHeight: "150px", // Set a maximum height for the textarea
+                                overflowY: "auto", // Allow scrolling when content exceeds the height
+                            }}
                             disabled={isLoading}
                         />
                         <button
