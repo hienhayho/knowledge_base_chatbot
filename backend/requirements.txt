@@ -11,6 +11,7 @@ llama-index-readers-json==0.2.0
 llama-index-vector-stores-qdrant==0.3.0
 llama-index-postprocessor-cohere-rerank==0.2.1
 
+schedule==1.2.2
 theflow==0.8.6
 langchain==0.3.1
 docx==0.2.4
@@ -37,3 +38,6 @@ pyjwt==2.9.0
 passlib[bcryt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.12
+flower==2.0.1
+uvicorn[standard]==0.31.0
+fastapi-utils==0.7.0

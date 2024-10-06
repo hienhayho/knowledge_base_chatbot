@@ -15,6 +15,7 @@ import {
 import UploadFileModal from "@/components/knowledge_base/UploadFileModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
+import { getCookie } from "cookies-next";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -46,14 +47,26 @@ const DatasetView = ({ knowledgeBaseID }) => {
 
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
+            const token = getCookie("access_token");
+
+            if (!token) {
+                window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+            }
             try {
                 const response = await fetch(
-                    `${API_BASE_URL}/api/knowledge_base/${knowledgeBaseID}`
+                    `${API_BASE_URL}/api/kb/${knowledgeBaseID}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
                 );
                 if (!response.ok) {
                     throw new Error("Failed to fetch knowledge base data");
                 }
                 const data = await response.json();
+
+                console.log(data);
                 setKnowledgeBase(data);
                 setDocuments(data.documents);
                 setIsLoading(false);
@@ -68,6 +81,10 @@ const DatasetView = ({ knowledgeBaseID }) => {
 
     useEffect(() => {
         const checkProcessingDocuments = async () => {
+            const token = getCookie("access_token");
+            if (!token) {
+                window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+            }
             const processingDocs = documents.filter(
                 (doc) => doc.status === "processing"
             );
@@ -75,7 +92,12 @@ const DatasetView = ({ knowledgeBaseID }) => {
                 const updatedStatuses = await Promise.all(
                     processingDocs.map(async (doc) => {
                         const response = await fetch(
-                            `${API_BASE_URL}/api/knowledge_base/document_status/${doc.id}`
+                            `${API_BASE_URL}/api/kb/document_status/${doc.id}`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                },
+                            }
                         );
                         const status = await response.json();
                         return { id: doc.id, ...status };
@@ -95,12 +117,16 @@ const DatasetView = ({ knowledgeBaseID }) => {
             }
         };
 
-        const intervalId = setInterval(checkProcessingDocuments, 1000);
+        const intervalId = setInterval(checkProcessingDocuments, 5000);
 
         return () => clearInterval(intervalId);
     }, [documents]);
 
     const handleUpload = async (files) => {
+        const token = getCookie("access_token");
+        if (!token) {
+            window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+        }
         for (const file of files) {
             const fileExtension =
                 "." + file.name.split(".").pop().toLowerCase();
@@ -118,10 +144,13 @@ const DatasetView = ({ knowledgeBaseID }) => {
 
             try {
                 const response = await fetch(
-                    `${API_BASE_URL}/api/knowledge_base/upload_document?knowledge_base_id=${knowledgeBaseID}`,
+                    `${API_BASE_URL}/api/kb/upload?knowledge_base_id=${knowledgeBaseID}`,
                     {
                         method: "POST",
                         body: formData,
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
                     }
                 );
 
@@ -136,7 +165,7 @@ const DatasetView = ({ knowledgeBaseID }) => {
                 setDocuments((prevDocuments) => [
                     ...prevDocuments,
                     {
-                        id: result.document_id,
+                        id: result.doc_id,
                         file_name: file.name,
                         created_at: result.created_at,
                         file_type: result.file_type,
@@ -151,9 +180,18 @@ const DatasetView = ({ knowledgeBaseID }) => {
     };
 
     const handleDownloadDocument = async (documentId, fileName) => {
+        const token = getCookie("access_token");
+        if (!token) {
+            window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+        }
         try {
             const response = await fetch(
-                `${API_BASE_URL}/api/knowledge_base/download_document/${documentId}`
+                `${API_BASE_URL}/api/kb/download/${documentId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
             );
             if (!response.ok) {
                 throw new Error("Failed to download document");
@@ -195,11 +233,18 @@ const DatasetView = ({ knowledgeBaseID }) => {
     };
 
     const handleProcessDocument = async (documentId) => {
+        const token = getCookie("access_token");
+        if (!token) {
+            window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+        }
         try {
             const response = await fetch(
-                `${API_BASE_URL}/api/knowledge_base/process_document/${documentId}`,
+                `${API_BASE_URL}/api/kb/process/${documentId}`,
                 {
                     method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
                 }
             );
 

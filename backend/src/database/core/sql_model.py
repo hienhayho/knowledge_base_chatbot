@@ -1,14 +1,14 @@
 import os
 import sys
 import uuid as uuid_pkg
-from typing import List
 from pathlib import Path
 from fastapi import Depends
 from sqlalchemy import Column
 from dotenv import load_dotenv
 from datetime import datetime, UTC
+from typing import List, Dict, Optional
 from pydantic import EmailStr, ConfigDict
-from sqlalchemy.dialects.postgresql import TEXT
+from sqlalchemy.dialects.postgresql import TEXT, JSON
 from sqlmodel import SQLModel, Field, String, create_engine, Session, Relationship
 
 
@@ -93,6 +93,11 @@ class Assistants(SQLModel, table=True):
         description="System Prompt",
     )
     knowledge_base_id: uuid_pkg.UUID = Field(foreign_key="knowledge_bases.id")
+    configuration: Optional[Dict] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON),
+        description="Configuration of the Knowledge Base",
+    )
     created_at: datetime = Field(
         default_factory=datetime.now,
         nullable=False,
@@ -127,6 +132,10 @@ class KnowledgeBases(SQLModel, table=True):
         nullable=False,
         description="Description of the Knowledge Base",
     )
+    is_contextual_rag: bool = Field(
+        default=False,
+        description="Use Contextual RAG for the Knowledge Base or not",
+    )
     created_at: datetime = Field(
         default_factory=datetime.now,
         nullable=False,
@@ -142,6 +151,14 @@ class KnowledgeBases(SQLModel, table=True):
     documents: List["Documents"] = Relationship(back_populates="knowledge_base")
     assistant: "Assistants" = Relationship(back_populates="knowledge_base")
     user: "Users" = Relationship(back_populates="knowledge_bases")
+
+    @property
+    def last_updated(self):
+        return self.updated_at
+
+    @property
+    def document_count(self):
+        return len(self.documents)
 
 
 class Documents(SQLModel, table=True):
@@ -184,6 +201,10 @@ class Documents(SQLModel, table=True):
         nullable=True,
         description="Task ID from celery task queue",
     )
+
+    @property
+    def file_path(self):
+        return self.file_path_in_minio
 
     knowledge_base: KnowledgeBases = Relationship(back_populates="documents")
     document_chunks: List["DocumentChunks"] = Relationship(back_populates="document")

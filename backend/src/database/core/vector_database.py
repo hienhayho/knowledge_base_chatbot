@@ -1,4 +1,5 @@
 import sys
+from uuid import UUID
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
@@ -76,7 +77,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
         self.client = QdrantClient(url)
         self.distance = distance
 
-        logger.info(f"Qdrant client created with URL: {url}")
+        logger.info("Qdrant client initialized successfully !!!")
 
     def check_collection_exists(self, collection_name: str):
         return self.client.collection_exists(collection_name)
@@ -92,11 +93,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             )
 
     def add_vector(
-        self,
-        collection_name: str,
-        vector_id: str,
-        vector: List[float],
-        payload: QdrantPayload,
+        self, collection_name: str, vector_id: str, vector: List[float], payload: Any
     ):
         """
         Add a vector to the collection
@@ -115,8 +112,36 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             points=[
                 models.PointStruct(
                     id=vector_id,
-                    payload=payload.model_dump(),
+                    payload=payload,
                     vector=vector,
                 )
             ],
+        )
+
+    def delete_vector(self, collection_name: str, document_id: str | UUID):
+        """
+        Delete a vector from the collection
+
+        Args:
+            collection_name (str): Collection name to delete
+            document_id (str | UUID): Document ID to delete
+        """
+        document_id = str(document_id)
+
+        logger.debug(
+            "collection_name: %s - document_id: %s", collection_name, document_id
+        )
+
+        self.client.delete(
+            collection_name,
+            points_selector=models.FilterSelector(
+                filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="document_id",
+                            match=models.MatchValue(value=document_id),
+                        )
+                    ]
+                )
+            ),
         )

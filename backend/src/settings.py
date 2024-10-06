@@ -158,6 +158,11 @@ class GlobalSettings(BaseModel):
         llm_config (LLMConfig): LLM configuration
     """
 
+    use_contextual_rag: bool = Field(
+        default=config.use_contextual_rag,
+        description="Use contextual RAG for reranking",
+    )
+
     api_keys: APIKeys = Field(
         default=APIKeys(
             OPENAI_API_KEY=os.getenv("OPENAI_API_KEY"),

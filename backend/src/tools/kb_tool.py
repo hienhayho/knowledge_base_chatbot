@@ -8,7 +8,9 @@ from src.database import ContextualRAG
 from src.settings import GlobalSettings
 
 
-def load_kb_tool(setting: GlobalSettings, collection_name: str) -> FunctionTool:
+def load_kb_tool(
+    setting: GlobalSettings, collection_name: str, is_contextual_rag: bool = False
+) -> FunctionTool:
     contextual_rag = ContextualRAG.from_setting(setting=setting)
 
     def knowledge_base_query(query: str) -> str:
@@ -21,7 +23,8 @@ def load_kb_tool(setting: GlobalSettings, collection_name: str) -> FunctionTool:
         Returns:
             str: Response from the contextual RAG
         """
-        return contextual_rag.contextual_rag_search(
+        return contextual_rag.search(
+            is_contextual_rag=is_contextual_rag,
             collection_name=collection_name,
             query=query,
             top_k=setting.contextual_rag_config.top_k,

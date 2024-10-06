@@ -52,13 +52,3 @@ services:
         ports:
             - "9200:9200"
             - "9300:9300"
-
-    kibana:
-        image: kibana:8.8.0
-        container_name: kibana
-        environment:
-            - ELASTICSEARCH_HOSTS=http://elastic-search:9200
-        depends_on:
-            - elastic-search
-        ports:
-            - "5601:5601"

@@ -5,3 +5,4 @@ postgres-data/
 minio_storage/
 logs/
 uploads/
+downloads/

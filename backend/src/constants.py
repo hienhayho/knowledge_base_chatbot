@@ -1,4 +1,5 @@
 import enum
+from uuid import UUID
 from llama_index.core.bridge.pydantic import BaseModel
 
 SUPPORTED_FILE_EXTENSIONS = [
@@ -35,12 +36,12 @@ class DocumentMetadata(BaseModel):
     Document metadata schema.
 
     Attributes:
-        doc_id (str): Document ID.
+        vector_id (UUID): Vector ID in the vector store.
         original_content (str): Original content of the document.
         contextualized_content (str): Contextualized content of the document which will be prepend to the original content.
     """
 
-    doc_id: str
+    vector_id: UUID
     original_content: str
     contextualized_content: str
 
@@ -56,7 +57,7 @@ class ElasticSearchResponse(BaseModel):
         score (float): Score of the document.
     """
 
-    doc_id: str
+    vector_id: UUID
     content: str
     contextualized_content: str
     score: float

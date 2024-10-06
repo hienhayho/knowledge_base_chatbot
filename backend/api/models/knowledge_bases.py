@@ -2,6 +2,7 @@ import sys
 from uuid import UUID
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -106,5 +107,57 @@ class GetDocumentStatusReponse(BaseModel):
         title="Metadata",
         description="Metadata",
     )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GetKnowledgeBase(BaseModel):
+    id: UUID = Field(
+        ...,
+        title="Knowledge Base ID",
+        description="Knowledge Base ID",
+    )
+    name: str = Field(
+        ...,
+        title="Name of the Knowledge Base",
+        description="Name of the Knowledge Base",
+    )
+    description: str = Field(
+        default="No description",
+        title="Description of the Knowledge Base",
+        description="Description of the Knowledge Base",
+    )
+    document_count: int = Field(
+        ...,
+        title="Number of documents in the Knowledge Base",
+        description="Number of documents in the Knowledge Base",
+    )
+    last_updated: datetime = Field(
+        ...,
+        title="Last Updated time",
+        description="Last Updated time",
+    )
+
+
+class DocumentInKnowledgeBase(BaseModel):
+    id: UUID
+    file_name: str
+    file_type: str
+    created_at: datetime
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GetKnowledgeBaseResponse(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str]
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+    document_count: int
+    last_updated: datetime
+    documents: list[DocumentInKnowledgeBase]
 
     model_config = ConfigDict(from_attributes=True)

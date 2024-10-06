@@ -17,6 +17,7 @@ from .core import (
 from .contextual_rag_manager import ContextualRAG
 from .db_manager import DatabaseManager, get_db_manager
 from .utils import get_embedding, validate_email, is_valid_uuid
+from .ws_manager import WsManager, MediaType, Message, MessageType, EndStatus
 
 __all__ = [
     "validate_email",
@@ -39,4 +40,9 @@ __all__ = [
     "QdrantPayload",
     "BaseVectorDatabase",
     "QdrantVectorDatabase",
+    "WsManager",
+    "MediaType",
+    "Message",
+    "MessageType",
+    "EndStatus",
 ]

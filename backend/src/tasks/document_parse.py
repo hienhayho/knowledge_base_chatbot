@@ -27,6 +27,7 @@ def parse_document(
     file_path: str,
     document_id: str,
     knowledge_base_id: str,
+    is_contextual_rag: bool = False,
 ):
     """
     Parse a document.
@@ -45,39 +46,46 @@ def parse_document(
 
     self.update_state(state="PROGRESS", meta={"progress": 10})
 
-    chunks = db_manager.get_chunks(document)
+    chunks = db_manager.get_chunks(document, document_id)
 
     self.update_state(state="PROGRESS", meta={"progress": 20})
 
-    contextual_documents, contextual_documents_metadata = (
-        db_manager.get_contextual_rag_chunks(
-            documents=document,
-            chunks=chunks,
+    if is_contextual_rag:
+        contextual_documents, contextual_documents_metadata = (
+            db_manager.get_contextual_rag_chunks(
+                documents=document,
+                chunks=chunks,
+            )
         )
-    )
 
     self.update_state(state="PROGRESS", meta={"progress": 40})
 
-    db_manager.es_index_document(
-        index_name=knowledge_base_id,
-        documents_metadata=contextual_documents_metadata,
-    )
+    if is_contextual_rag:
+        db_manager.es_index_document(
+            index_name=knowledge_base_id,
+            document_id=document_id,
+            documents_metadata=contextual_documents_metadata,
+        )
 
     self.update_state(state="PROGRESS", meta={"progress": 60})
 
     db_manager.index_to_vector_db(
-        collection_name=str(knowledge_base_id), documents=contextual_documents
+        collection_name=str(knowledge_base_id),
+        chunks_documents=contextual_documents if is_contextual_rag else chunks[0],
+        document_id=document_id,
     )
 
     self.update_state(state="PROGRESS", meta={"progress": 80})
 
+    indexed_document = contextual_documents if is_contextual_rag else chunks[0]
+
     with db_session as session:
-        for idx, chunk in enumerate(contextual_documents):
+        for idx, chunk in enumerate(indexed_document):
             document_chunk = DocumentChunks(
                 chunk_index=idx,
                 content=chunk.text,
                 document_id=document_id,
-                vector_id=chunk.metadata["doc_id"],
+                vector_id=chunk.metadata["vector_id"],
             )
             session.add(document_chunk)
             session.commit()
@@ -86,8 +94,7 @@ def parse_document(
             self.update_state(
                 state="PROGRESS",
                 meta={
-                    "progress": 80
-                    + math.ceil(20 / len(contextual_documents) * (idx + 1))
+                    "progress": 80 + math.ceil(20 / len(indexed_document) * (idx + 1))
                 },
             )
 

@@ -30,6 +30,14 @@ docker compose up -d
 celery -A src worker --loglevel=info
 ```
 
+### Monitoring (Optional)
+
+Run this and open brower at port `5555` with `username = admin`, `password = admin123`
+
+```bash
+celery -A src flower --loglevel=info --basic-auth=admin:amdin123
+```
+
 ### Run backend server
 
 ```bash

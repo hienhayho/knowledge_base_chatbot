@@ -5,10 +5,13 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from src.constants import EmbeddingService
+from src.settings import defaul_settings
 
 
 def get_embedding(
-    chunk: str, service: EmbeddingService, model_name: str
+    chunk: str,
+    service: EmbeddingService = defaul_settings.embedding_config.service,
+    model_name: str = defaul_settings.embedding_config.name,
 ) -> list[float]:
     """
     Get the embedding of the text chunk using the specified service

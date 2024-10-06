@@ -29,8 +29,9 @@ from llama_index.postprocessor.cohere_rerank import CohereRerank
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 
-from .core import ElasticSearch
+from .utils import get_embedding
 from src.utils import get_formatted_logger
+from .core import ElasticSearch, QdrantVectorDatabase
 from src.settings import GlobalSettings, defaul_settings
 from src.constants import (
     CONTEXTUAL_PROMPT,
@@ -56,7 +57,7 @@ class ContextualRAG:
     llm: FunctionCallingLLM
     splitter: SemanticSplitterNodeParser
     es: ElasticSearch
-    qdrant_client: QdrantClient
+    qdrant_client: QdrantVectorDatabase
 
     def __init__(self, setting: GlobalSettings):
         """
@@ -83,10 +84,14 @@ class ContextualRAG:
 
         self.es = ElasticSearch(url=setting.elastic_search_config.url)
 
-        self.qdrant_client = QdrantClient(
+        # self.qdrant_client = QdrantClient(
+        #     url=setting.qdrant_config.url,
+        # )
+        self.qdrant_client = QdrantVectorDatabase(
             url=setting.qdrant_config.url,
         )
-        logger.info("Qdrant client initialized successfully !!!")
+
+        self.use_contextual_rag = setting.use_contextual_rag
 
         logger.info("ContextualRAG initialized successfully !!!")
 
@@ -141,6 +146,7 @@ class ContextualRAG:
     def split_document(
         self,
         document: Document | list[Document],
+        document_id: uuid.UUID,
         show_progress: bool = True,
     ) -> list[list[Document]]:
         """
@@ -163,8 +169,18 @@ class ContextualRAG:
         document = tqdm(document, desc="Splitting...") if show_progress else document
 
         for doc in document:
+            # get random uuid for vector_id
+            vector_id = str(uuid.uuid4())
             nodes = self.splitter.get_nodes_from_documents([doc])
-            documents.append([Document(text=node.get_content()) for node in nodes])
+            documents.append(
+                [
+                    Document(
+                        text=node.get_content(),
+                        metadata={"document_id": document_id, "vector_id": vector_id},
+                    )
+                    for node in nodes
+                ]
+            )
 
         return documents
 
@@ -209,18 +225,17 @@ class ContextualRAG:
             new_chunk = contextualized_content + "\n\n" + chunk.text
 
             # Manually generate a doc_id for indexing in elastic search
-            doc_id = str(uuid.uuid4())
             documents.append(
                 Document(
                     text=new_chunk,
                     metadata=dict(
-                        doc_id=doc_id,
+                        vector_id=chunk.metadata["vector_id"],
                     ),
                 ),
             )
             documents_metadata.append(
                 DocumentMetadata(
-                    doc_id=doc_id,
+                    vector_id=chunk.metadata["vector_id"],
                     original_content=whole_document,
                     contextualized_content=contextualized_content,
                 ),
@@ -261,13 +276,17 @@ class ContextualRAG:
         return documents, documents_metadata
 
     def es_index_document(
-        self, index_name: str, documents_metadata: list[DocumentMetadata]
+        self,
+        index_name: str,
+        document_id: str | uuid.UUID,
+        documents_metadata: list[DocumentMetadata],
     ):
         """
         Index the documents in the ElasticSearch.
 
         Args:
             index_name (str): Name of the index to index documents.
+            document_id (str | uuid.UUID): Document ID.
             documents_metadata (list[DocumentMetadata]): List of documents metadata to index.
         """
         logger.info(
@@ -276,8 +295,23 @@ class ContextualRAG:
             len(documents_metadata),
         )
         self.es.index_documents(
-            index_name=index_name, documents_metadata=documents_metadata
+            index_name=index_name,
+            document_id=document_id,
+            documents_metadata=documents_metadata,
         )
+
+    def es_delete_document(
+        self, index_name: str | uuid.UUID, document_id: str | uuid.UUID
+    ):
+        """
+        Delete the document from the ElasticSearch.
+
+        Args:
+            index_name (str | uuid.UUID): Name of the index to delete the document.
+            document_id (str | uuid.UUID): Document ID to delete.
+        """
+        logger.debug("index_name: %s - document_id: %s", index_name, document_id)
+        self.es.delete_documents(index_name=index_name, document_id=document_id)
 
     def ingest_data(
         self,
@@ -310,36 +344,63 @@ class ContextualRAG:
     def insert_data(
         self,
         collection_name: str,
-        documents: list[Document],
+        chunks: list[Document],
+        document_id: uuid.UUID,
         show_progress: bool = True,
     ):
         """
         Insert data to the QdrantVectorStore.
-
-        Args:
-            collection_name (str): The collection name.
-            documents (list[Document]): List of documents to insert.
-            show_progress (bool): Show the progress bar.
         """
-        logger.info("collection_name: %s", collection_name)
-
-        vector_store = QdrantVectorStore(
-            client=self.qdrant_client, collection_name=collection_name
-        )
-
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
-        index = VectorStoreIndex.from_vector_store(
-            vector_store=vector_store, storage_context=storage_context
-        )
-
-        documents = (
-            tqdm(documents, desc=f"Inserting data to: {collection_name} ...")
+        chunks = (
+            tqdm(chunks, desc=f"Inserting data to: {collection_name} ...")
             if show_progress
-            else documents
+            else chunks
         )
-        for document in documents:
-            index.insert(document)
+        for doc in chunks:
+            self.qdrant_client.add_vector(
+                collection_name=collection_name,
+                vector=get_embedding(doc.text),
+                vector_id=doc.metadata["vector_id"],
+                payload={
+                    "document_id": str(document_id),
+                    "text": doc.text,
+                    "metadata": doc.metadata,
+                },
+            )
+
+    # def insert_data(
+    #     self,
+    #     collection_name: str,
+    #     documents: list[Document],
+    #     show_progress: bool = True,
+    # ):
+    #     """
+    #     Insert data to the QdrantVectorStore.
+
+    #     Args:
+    #         collection_name (str): The collection name.
+    #         documents (list[Document]): List of documents to insert.
+    #         show_progress (bool): Show the progress bar.
+    #     """
+    #     logger.info("collection_name: %s", collection_name)
+
+    #     vector_store = QdrantVectorStore(
+    #         client=self.qdrant_client, collection_name=collection_name
+    #     )
+
+    #     storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+    #     index = VectorStoreIndex.from_vector_store(
+    #         vector_store=vector_store, storage_context=storage_context
+    #     )
+
+    #     documents = (
+    #         tqdm(documents, desc=f"Inserting data to: {collection_name} ...")
+    #         if show_progress
+    #         else documents
+    #     )
+    #     for document in documents:
+    #         index.insert(document)
 
     def get_qdrant_vector_store_index(
         self, client: QdrantClient, collection_name: str
@@ -362,6 +423,52 @@ class ContextualRAG:
         return VectorStoreIndex.from_vector_store(
             vector_store=vector_store, storage_context=storage_context
         )
+
+    def rag_search(
+        self,
+        collection_name: str,
+        query: str,
+    ):
+        """
+        Search the query with the RAG.
+
+        Args:
+            collection_name (str): The qdrant collection name.
+            query (str): The query to search.
+
+        Returns:
+            str: The search results.
+        """
+        logger.info("collection_name: %s - query: %s", collection_name, query)
+
+        index = self.get_qdrant_vector_store_index(
+            self.qdrant_client.client, collection_name=collection_name
+        )
+
+        query_engine = index.as_query_engine()
+
+        response = query_engine.query(query)
+
+        return response
+
+    def search(
+        self,
+        is_contextual_rag: bool,
+        collection_name: str,
+        query: str,
+        top_k: int = 150,
+        top_n: int = 3,
+        debug: bool = False,
+    ):
+        """
+        Search the query with the RAG.
+        """
+        if is_contextual_rag:
+            return self.contextual_rag_search(
+                collection_name, query, top_k, top_n, debug
+            )
+        else:
+            return self.rag_search(collection_name, query)
 
     def contextual_rag_search(
         self,
@@ -404,19 +511,19 @@ class ContextualRAG:
 
         semantic_results: Response = query_engine.query(query)
         semantic_doc_id = [
-            node.metadata["doc_id"] for node in semantic_results.source_nodes
+            node.metadata["vector_id"] for node in semantic_results.source_nodes
         ]
 
         def get_content_by_doc_id(doc_id: str):
             for node in semantic_results.source_nodes:
-                if node.metadata["doc_id"] == doc_id:
+                if node.metadata["vector_id"] == doc_id:
                     return node.text
             return ""
 
         bm25_results = self.es.search(
             index_name=collection_name, query=query, top_k=top_k
         )
-        bm25_doc_id = [result.doc_id for result in bm25_results]
+        bm25_doc_id = [result.vector_id for result in bm25_results]
 
         combined_nodes: list[NodeWithScore] = []
         combined_ids = list(set(semantic_doc_id + bm25_doc_id))

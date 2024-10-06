@@ -1,4 +1,5 @@
 import sys
+from uuid import UUID
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
@@ -48,7 +49,8 @@ class ElasticSearch:
                 "properties": {
                     "content": {"type": "text", "analyzer": "english"},
                     "contextualized_content": {"type": "text", "analyzer": "english"},
-                    "doc_id": {"type": "text", "index": False},
+                    "vector_id": {"type": "text", "index": False},
+                    "document_id": {"type": "text", "index": False},
                 }
             },
         }
@@ -69,15 +71,20 @@ class ElasticSearch:
         return self.es_client.indices.exists(index=index_name)
 
     def index_documents(
-        self, index_name: str, documents_metadata: list[DocumentMetadata]
+        self,
+        index_name: str,
+        document_id: str | UUID,
+        documents_metadata: list[DocumentMetadata],
     ) -> bool:
         """
         Index the documents to the ElasticSearch index.
 
         Args:
             index_name (str): Name of the index to index documents
+            document_id (str | UUID): Document ID to index
             documents_metadata (list[DocumentMetadata]): List of documents metadata to index.
         """
+        document_id = str(document_id)
         logger.debug(
             "index_name: %s - len(documents_metadata): %s",
             index_name,
@@ -94,9 +101,10 @@ class ElasticSearch:
             {
                 "_index": index_name,
                 "_source": {
-                    "doc_id": metadata.doc_id,
+                    "vector_id": metadata.vector_id,
                     "content": metadata.original_content,
                     "contextualized_content": metadata.contextualized_content,
+                    "document_id": document_id,
                 },
             }
             for metadata in documents_metadata
@@ -140,10 +148,34 @@ class ElasticSearch:
 
         return [
             ElasticSearchResponse(
-                doc_id=hit["_source"]["doc_id"],
+                vector_id=hit["_source"]["vector_id"],
                 content=hit["_source"]["content"],
                 contextualized_content=hit["_source"]["contextualized_content"],
                 score=hit["_score"],
             )
             for hit in response["hits"]["hits"]
         ]
+
+    def delete_documents(self, index_name: str | UUID, document_id: str | UUID):
+        """
+        Delete the documents from the index.
+
+        Args:
+            index_name (str | UUID): Name of the index to delete documents
+            document_id (str | UUID): Document ID to delete
+        """
+        document_id = str(document_id)
+        index_name = str(index_name)
+
+        logger.debug("index_name: %s - document_id: %s", index_name, document_id)
+
+        self.es_client.delete_by_query(
+            index=index_name,
+            query={
+                "match": {
+                    "document_id": document_id,
+                }
+            },
+        )
+
+        self.es_client.indices.refresh(index=index_name)

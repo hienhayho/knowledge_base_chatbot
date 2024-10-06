@@ -1,9 +1,9 @@
 from pathlib import Path
-from sqlmodel import select
-from sqlmodel import Session
 from typing import Annotated
+from sqlmodel import Session, select
+from sqlalchemy.orm import joinedload
 from celery.result import AsyncResult
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi import (
     Body,
     File,
@@ -21,6 +21,8 @@ from api.models import (
     KnowledgeBaseResponse,
     UploadFileResponse,
     GetDocumentStatusReponse,
+    GetKnowledgeBase,
+    GetKnowledgeBaseResponse,
 )
 from src.database import (
     Users,
@@ -44,6 +46,9 @@ setting = GlobalSettings()
 
 UPLOAD_FOLDER = Path(setting.upload_temp_folder)
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+
+DOWNLOAD_FOLDER = Path("downloads")
+DOWNLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
 @kb_router.post("/create", response_model=KnowledgeBaseResponse)
@@ -182,7 +187,7 @@ async def upload_file(
         )
 
 
-@kb_router.post("/process")
+@kb_router.post("/process/{document_id}")
 async def process_document(
     document_id: str,
     db_session: Annotated[Session, Depends(get_session)],
@@ -208,16 +213,21 @@ async def process_document(
                 detail="You are not allowed to process this document",
             )
 
-        temp_file_path = UPLOAD_FOLDER / document.file_name
+        is_contextual_rag = document.knowledge_base.is_contextual_rag
+
+        temp_file_path = DOWNLOAD_FOLDER / document.file_name
 
         db_manager.download_file(
             object_name=document.file_path_in_minio, file_path=str(temp_file_path)
         )
 
+        isContextualRAG = is_contextual_rag
+
         task = parse_document.delay(
             str(temp_file_path),
             document.id,
             document.knowledge_base_id,
+            isContextualRAG,
         )
 
         document.task_id = task.id
@@ -271,8 +281,10 @@ async def get_document_status(
         state = task.state
 
         response = {
-            "doc_id": document.id,
-            "task_id": task_id,
+            "document_id": document.id,
+            "file_name": document.file_name,
+            "created_at": document.created_at.isoformat(),
+            "updated_at": document.updated_at.isoformat(),
         }
 
         if state == "SUCCESS":
@@ -293,3 +305,142 @@ async def get_document_status(
         session.commit()
 
         return response
+
+
+@kb_router.get("/get_all", response_model=list[GetKnowledgeBase])
+async def get_all_knowledge_bases(
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+):
+    """
+    Get all knowledge bases
+    """
+    with db_session as session:
+        query = select(KnowledgeBases).where(KnowledgeBases.user_id == current_user.id)
+
+        knowledge_bases = session.exec(query).all()
+
+        result = [
+            GetKnowledgeBase(
+                id=kb.id,
+                name=kb.name,
+                description=kb.description,
+                document_count=len(kb.documents),
+                last_updated=kb.last_updated,
+            )
+            for kb in knowledge_bases
+        ]
+
+        return result
+
+
+@kb_router.get("/{kb_id}", response_model=GetKnowledgeBaseResponse)
+async def get_knowledge_base(
+    kb_id: str,
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+):
+    """
+    Get knowledge base by ID
+    """
+    with db_session as session:
+        query = (
+            select(KnowledgeBases)
+            .options(joinedload(KnowledgeBases.documents))
+            .filter_by(id=kb_id, user_id=current_user.id)
+        )
+
+        kb = session.exec(query).first()
+
+        if not kb:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge Base not found !",
+            )
+
+        if kb.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to access this Knowledge Base",
+            )
+
+        return GetKnowledgeBaseResponse.model_validate(kb)
+
+
+@kb_router.get("/download/{document_id}")
+async def download_document(
+    document_id: str,
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
+):
+    """
+    Download document
+    """
+    with db_session as session:
+        query = select(Documents).where(Documents.id == document_id)
+
+        document = session.exec(query).first()
+
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
+            )
+
+        if document.knowledge_base.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to download this document",
+            )
+
+        file_path = DOWNLOAD_FOLDER / document.file_name
+
+        db_manager.download_file(
+            object_name=document.file_path_in_minio, file_path=str(file_path)
+        )
+
+        return FileResponse(path=file_path, filename=document.file_name)
+
+
+@kb_router.delete("/delete/{document_id}")
+async def delete_document(
+    document_id: str,
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
+):
+    """
+    Delete document
+    """
+    with db_session as session:
+        query = select(Documents).where(Documents.id == document_id)
+
+        document = session.exec(query).first()
+
+        is_contextual_rag = document.knowledge_base.is_contextual_rag
+
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
+            )
+
+        if document.knowledge_base.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to delete this document",
+            )
+
+        db_manager.delete_file(
+            object_name=document.file_path_in_minio,
+            document_id=document.id,
+            knownledge_base_id=document.knowledge_base_id,
+            is_contextual_rag=is_contextual_rag,
+        )
+
+        session.delete(document)
+        session.commit()
+
+        return JSONResponse(
+            content={"message": "Document deleted successfully"},
+            status_code=status.HTTP_200_OK,
+        )

@@ -1,3 +1,5 @@
+use_contextual_rag = False
+
 minio_config = dict(
     upload_bucket_name="uploads",
     secure=False,
