@@ -1,16 +1,20 @@
 import sys
 from minio import Minio
+from typing import Annotated
+from fastapi import Depends
 from pathlib import Path
 from tenacity import retry, stop_after_attempt
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from src.settings import GlobalSettings
+from src.settings import GlobalSettings, get_default_setting
 from src.utils import get_formatted_logger
 
 logger = get_formatted_logger(__file__)
 
 
-def get_minio_client(setting: GlobalSettings) -> "MinioClient":
+def get_minio_client(
+    setting: Annotated[GlobalSettings, Depends(get_default_setting)],
+) -> "MinioClient":
     return MinioClient(
         url=setting.minio_config.url,
         access_key=setting.minio_config.access_key,

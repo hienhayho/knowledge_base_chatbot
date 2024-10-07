@@ -85,7 +85,9 @@ class ContextualRAG:
         if setting.use_contextual_rag:
             self.es = ElasticSearch(url=setting.elastic_search_config.url)
         else:
-            logger.critical("Contextual RAG is disabled, so ElasticSearch is not used.")
+            logger.critical(
+                "ContextualRAG is globally disabled, so ElasticSearch is not used."
+            )
 
         self.qdrant_client = QdrantVectorDatabase(
             url=setting.qdrant_config.url,
@@ -339,7 +341,7 @@ class ContextualRAG:
             documents, storage_context=storage_context, show_progress=show_progress
         )
 
-        return index  # noqa
+        return index
 
     def insert_data(
         self,
@@ -509,9 +511,8 @@ class ContextualRAG:
 
         query_engine = RetrieverQueryEngine(retriever=retriever)
 
-        logger.info("Running semantic search ...")
+        logger.debug("Running semantic search ...")
         semantic_results: Response = query_engine.query(query)
-        print(semantic_results.source_nodes[0].metadata)
         semantic_doc_id = [
             node.metadata["vector_id"] for node in semantic_results.source_nodes
         ]
@@ -522,13 +523,13 @@ class ContextualRAG:
                     return node.text
             return ""
 
-        logger.info("Running BM25 search ...")
+        logger.debug("Running BM25 search ...")
         bm25_results = self.es.search(
             index_name=collection_name, query=query, top_k=top_k
         )
         bm25_doc_id = [result.vector_id for result in bm25_results]
 
-        logger.info("Rank Fusion ...")
+        logger.debug("Rank Fusion ...")
         combined_nodes: list[NodeWithScore] = []
         combined_ids = list(set(semantic_doc_id + bm25_doc_id))
 
@@ -569,7 +570,7 @@ class ContextualRAG:
             )
 
         if debug:
-            logger.info(
+            logger.debug(
                 "semantic_count: %s - bm25_count: %s - both_count: %s",
                 semantic_count,
                 bm25_count,
@@ -583,12 +584,12 @@ class ContextualRAG:
 
         query_bundle = QueryBundle(query_str=query)
 
-        logger.info("Reranking ...")
+        logger.debug("Reranking ...")
         retrieved_nodes = reranker.postprocess_nodes(combined_nodes, query_bundle)
 
         contexts = [n.node.text for n in retrieved_nodes]
 
-        logger.info("Generating response ...")
+        logger.debug("Generating response ...")
         messages = [
             ChatMessage(
                 role="system",

@@ -15,7 +15,7 @@ from fastapi import (
 )
 
 from .user_router import get_current_user
-from src.settings import GlobalSettings
+from src.settings import GlobalSettings, get_default_setting
 from api.models import (
     KnowledgeBaseRequest,
     KnowledgeBaseResponse,
@@ -27,10 +27,12 @@ from api.models import (
 from src.database import (
     Users,
     get_session,
+    MinioClient,
     KnowledgeBases,
     DatabaseManager,
-    get_db_manager,
     Documents,
+    get_db_manager,
+    get_minio_client,
     is_valid_uuid,
 )
 from src.celery import celery_app
@@ -385,7 +387,8 @@ async def download_document(
     document_id: str,
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
+    minIoClient: Annotated[MinioClient, Depends(get_minio_client)],
+    setting: Annotated[GlobalSettings, Depends(get_default_setting)],
 ):
     """
     Download document
@@ -408,8 +411,10 @@ async def download_document(
 
         file_path = DOWNLOAD_FOLDER / document.file_name
 
-        db_manager.download_file(
-            object_name=document.file_path_in_minio, file_path=str(file_path)
+        minIoClient.download_file(
+            bucket_name=setting.upload_bucket_name,
+            object_name=document.file_path_in_minio,
+            file_path=str(file_path),
         )
 
         return FileResponse(path=file_path, filename=document.file_name)
