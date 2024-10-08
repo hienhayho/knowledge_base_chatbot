@@ -15,6 +15,7 @@ jobs:
             - name: docker compose build
               run: |
                   cp .env.production .env
+                  cp frontend/.env.example frontend/.env.local
                   docker compose up -d --build
 
             - name: Sleep for 60 seconds
