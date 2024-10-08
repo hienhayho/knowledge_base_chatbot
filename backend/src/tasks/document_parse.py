@@ -1,6 +1,7 @@
 import sys
 import math
 import celery
+import tempfile
 from pathlib import Path
 from sqlmodel import Session
 
@@ -9,22 +10,28 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.celery import celery_app
 from src.settings import defaul_settings
+from src.utils import get_formatted_logger
 from src.readers import parse_multiple_files
 from src.database import (
     DatabaseManager,
     DocumentChunks,
+    MinioClient,
     get_session,
     get_db_manager,
 )
 
+logger = get_formatted_logger(__file__)
+
 db_session: Session = get_session(setting=defaul_settings)
 db_manager: DatabaseManager = get_db_manager(setting=defaul_settings)
+
+minio_client = MinioClient.from_setting(setting=defaul_settings)
 
 
 @celery_app.task(bind=True)
 def parse_document(
     self: celery.Task,
-    file_path: str,
+    file_path_in_minio: str,
     document_id: str,
     knowledge_base_id: str,
     is_contextual_rag: bool = False,
@@ -33,16 +40,24 @@ def parse_document(
     Parse a document.
 
     Args:
-        file_path (str | Path): The path to the document to parse.
+        file_path_in_minio (str | Path): The file path in Minio.
         document_id (str): The document ID from Documents table.
         knowledge_base_id (str): The knowledge base ID as collection name for vector database and also index name for elasticsearch.
 
     Returns:
         dict: The task ID and status.
     """
+    extension = Path(file_path_in_minio).suffix
+    file_path = Path(tempfile.mktemp(suffix=extension))
+
+    minio_client.download_file(
+        bucket_name=defaul_settings.upload_bucket_name,
+        object_name=file_path_in_minio,
+        file_path=file_path,
+    )
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
-    document = parse_multiple_files(file_path)
+    document = parse_multiple_files(str(file_path))
 
     self.update_state(state="PROGRESS", meta={"progress": 10})
 
@@ -101,6 +116,8 @@ def parse_document(
                     "progress": 80 + math.ceil(20 / len(indexed_document) * (idx + 1))
                 },
             )
+
+    file_path.unlink()
 
     return {
         "task_id": self.request.id,

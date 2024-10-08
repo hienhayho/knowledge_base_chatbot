@@ -122,12 +122,41 @@ class DefaultFormatter(ColourizedFormatter):
     def should_use_colors(self) -> bool:
         return sys.stderr.isatty()
 
+    def formatMessage(self, record: logging.LogRecord) -> str:
+        recordcopy = copy(record)
+
+        if "pathname" in recordcopy.__dict__:
+            relpathname = "/".join(recordcopy.pathname.split("/")[-2:])
+            recordcopy.__dict__["relpathname"] = relpathname
+        else:
+            recordcopy.__dict__["relpathname"] = (
+                "N/A"  # Fallback when pathname is missing
+            )
+
+        levelname = recordcopy.levelname
+        seperator = " " * (8 - len(levelname))
+
+        if self.use_colors:
+            levelname = self.color_level_name(levelname, recordcopy.levelno)
+            recordcopy.msg = self.color_message(recordcopy.msg, recordcopy.levelno)
+            recordcopy.__dict__["message"] = recordcopy.getMessage()
+            recordcopy.asctime = self.color_date(recordcopy)
+
+        recordcopy.__dict__["levelprefix"] = levelname + seperator
+        return super().formatMessage(recordcopy)
+
 
 class FileFormater(logging.Formatter):
     def formatMessage(self, record: logging.LogRecord) -> str:
         recordcopy = copy(record)
-        relpathname = "/".join(recordcopy.pathname.split("/")[-2:])
-        recordcopy.__dict__["relpathname"] = relpathname
+
+        if "pathname" in recordcopy.__dict__:
+            relpathname = "/".join(recordcopy.pathname.split("/")[-2:])
+            recordcopy.__dict__["relpathname"] = relpathname
+        else:
+            recordcopy.__dict__["relpathname"] = (
+                "N/A"  # Fallback when pathname is missing
+            )
 
         return super().formatMessage(recordcopy)
 

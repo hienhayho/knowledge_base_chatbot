@@ -10,6 +10,8 @@ source env/bin/activate
 
 ```bash
 pip install -r requirements.txt
+
+bash scripts/nltk_download.sh
 ```
 
 ### API Keys Setup

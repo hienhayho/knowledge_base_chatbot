@@ -1,14 +1,19 @@
+import uuid
 from uuid import UUID
-from fastapi import Depends, HTTPException
 from sqlmodel import Session, select
-from src.database import get_session, Messages, Conversations
+from typing import List, Dict, Generator
+from fastapi import Depends, HTTPException
+from langfuse.decorators import langfuse_context
+
 from src.agents import ChatAssistant
+from src.utils import get_cost_from_session_id
+from src.database import get_session, Messages, Conversations
 from api.models import (
     ChatMessage,
     ChatResponse,
     MessageResponse,
 )
-from typing import List, Dict, Generator
+from src.constants import SenderType
 
 
 class AssistantService:
@@ -37,7 +42,7 @@ class AssistantService:
                 # Save user message
                 user_message = Messages(
                     conversation_id=conversation_id,
-                    sender_type="user",
+                    sender_type=SenderType.USER,
                     content=message.content,
                 )
                 session.add(user_message)
@@ -67,7 +72,7 @@ class AssistantService:
                 # Save assistant message
                 assistant_message = Messages(
                     conversation_id=conversation_id,
-                    sender_type="assistant",
+                    sender_type=SenderType.ASSISTANT,
                     content=response,
                 )
                 session.add(assistant_message)
@@ -97,7 +102,7 @@ class AssistantService:
 
             user_message = Messages(
                 conversation_id=conversation_id,
-                sender_type="user",
+                sender_type=SenderType.USER,
                 content=message.content,
             )
             session.add(user_message)
@@ -127,7 +132,7 @@ class AssistantService:
 
             assistant_message = Messages(
                 conversation_id=conversation_id,
-                sender_type="assistant",
+                sender_type=SenderType.ASSISTANT,
                 content=full_response,
             )
             session.add(assistant_message)
@@ -155,7 +160,7 @@ class AssistantService:
 
             user_message = Messages(
                 conversation_id=conversation_id,
-                sender_type="user",
+                sender_type=SenderType.USER,
                 content=message.content,
             )
             session.add(user_message)
@@ -175,18 +180,24 @@ class AssistantService:
             assistant_instance = ChatAssistant(assistant_config)
 
             full_response = ""
+
+            session_id = str(uuid.uuid4())
             response = await assistant_instance.astream_chat(
-                message.content, message_history
+                message.content, message_history, session_id=session_id
             )
 
             async for chunk in response.async_response_gen():
                 full_response += chunk
                 yield chunk
 
+            langfuse_context.flush()
+
             assistant_message = Messages(
+                id=session_id,
                 conversation_id=conversation_id,
-                sender_type="assistant",
+                sender_type=SenderType.ASSISTANT,
                 content=full_response,
+                cost=get_cost_from_session_id(session_id),
             )
             session.add(assistant_message)
             session.commit()

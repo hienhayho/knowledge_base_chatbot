@@ -230,16 +230,10 @@ async def process_document(
 
         is_contextual_rag = document.knowledge_base.is_contextual_rag
 
-        temp_file_path = DOWNLOAD_FOLDER / document.file_name
-
-        db_manager.download_file(
-            object_name=document.file_path_in_minio, file_path=str(temp_file_path)
-        )
-
         isContextualRAG = is_contextual_rag
 
         task = parse_document.delay(
-            str(temp_file_path),
+            document.file_path_in_minio,
             document.id,
             document.knowledge_base_id,
             isContextualRAG,

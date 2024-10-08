@@ -3,11 +3,13 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from llama_index.embeddings.openai import OpenAIEmbedding
+from langfuse.decorators import observe, langfuse_context
 
 from src.constants import EmbeddingService
 from src.settings import defaul_settings
 
 
+@observe(capture_input=False)
 def get_embedding(
     chunk: str,
     service: EmbeddingService = defaul_settings.embedding_config.service,
@@ -23,6 +25,9 @@ def get_embedding(
     Returns:
         list[float]: The embedding of the text chunk
     """
+    langfuse_context.update_current_observation(
+        input=chunk,
+    )
     if service == EmbeddingService.OPENAI:
         model = OpenAIEmbedding(model=model_name)
     else:

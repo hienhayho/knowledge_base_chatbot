@@ -130,7 +130,13 @@ class Assistants(SQLModel, table=True):
 
     user: Users = Relationship(back_populates="assistants")
     knowledge_base: "KnowledgeBases" = Relationship(back_populates="assistant")
-    conversations: List["Conversations"] = Relationship(back_populates="assistant")
+    conversations: List["Conversations"] = Relationship(
+        back_populates="assistant", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+
+    @property
+    def total_cost(self) -> float:
+        return sum([conversation.total_cost for conversation in self.conversations])
 
 
 class KnowledgeBases(SQLModel, table=True):
@@ -293,12 +299,18 @@ class Conversations(SQLModel, table=True):
         default_factory=datetime.now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column_kwargs={"onupdate": datetime.now()},
     )
 
     user: Users = Relationship(back_populates="conversations")
     assistant: Assistants = Relationship(back_populates="conversations")
-    messages: List["Messages"] = Relationship(back_populates="conversation")
+    messages: List["Messages"] = Relationship(
+        back_populates="conversation", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+
+    @property
+    def total_cost(self) -> float:
+        return sum([message.cost for message in self.messages])
 
 
 class Messages(SQLModel, table=True):
@@ -330,7 +342,14 @@ class Messages(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now(UTC)},
     )
 
-    conversation: Conversations = Relationship(back_populates="messages")
+    cost: float = Field(
+        default=0.0,
+        description="Cost of the message, if from user then 0.0, else any other positive value",
+    )
+
+    conversation: Conversations = Relationship(
+        back_populates="messages", sa_relationship_kwargs={"lazy": "selectin"}
+    )
 
 
 def init_db():

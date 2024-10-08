@@ -30,12 +30,6 @@ const ChatAssistantPage = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetchAssistants();
-        fetchAssistant();
-        fetchConversations();
-    }, [assistant_id]);
-
-    useEffect(() => {
         if (conversation_id && conversations.length > 0) {
             const conv = conversations.find((c) => c.id === conversation_id);
             if (conv) {
@@ -43,6 +37,12 @@ const ChatAssistantPage = () => {
             }
         }
     }, [conversation_id, conversations]);
+
+    useEffect(() => {
+        fetchAssistants();
+        fetchAssistant();
+        fetchConversations();
+    }, [assistant_id]);
 
     const token = getCookie("access_token");
     if (!token) {

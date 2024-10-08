@@ -20,8 +20,10 @@ RELOAD = os.getenv("MODE") == "development"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting application ...")
     asyncio.create_task(delete_old_files())
     yield
+
     logger.info("Shutting down application ...")
 
 

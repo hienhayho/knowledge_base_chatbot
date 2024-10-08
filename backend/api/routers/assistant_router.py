@@ -1,9 +1,14 @@
 from uuid import UUID
 from src.database import is_valid_uuid
 from typing import Annotated
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, select
 from api.routers.user_router import get_current_user
-from api.models import AssistantCreate, AssistantResponse, ChatMessage
+from api.models import (
+    AssistantCreate,
+    AssistantResponse,
+    ChatMessage,
+    AssistantWithTotalCost,
+)
 from .user_router import decode_user_token
 from fastapi import (
     APIRouter,
@@ -93,13 +98,39 @@ async def get_assistant(
             )
 
         query = select(Assistants).where(
-            or_(Assistants.id == assistant_id, Assistants.user_id == current_user.id)
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
         )
         assistant = session.exec(query).first()
         if not assistant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
+        return assistant
+
+
+@assistant_router.get(
+    "/{assistant_id}/total_cost", response_model=AssistantWithTotalCost
+)
+async def get_assistant_with_total_cost(
+    assistant_id: str,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        if not is_valid_uuid(assistant_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
+            )
+
+        query = select(Assistants).where(
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+        )
+        assistant = session.exec(query).first()
+        if not assistant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+            )
+
         return assistant
 
 

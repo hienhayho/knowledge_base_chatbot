@@ -41,3 +41,4 @@ python-multipart==0.0.12
 flower==2.0.1
 uvicorn[standard]==0.31.0
 fastapi-utils==0.7.0
+langfuse==2.51.4

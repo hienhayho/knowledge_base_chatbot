@@ -196,7 +196,9 @@ async def get_current_user(
     return user
 
 
-@user_router.post("/create", response_model=UserResponse)
+@user_router.post(
+    "/create", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 def create_new_user(
     userInfo: UserRequest, db_session: Annotated[Session, Depends(get_session)]
 ):
@@ -225,7 +227,7 @@ def create_new_user(
         return new_user
 
 
-@user_router.post("/login", response_model=Token)
+@user_router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db_session: Annotated[Session, Depends(get_session)],

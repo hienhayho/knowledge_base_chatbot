@@ -10,7 +10,9 @@ const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
     const router = useRouter();
     const [assistantName, setAssistantName] = useState("");
     const [description, setDescription] = useState("");
-    const [systemPrompt, setSystemPrompt] = useState("");
+    const [systemPrompt, setSystemPrompt] = useState(
+        "You are a helpful assistant."
+    );
     const [knowledgeBases, setKnowledgeBases] = useState([]);
     const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState("");
     const [model, setModel] = useState("gpt-4o-mini");

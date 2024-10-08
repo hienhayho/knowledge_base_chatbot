@@ -1,14 +1,22 @@
+import uuid
 from dotenv import load_dotenv
-from src.tools import load_kb_tool
-from src.settings import defaul_settings
-from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
+from llama_index.core import Settings
 from llama_index.llms.openai import OpenAI
 from llama_index.agent.openai import OpenAIAgent
-from .prompt import ASSISTANT_SYSTEM_PROMPT
+from llama_index.core.callbacks import CallbackManager
+from langfuse.llama_index import LlamaIndexCallbackHandler
+from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
+
+from src.tools import load_kb_tool
+from src.settings import defaul_settings
 from src.utils import get_formatted_logger
+from .prompt import ASSISTANT_SYSTEM_PROMPT
 
 logger = get_formatted_logger(__file__)
 load_dotenv()
+
+langfuse_callback_handler = LlamaIndexCallbackHandler()
+Settings.callback_manager = CallbackManager([langfuse_callback_handler])
 
 
 class ChatAssistant:
@@ -25,6 +33,7 @@ class ChatAssistant:
             load_kb_tool(
                 defaul_settings,
                 self.configuration.get("collection_name"),
+                self.configuration.get("conversation_id"),
                 self.configuration.get("is_contextual_rag"),
             )
         ]
@@ -76,10 +85,16 @@ class ChatAssistant:
         ]
         return self.agent.stream_chat(message, message_history).response_gen
 
-    async def astream_chat(self, message, message_history):
+    async def astream_chat(self, message, message_history, session_id: str | uuid.UUID):
+        langfuse_callback_handler.set_trace_params(
+            name="astream_chat",
+            session_id=str(session_id),
+        )
+
         message_history = [
             LLamaIndexChatMessage(content=msg["content"], role=msg["role"])
             for msg in message_history
         ]
         response = await self.agent.astream_chat(message, message_history)
+
         return response

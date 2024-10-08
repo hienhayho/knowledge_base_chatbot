@@ -27,6 +27,21 @@ class AssistantResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AssistantWithTotalCost(BaseModel):
+    id: UUID
+    user_id: UUID
+    name: str
+    description: Optional[str]
+    system_prompt: Optional[str]
+    knowledge_base_id: UUID
+    configuration: Dict[str, str]
+    created_at: datetime
+    updated_at: datetime
+    total_cost: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ConversationResponse(BaseModel):
     id: UUID
     user_id: UUID

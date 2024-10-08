@@ -1,8 +1,7 @@
 "use client";
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Cpu, Book, MoreVertical, Trash2 } from "lucide-react";
+import { Cpu, Book, MoreVertical, Trash2, Loader } from "lucide-react";
 import { getCookie } from "cookies-next";
-import { useRouter } from "next/router";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -33,6 +32,8 @@ const getBadgeText = (createdAt, updatedAt) => {
 const AssistantCard = ({ assistant, onSelect, onDelete }) => {
     const [knowledgeBase, setKnowledgeBase] = useState(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [cost, setCost] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     const menuRef = useRef(null);
     const randomGradient = useMemo(() => getRandomGradient(), []);
     const badgeText = getBadgeText(assistant.created_at, assistant.updated_at);
@@ -92,6 +93,38 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
         }
     };
 
+    const handleGetTotalCost = async (e) => {
+        e.stopPropagation(); // Prevent onSelect from being triggered
+        if (isLoading) return; // Prevent multiple clicks while loading
+
+        setIsLoading(true);
+        try {
+            const token = getCookie("access_token");
+            if (!token) {
+                window.location.href = "/login?redirect=/chat";
+                return;
+            }
+            const response = await fetch(
+                `${API_BASE_URL}/api/assistant/${assistant.id}/total_cost`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+            if (!response.ok) {
+                throw new Error("Failed to fetch total cost");
+            }
+            const data = await response.json();
+            setCost(data.total_cost);
+        } catch (error) {
+            console.error("Error fetching total cost:", error);
+            setCost("Error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div
             className="bg-white shadow-lg rounded-2xl overflow-hidden cursor-pointer hover:shadow-xl transition-shadow relative"
@@ -108,13 +141,31 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
                     </div>
                 )}
             </div>
-            <div className="p-4">
-                <div className="font-bold text-xl mb-2 text-gray-800 truncate">
-                    {assistant.name}
+            <div className="p-4 flex justify-around">
+                <div>
+                    <h3 className="font-semibold text-lg text-gray-800 truncate">
+                        {assistant.name}
+                    </h3>
+                    <p className="text-gray-600 text-sm mt-1 truncate">
+                        {assistant.description}
+                    </p>
                 </div>
-                <p className="text-gray-600 text-sm h-12 overflow-hidden">
-                    {assistant.description}
-                </p>
+                <div className="flex items-center text-gray-700 text-sm mt-2">
+                    <button
+                        type="button"
+                        className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 flex items-center justify-center min-w-[120px] h-[40px]"
+                        onClick={handleGetTotalCost}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <Loader className="animate-spin" size={20} />
+                        ) : cost === null ? (
+                            "Get Total Cost"
+                        ) : (
+                            `$${cost.toFixed(6)}`
+                        )}
+                    </button>
+                </div>
             </div>
             <div className="px-4 pt-2 pb-4">
                 <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">

@@ -14,6 +14,7 @@ from .assistants import (
     ChatMessage,
     MessageResponse,
     ChatResponse,
+    AssistantWithTotalCost,
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "ChatMessage",
     "MessageResponse",
     "ChatResponse",
+    "AssistantWithTotalCost",
 ]

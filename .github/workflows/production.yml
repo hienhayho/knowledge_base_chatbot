@@ -1,0 +1,26 @@
+name: docker compose in production
+
+on:
+    push:
+        branches: ["main", "hien_dev"]
+    pull_request:
+        branches: ["main", "hien_dev"]
+
+jobs:
+    build-production:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+            - name: docker compose build
+              run: |
+                  docker compose up -d
+
+            - name: Sleep for 60 seconds
+              uses: jakejarvis/wait-action@master
+              with:
+                  time: "60s"
+
+            - name: List all containers
+              run: |
+                  docker ps -a

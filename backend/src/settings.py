@@ -101,6 +101,7 @@ class LLMConfig(BaseModel):
 
     service: str
     name: str
+    system_prompt: str
 
 
 class ContextualRAGConfig(BaseModel):
@@ -221,6 +222,7 @@ class GlobalSettings(BaseModel):
         default=LLMConfig(
             service=config.llm_config.service,
             name=config.llm_config.model,
+            system_prompt="Please answer in markdown format",
         ),
         description="LLM configuration",
     )

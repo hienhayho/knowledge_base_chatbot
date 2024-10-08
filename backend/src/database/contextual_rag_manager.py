@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import uuid
+import requests
 from tqdm import tqdm
 from pathlib import Path
 from dotenv import load_dotenv
@@ -15,12 +16,16 @@ from llama_index.core import (
     StorageContext,
     VectorStoreIndex,
 )
+from langfuse import Langfuse
 from qdrant_client import QdrantClient
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
+from llama_index.core.callbacks import CallbackManager
 from llama_index.core.schema import NodeWithScore, Node
+from langfuse.decorators import langfuse_context, observe
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.base.response.schema import Response
+from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.vector_stores.qdrant import QdrantVectorStore
@@ -29,23 +34,39 @@ from llama_index.postprocessor.cohere_rerank import CohereRerank
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 
+
 from .utils import get_embedding
 from src.utils import get_formatted_logger
 from .core import ElasticSearch, QdrantVectorDatabase
 from src.settings import GlobalSettings, defaul_settings
 from src.constants import (
-    CONTEXTUAL_PROMPT,
     QA_PROMPT,
-    DocumentMetadata,
     LLMService,
+    DocumentMetadata,
     EmbeddingService,
+    CONTEXTUAL_PROMPT,
 )
 
 logger = get_formatted_logger(__file__)
+langfuse_callback_handler = LlamaIndexCallbackHandler()
+Settings.callback_manager = CallbackManager([langfuse_callback_handler])
 
 load_dotenv()
 
+langfuse = Langfuse()
+
 Settings.chunk_size = defaul_settings.embedding_config.chunk_size
+
+
+def get_cost(session_id: str):
+    url = f"https://cloud.langfuse.com/api/public/sessions/{session_id}"
+    response = requests.get(
+        url, auth=(os.getenv("LANGFUSE_PUBLIC_KEY"), os.getenv("LANGFUSE_SECRET_KEY"))
+    )
+
+    data = response.json()
+
+    print(data)
 
 
 class ContextualRAG:
@@ -74,7 +95,9 @@ class ContextualRAG:
         Settings.embed_model = embed_model
 
         self.llm = self.load_model(
-            service=setting.llm_config.service, model_name=setting.llm_config.name
+            service=setting.llm_config.service,
+            model_name=setting.llm_config.name,
+            system_prompt=setting.llm_config.system_prompt,
         )
         Settings.llm = self.llm
 
@@ -315,34 +338,6 @@ class ContextualRAG:
         logger.debug("index_name: %s - document_id: %s", index_name, document_id)
         self.es.delete_documents(index_name=index_name, document_id=document_id)
 
-    def ingest_data(
-        self,
-        collection_name: str,
-        documents: list[Document],
-        show_progress: bool = True,
-    ):
-        """
-        Ingest the data to the QdrantVectorStore.
-
-        Args:
-            collection_name (str): The collection name.
-            documents (list[Document]): List of documents to ingest.
-            show_progress (bool): Show the progress bar.
-        """
-        logger.info("collection_name: %s", collection_name)
-
-        vector_store = QdrantVectorStore(
-            client=self.qdrant_client, collection_name=collection_name
-        )
-
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
-        index = VectorStoreIndex.from_documents(
-            documents, storage_context=storage_context, show_progress=show_progress
-        )
-
-        return index
-
     def insert_data(
         self,
         collection_name: str,
@@ -370,40 +365,6 @@ class ContextualRAG:
                 },
             )
 
-    # def insert_data(
-    #     self,
-    #     collection_name: str,
-    #     documents: list[Document],
-    #     show_progress: bool = True,
-    # ):
-    #     """
-    #     Insert data to the QdrantVectorStore.
-
-    #     Args:
-    #         collection_name (str): The collection name.
-    #         documents (list[Document]): List of documents to insert.
-    #         show_progress (bool): Show the progress bar.
-    #     """
-    #     logger.info("collection_name: %s", collection_name)
-
-    #     vector_store = QdrantVectorStore(
-    #         client=self.qdrant_client, collection_name=collection_name
-    #     )
-
-    #     storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
-    #     index = VectorStoreIndex.from_vector_store(
-    #         vector_store=vector_store, storage_context=storage_context
-    #     )
-
-    #     documents = (
-    #         tqdm(documents, desc=f"Inserting data to: {collection_name} ...")
-    #         if show_progress
-    #         else documents
-    #     )
-    #     for document in documents:
-    #         index.insert(document)
-
     def get_qdrant_vector_store_index(
         self, client: QdrantClient, collection_name: str
     ) -> VectorStoreIndex:
@@ -426,11 +387,13 @@ class ContextualRAG:
             vector_store=vector_store, storage_context=storage_context
         )
 
+    @observe(capture_input=False)
     def rag_search(
         self,
         collection_name: str,
         query: str,
-    ):
+        session_id: str | uuid.UUID,
+    ) -> str:
         """
         Search the query with the RAG.
 
@@ -443,6 +406,14 @@ class ContextualRAG:
         """
         logger.info("collection_name: %s - query: %s", collection_name, query)
 
+        langfuse_context.update_current_observation(
+            input=query, session_id=str(session_id)
+        )
+
+        langfuse_callback_handler.set_trace_params(
+            session_id=str(session_id),
+        )
+
         index = self.get_qdrant_vector_store_index(
             self.qdrant_client.client, collection_name=collection_name
         )
@@ -453,29 +424,12 @@ class ContextualRAG:
 
         return response
 
-    def search(
-        self,
-        is_contextual_rag: bool,
-        collection_name: str,
-        query: str,
-        top_k: int = 150,
-        top_n: int = 3,
-        debug: bool = False,
-    ):
-        """
-        Search the query with the RAG.
-        """
-        if is_contextual_rag:
-            return self.contextual_rag_search(
-                collection_name, query, top_k, top_n, debug
-            )
-        else:
-            return self.rag_search(collection_name, query)
-
+    @observe(capture_input=False)
     def contextual_rag_search(
         self,
         collection_name: str,
         query: str,
+        session_id: str | uuid.UUID,
         top_k: int = 150,
         top_n: int = 3,
         debug: bool = False,
@@ -484,8 +438,9 @@ class ContextualRAG:
         Search the query with the Contextual RAG.
 
         Args:
-            collection_name (str): The qdrant collection name.
+            collection_name (str): The qdrant collection name (knowledge_bases.id).
             query (str): The query to search.
+            session_id (str | uuid.UUID): The session ID (conversations.id) to check cost in langfuse.
             top_k (int): The top K documents to retrieve. Default to `150`.
             top_n (int): The top N documents to return after reranking. Default to `3`.
             debug (bool): debug mode.
@@ -495,6 +450,16 @@ class ContextualRAG:
         """
         logger.info(
             "collection_name: %s - top_k: %s - query: %s", collection_name, top_k, query
+        )
+
+        langfuse_context.update_current_observation(
+            input=query,
+            session_id=str(session_id),
+        )
+
+        langfuse_callback_handler.set_trace_params(
+            input=query,
+            session_id=str(session_id),
         )
 
         bm25_weight = self.setting.contextual_rag_config.bm25_weight
@@ -605,5 +570,42 @@ class ContextualRAG:
         ]
 
         response = self.llm.chat(messages).message.content
+
+        return response
+
+    @observe(capture_input=False)
+    def search(
+        self,
+        session_id: str | uuid.UUID,
+        is_contextual_rag: bool,
+        collection_name: str,
+        query: str,
+        top_k: int = 150,
+        top_n: int = 3,
+        debug: bool = False,
+    ):
+        """
+        Search the query with the RAG.
+
+        Args:
+            session_id (str | uuid.UUID): The session ID (conversations.id) to check cost in langfuse.
+            is_contextual_rag (bool): Is contextual RAG or not.
+            collection_name (str): The qdrant collection name (knowledge_bases.id).
+            query (str): The query to search.
+            top_k (int): The top K documents to retrieve. Default to `150`.
+            top_n (int): The top N documents to return after reranking. Default to `3`.
+            debug (bool): debug mode.
+        """
+
+        langfuse_context.update_current_observation(
+            input=query, session_id=str(session_id)
+        )
+
+        if is_contextual_rag:
+            response = self.contextual_rag_search(
+                collection_name, query, session_id, top_k, top_n, debug
+            )
+        else:
+            response = self.rag_search(collection_name, query, session_id)
 
         return response
