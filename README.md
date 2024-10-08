@@ -6,10 +6,10 @@
 
 ## Run production
 
-First, please fill in your API Keys and [Langfuse]() keys in [.env.production](.env.production), then run:
+First, please fill in your API Keys and [Langfuse](https://cloud.langfuse.com/) keys in [.env.production](.env.production), then run:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 Visit [http://localhost:3000](http://localhost:3000) to enjoy the app.
