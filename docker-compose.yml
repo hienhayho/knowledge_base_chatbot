@@ -48,8 +48,6 @@ services:
             args:
                 VERSION: 3.12
         container_name: celery
-        env_file:
-            - ./.env.production
         restart: always
         depends_on:
             - redis
@@ -62,8 +60,6 @@ services:
             args:
                 VERSION: 3.12
         container_name: backend
-        env_file:
-            - ./.env.production
         restart: always
         ports:
             - "8000:8000"
@@ -86,8 +82,6 @@ services:
             dockerfile: Dockerfile
             args:
                 NODE_VERSION: 22
-        env_file:
-            - ./.env.production
         container_name: frontend
         restart: always
         ports:
