@@ -47,6 +47,8 @@ services:
             dockerfile: Dockerfile
             args:
                 VERSION: 3.12
+        env_file:
+            - .env.production
         container_name: celery
         restart: always
         depends_on:
@@ -59,6 +61,8 @@ services:
             dockerfile: Dockerfile
             args:
                 VERSION: 3.12
+        env_file:
+            - .env.production
         container_name: backend
         restart: always
         ports:
