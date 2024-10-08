@@ -83,6 +83,8 @@ services:
             args:
                 NODE_VERSION: 22
         container_name: frontend
+        environment:
+            NEXT_PUBLIC_API_URL: http://backend:8000
         restart: always
         ports:
             - "3000:3000"
