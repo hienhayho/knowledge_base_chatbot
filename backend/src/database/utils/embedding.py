@@ -6,14 +6,14 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from langfuse.decorators import observe, langfuse_context
 
 from src.constants import EmbeddingService
-from src.settings import defaul_settings
+from src.settings import default_settings
 
 
 @observe(capture_input=False)
 def get_embedding(
     chunk: str,
-    service: EmbeddingService = defaul_settings.embedding_config.service,
-    model_name: str = defaul_settings.embedding_config.name,
+    service: EmbeddingService = default_settings.embedding_config.service,
+    model_name: str = default_settings.embedding_config.name,
 ) -> list[float]:
     """
     Get the embedding of the text chunk using the specified service

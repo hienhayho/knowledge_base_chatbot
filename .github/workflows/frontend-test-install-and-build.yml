@@ -25,7 +25,7 @@ jobs:
               run: |
                   cd frontend/
 
-                  export NEXT_PUBLIC_API_URL=http://localhost:8000
+                  export NEXT_PUBLIC_BASE_API_URL=http://localhost:8000
 
                   npm install
 

@@ -13,6 +13,11 @@ from llama_index.readers.file import (
     PptxReader,  # noqa
     PandasExcelReader,
     UnstructuredReader,
+    MarkdownReader,
+    IPYNBReader,
+    MboxReader,
+    XMLReader,
+    RTFReader,
 )
 
 from .kotaemon import DocxReader, HtmlReader, TxtReader  # noqa
@@ -82,5 +87,10 @@ def get_extractor():
         ".xlsx": PandasExcelReader(),
         ".json": JSONReader(),
         ".txt": TxtReader(),
-        # ".pptx": PptxReader(),
+        ".pptx": PptxReader(),
+        ".md": MarkdownReader(),
+        ".ipynb": IPYNBReader(),
+        ".mbox": MboxReader(),
+        ".xml": XMLReader(),
+        ".rtf": RTFReader(),
     }

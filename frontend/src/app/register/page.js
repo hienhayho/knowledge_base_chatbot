@@ -14,7 +14,7 @@ const onFinish = async (values) => {
     }
 
     const result = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/create`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/users/create`,
         {
             method: "POST",
             headers: {

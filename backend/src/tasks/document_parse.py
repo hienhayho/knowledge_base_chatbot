@@ -9,7 +9,7 @@ from sqlmodel import Session
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.celery import celery_app
-from src.settings import defaul_settings
+from src.settings import default_settings
 from src.utils import get_formatted_logger
 from src.readers import parse_multiple_files
 from src.database import (
@@ -22,10 +22,10 @@ from src.database import (
 
 logger = get_formatted_logger(__file__)
 
-db_session: Session = get_session(setting=defaul_settings)
-db_manager: DatabaseManager = get_db_manager(setting=defaul_settings)
+db_session: Session = get_session(setting=default_settings)
+db_manager: DatabaseManager = get_db_manager(setting=default_settings)
 
-minio_client = MinioClient.from_setting(setting=defaul_settings)
+minio_client = MinioClient.from_setting(setting=default_settings)
 
 
 @celery_app.task(bind=True)
@@ -51,7 +51,7 @@ def parse_document(
     file_path = Path(tempfile.mktemp(suffix=extension))
 
     minio_client.download_file(
-        bucket_name=defaul_settings.upload_bucket_name,
+        bucket_name=default_settings.upload_bucket_name,
         object_name=file_path_in_minio,
         file_path=file_path,
     )

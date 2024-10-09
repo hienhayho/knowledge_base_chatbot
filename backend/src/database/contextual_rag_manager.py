@@ -38,7 +38,7 @@ from llama_index.core.llms.function_calling import FunctionCallingLLM
 from .utils import get_embedding
 from src.utils import get_formatted_logger
 from .core import ElasticSearch, QdrantVectorDatabase
-from src.settings import GlobalSettings, defaul_settings
+from src.settings import GlobalSettings, default_settings
 from src.constants import (
     QA_PROMPT,
     LLMService,
@@ -55,7 +55,7 @@ load_dotenv()
 
 langfuse = Langfuse()
 
-Settings.chunk_size = defaul_settings.embedding_config.chunk_size
+Settings.chunk_size = default_settings.embedding_config.chunk_size
 
 
 def get_cost(session_id: str):

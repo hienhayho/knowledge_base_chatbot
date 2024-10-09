@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import Depends
 from sqlalchemy import Column
 from dotenv import load_dotenv
-from datetime import datetime, UTC
+from datetime import datetime
 from contextlib import contextmanager
 from typing import List, Dict, Optional
 from pydantic import EmailStr, ConfigDict
@@ -76,7 +76,7 @@ class Users(SQLModel, table=True):
         default_factory=datetime.now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column_kwargs={"onupdate": datetime.now()},
     )
 
     assistants: List["Assistants"] = Relationship(back_populates="user")
@@ -125,7 +125,7 @@ class Assistants(SQLModel, table=True):
         default_factory=datetime.now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column_kwargs={"onupdate": datetime.now()},
     )
 
     user: Users = Relationship(back_populates="assistants")
@@ -169,7 +169,7 @@ class KnowledgeBases(SQLModel, table=True):
         default_factory=datetime.now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column_kwargs={"onupdate": datetime.now()},
     )
 
     documents: List["Documents"] = Relationship(back_populates="knowledge_base")
@@ -219,7 +219,7 @@ class Documents(SQLModel, table=True):
         default_factory=datetime.now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column_kwargs={"onupdate": datetime.now()},
     )
     task_id: str = Field(
         nullable=True,
@@ -264,7 +264,7 @@ class DocumentChunks(SQLModel, table=True):
         default_factory=datetime.now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column_kwargs={"onupdate": datetime.now()},
     )
 
     document: Documents = Relationship(back_populates="document_chunks")
@@ -339,7 +339,7 @@ class Messages(SQLModel, table=True):
         default_factory=datetime.now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column_kwargs={"onupdate": datetime.now()},
     )
 
     cost: float = Field(

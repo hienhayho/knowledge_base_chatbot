@@ -21,7 +21,7 @@ const onFinish = async (values) => {
   body.append("client_secret", "client_secret");
 
   const result = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/users/login`,
+      `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/users/login`,
       {
           method: "POST",
           headers: {

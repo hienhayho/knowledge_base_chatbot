@@ -245,11 +245,11 @@ class GlobalSettings(BaseModel):
     )
 
 
-defaul_settings = GlobalSettings()
+default_settings = GlobalSettings()
 
 
 def get_default_setting():
     """
     Get default settings
     """
-    return defaul_settings
+    return default_settings

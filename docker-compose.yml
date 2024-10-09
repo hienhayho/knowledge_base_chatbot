@@ -55,18 +55,18 @@ services:
             - redis
         command: celery -A src worker -E --loglevel=info
 
-    elastic-search:
-        image: elasticsearch:8.8.0
-        container_name: elastic-search
-        restart: always
-        environment:
-            - discovery.type=single-node
-            - xpack.security.enabled=false
-            - logger.level=error
-            - ES_JAVA_OPTS=-Xms512m -Xmx512m
-        ports:
-            - "9200:9200"
-            - "9300:9300"
+    # elastic-search:
+    #     image: elasticsearch:8.8.0
+    #     container_name: elastic-search
+    #     restart: always
+    #     environment:
+    #         - discovery.type=single-node
+    #         - xpack.security.enabled=false
+    #         - logger.level=error
+    #         - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    #     ports:
+    #         - "9200:9200"
+    #         - "9300:9300"
 
     backend:
         build:
@@ -101,7 +101,7 @@ services:
                 NODE_VERSION: 22
         container_name: frontend
         environment:
-            NEXT_PUBLIC_API_URL: http://backend:8000
+            NEXT_PUBLIC_BASE_API_URL: http://backend:8000
         restart: always
         ports:
             - "3000:3000"

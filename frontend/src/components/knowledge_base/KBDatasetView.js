@@ -33,6 +33,7 @@ const ALLOWED_FILE_TYPES = [
     ".mbox",
     ".pptx",
     ".csv",
+    ".xlsx",
     ".xml",
     ".rtf",
     ".mp4",

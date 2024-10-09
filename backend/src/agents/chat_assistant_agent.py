@@ -8,7 +8,7 @@ from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
 
 from src.tools import load_kb_tool
-from src.settings import defaul_settings
+from src.settings import default_settings
 from src.utils import get_formatted_logger
 from .prompt import ASSISTANT_SYSTEM_PROMPT
 
@@ -31,10 +31,10 @@ class ChatAssistant:
         self.llm = self._init_model(service, model_name)
         self.tools = [
             load_kb_tool(
-                defaul_settings,
-                self.configuration.get("collection_name"),
-                self.configuration.get("conversation_id"),
-                self.configuration.get("is_contextual_rag"),
+                setting=default_settings,
+                collection_name=self.configuration.get("collection_name"),
+                conversation_id=self.configuration.get("conversation_id"),
+                is_contextual_rag=self.configuration.get("is_contextual_rag"),
             )
         ]
 
