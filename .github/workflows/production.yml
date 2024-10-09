@@ -1,4 +1,4 @@
-name: docker compose in production
+name: Production-Ready
 
 on:
     push:
@@ -23,6 +23,10 @@ jobs:
               with:
                   time: "120"
 
-            - name: List all containers
+            - name: List all docker images
               run: |
-                  docker ps -a
+                  docker images
+
+            - name: List all docker containers
+              run: |
+                  docker ps -as
