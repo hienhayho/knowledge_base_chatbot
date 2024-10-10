@@ -18,7 +18,7 @@ bash scripts/nltk_download.sh
 
 ### API Keys Setup
 
-Please create `.env` file from `.env.example` and fill in your API keys.
+Please create `.env` file from `.env.example` and fill in all API keys below.
 
 |         NAME          |                     Where to get ?                      |
 | :-------------------: | :-----------------------------------------------------: |
