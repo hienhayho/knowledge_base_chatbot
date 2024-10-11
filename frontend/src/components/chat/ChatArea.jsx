@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Send, User, Bot, Loader2 } from "lucide-react";
+import { Send, User, Bot, Loader2, Link } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { getCookie } from "cookies-next";
+import { useRouter } from "next/navigation";
+import { Popover, message } from "antd";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
 const ChatArea = ({ conversation, assistantId }) => {
+    const [messageApi, contextHolder] = message.useMessage();
     const token = getCookie("access_token");
-
-    if (!token) {
-        const redirect = encodeURIComponent(
-            `/chat/${assistantId}?conversation=${conversation.id}`
-        );
-        window.location.href = `/login?redirect=${redirect}`;
-    }
+    const router = useRouter();
+    const redirectUrl = encodeURIComponent(
+        `/chat/${assistantId}?conversation=${conversation.id}`
+    );
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -24,20 +23,20 @@ const ChatArea = ({ conversation, assistantId }) => {
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
     const websocketRef = useRef(null);
+    const ws_url = `ws://${API_BASE_URL.replace(
+        /^https?:\/\//,
+        ""
+    )}/api/assistant/${assistantId}/conversations/${
+        conversation.id
+    }/${token}/ws`;
+    const content = <div>Copy WebSocket URL to clipboard</div>;
 
     const connectWebSocket = useCallback(() => {
         if (websocketRef.current) {
             websocketRef.current.close();
         }
 
-        const ws = new WebSocket(
-            `ws://${API_BASE_URL.replace(
-                /^https?:\/\//,
-                ""
-            )}/api/assistant/${assistantId}/conversations/${
-                conversation.id
-            }/${token}/ws`
-        );
+        const ws = new WebSocket(ws_url);
 
         ws.onopen = () => console.log("WebSocket connected");
 
@@ -101,6 +100,10 @@ const ChatArea = ({ conversation, assistantId }) => {
     }, [assistantId, conversation.id]);
 
     useEffect(() => {
+        if (!token) {
+            router.push(`/login?redirect=${redirectUrl}`);
+            return;
+        }
         if (conversation) {
             fetchConversationHistory();
             connectWebSocket();
@@ -230,6 +233,7 @@ const ChatArea = ({ conversation, assistantId }) => {
 
     return (
         <div className="flex flex-col h-full bg-white">
+            {contextHolder}
             <div
                 className="flex-1 overflow-y-auto p-4"
                 style={{ maxHeight: "80vh" }}
@@ -286,36 +290,55 @@ const ChatArea = ({ conversation, assistantId }) => {
                     <div ref={messagesEndRef} />
                 </div>
             </div>
-            <form
-                onSubmit={sendMessage}
-                className="p-1 border-t border-gray-200"
-            >
-                <div className="max-w-4xl mx-auto max-h-10">
-                    <div className="flex items-end bg-white rounded-3xl shadow-lg border border-gray-300">
-                        <textarea
-                            ref={textareaRef}
-                            value={inputMessage}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Message Assistant (Press Enter to send, Shift+Enter for new line)"
-                            className="flex-1 bg-transparent border-none rounded-3xl py-4 px-5 focus:outline-none resize-none text-gray-800"
-                            rows={1}
-                            style={{
-                                maxHeight: "150px", // Set a maximum height for the textarea
-                                overflowY: "auto", // Allow scrolling when content exceeds the height
-                            }}
-                            disabled={isLoading}
-                        />
-                        <button
-                            type="submit"
-                            className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 mr-2"
-                            disabled={isLoading}
-                        >
-                            <Send size={24} />
-                        </button>
+            <div>
+                <form
+                    onSubmit={sendMessage}
+                    className="p-1 border-t border-gray-200"
+                >
+                    <div className="max-w-4xl mx-auto max-h-10">
+                        <div className="flex items-end bg-white rounded-3xl shadow-lg border border-gray-300 shrink">
+                            <textarea
+                                ref={textareaRef}
+                                value={inputMessage}
+                                onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Message Assistant (Press Enter to send, Shift+Enter for new line)"
+                                className="flex-1 bg-transparent border-none rounded-3xl py-4 px-5 focus:outline-none resize-none text-gray-800"
+                                rows={1}
+                                style={{
+                                    maxHeight: "150px", // Set a maximum height for the textarea
+                                    overflowY: "auto", // Allow scrolling when content exceeds the height
+                                }}
+                                disabled={isLoading}
+                            />
+                            <button
+                                type="submit"
+                                className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 mr-2"
+                                disabled={isLoading}
+                            >
+                                <Send size={24} />
+                            </button>
+                            <Popover content={content} className="">
+                                <button
+                                    type="button"
+                                    className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 mr-2"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(ws_url);
+                                        messageApi.open({
+                                            type: "success",
+                                            content:
+                                                "WebSocket URL copied to clipboard",
+                                            duration: 1.5,
+                                        });
+                                    }}
+                                >
+                                    <Link size={24} />
+                                </button>
+                            </Popover>
+                        </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     );
 };

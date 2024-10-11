@@ -40,7 +40,10 @@ def get_session(setting: GlobalSettings = Depends(get_default_setting)):
         },
     )
     SQLModel.metadata.create_all(engine)
-    return Session(engine, expire_on_commit=False)
+    try:
+        yield Session(engine, expire_on_commit=False)
+    finally:
+        engine.dispose()
 
 
 @contextmanager
@@ -131,7 +134,9 @@ class Assistants(SQLModel, table=True):
     user: Users = Relationship(back_populates="assistants")
     knowledge_base: "KnowledgeBases" = Relationship(back_populates="assistant")
     conversations: List["Conversations"] = Relationship(
-        back_populates="assistant", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="assistant",
+        sa_relationship_kwargs={"lazy": "selectin"},
+        cascade_delete=True,
     )
 
     @property
@@ -172,9 +177,19 @@ class KnowledgeBases(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now()},
     )
 
-    documents: List["Documents"] = Relationship(back_populates="knowledge_base")
-    assistant: "Assistants" = Relationship(back_populates="knowledge_base")
-    user: "Users" = Relationship(back_populates="knowledge_bases")
+    documents: List["Documents"] = Relationship(
+        back_populates="knowledge_base",
+        sa_relationship_kwargs={"lazy": "selectin"},
+        cascade_delete=True,
+    )
+    assistant: "Assistants" = Relationship(
+        back_populates="knowledge_base",
+        sa_relationship_kwargs={"lazy": "selectin"},
+        cascade_delete=True,
+    )
+    user: "Users" = Relationship(
+        back_populates="knowledge_bases", sa_relationship_kwargs={"lazy": "selectin"}
+    )
 
     @property
     def last_updated(self):
@@ -226,12 +241,14 @@ class Documents(SQLModel, table=True):
         description="Task ID from celery task queue",
     )
 
+    knowledge_base: KnowledgeBases = Relationship(back_populates="documents")
+    document_chunks: List["DocumentChunks"] = Relationship(
+        back_populates="document", cascade_delete=True
+    )
+
     @property
     def file_path(self):
         return self.file_path_in_minio
-
-    knowledge_base: KnowledgeBases = Relationship(back_populates="documents")
-    document_chunks: List["DocumentChunks"] = Relationship(back_populates="document")
 
 
 class DocumentChunks(SQLModel, table=True):
@@ -305,7 +322,9 @@ class Conversations(SQLModel, table=True):
     user: Users = Relationship(back_populates="conversations")
     assistant: Assistants = Relationship(back_populates="conversations")
     messages: List["Messages"] = Relationship(
-        back_populates="conversation", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="conversation",
+        sa_relationship_kwargs={"lazy": "selectin"},
+        cascade_delete=True,
     )
 
     @property

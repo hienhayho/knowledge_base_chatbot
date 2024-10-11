@@ -30,7 +30,16 @@ class ElasticSearch:
         """
 
         self.es_client = Elasticsearch(url)
+        self.test_connection()
         logger.info("ElasticSearch client initialized successfully !!!")
+
+    def test_connection(self):
+        """
+        Test the connection with the ElasticSearch server.
+        """
+        if not self.es_client.ping():
+            logger.error("ElasticSearch connection failed")
+            raise ConnectionError("ElasticSearch connection failed")
 
     def create_index(self, index_name: str):
         """
@@ -49,8 +58,8 @@ class ElasticSearch:
                 "properties": {
                     "content": {"type": "text", "analyzer": "english"},
                     "contextualized_content": {"type": "text", "analyzer": "english"},
-                    "vector_id": {"type": "text", "index": False},
-                    "document_id": {"type": "text", "index": False},
+                    "vector_id": {"type": "text", "index": True},
+                    "document_id": {"type": "text", "index": True},
                 }
             },
         }
@@ -167,6 +176,10 @@ class ElasticSearch:
         document_id = str(document_id)
         index_name = str(index_name)
 
+        if not self.check_index_exists(index_name):
+            logger.debug(f"Index: {index_name} does not exist")
+            return
+
         logger.debug("index_name: %s - document_id: %s", index_name, document_id)
 
         self.es_client.delete_by_query(
@@ -179,3 +192,59 @@ class ElasticSearch:
         )
 
         self.es_client.indices.refresh(index=index_name)
+
+    def get_all_data_in_index(self, index_name: str) -> list[ElasticSearchResponse]:
+        """
+        Get all the data in the index.
+
+        Args:
+            index_name (str): Name of the index to get all data
+
+        Returns:
+            list[dict]: List of all data in the index
+        """
+        self.es_client.indices.refresh(index=index_name)
+        response = self.es_client.search(
+            index=index_name, body={"query": {"match_all": {}}}
+        )
+
+        return [
+            ElasticSearchResponse(
+                vector_id=hit["_source"]["vector_id"],
+                content=hit["_source"]["content"],
+                contextualized_content=hit["_source"]["contextualized_content"],
+                document_id=hit["_source"]["document_id"],
+            )
+            for hit in response["hits"]["hits"]
+        ]
+
+    def migrate_index(self, target_index_name: str, source_index_name: str):
+        """
+        Migrate the data from source index to target index.
+
+        Args:
+            target_index_name (str): Name of the target index
+            source_index_name (str): Name of the source index
+        """
+        if not self.check_index_exists(source_index_name):
+            logger.debug(f"Source index: {source_index_name} does not exist")
+            return
+
+        if not self.check_index_exists(target_index_name):
+            logger.debug(f"Target index: {target_index_name} does not exist")
+            self.create_index(target_index_name)
+
+        self.es_client.reindex(
+            body={
+                "source": {"index": source_index_name},
+                "dest": {"index": target_index_name},
+            }
+        )
+
+        self.es_client.indices.refresh(index=target_index_name)
+        logger.debug(
+            f"Index: {source_index_name} migrated to {target_index_name} successfully !!!"
+        )
+
+        self.es_client.indices.delete(index=source_index_name)
+        logger.debug("Removed source index: %s", source_index_name)

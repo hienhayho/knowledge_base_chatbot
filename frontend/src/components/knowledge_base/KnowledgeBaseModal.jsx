@@ -71,25 +71,6 @@ const KnowledgeBaseModal = ({ isOpen, onClose, onCreate }) => {
                             />
                         </div>
 
-                        {/* Toggle Button for Contextual RAG */}
-                        <div className="flex items-center space-x-3">
-                            <label className="block text-sm font-medium text-gray-700">
-                                Click to choose RAG type:
-                            </label>
-                            <button
-                                type="button"
-                                onClick={handleToggleRag}
-                                className={`px-4 py-2 text-white rounded-md focus:outline-none ${
-                                    useContextualRag
-                                        ? "bg-green-600 hover:bg-green-700"
-                                        : "bg-gray-600 hover:bg-gray-700"
-                                }`}
-                            >
-                                {useContextualRag
-                                    ? "Contextual RAG"
-                                    : "Original RAG"}
-                            </button>
-                        </div>
                     </form>
                 </div>
                 <div className="p-6 bg-gray-50 rounded-b-lg flex justify-end space-x-3">

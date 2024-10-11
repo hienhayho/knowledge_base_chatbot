@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 from typing import Annotated
 from sqlmodel import Session, select
@@ -23,6 +24,7 @@ from api.models import (
     GetDocumentStatusReponse,
     GetKnowledgeBase,
     GetKnowledgeBaseResponse,
+    MergeKnowledgeBasesRequest,
 )
 from src.database import (
     Users,
@@ -46,11 +48,6 @@ kb_router = APIRouter()
 
 setting = GlobalSettings()
 
-use_contextual_rag = setting.use_contextual_rag
-if not use_contextual_rag:
-    logger.critical(
-        "ContextualRAG is disabled in the settings. So all the knowledge bases will be original RAG"
-    )
 
 UPLOAD_FOLDER = Path(setting.upload_temp_folder)
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -69,24 +66,17 @@ async def create_new_knowledge_base(
     Create new knowledge base
     """
 
-    # Check if the system is using ContextualRAG or not
-    # If not, then all the knowledge bases will be original RAG
-    if not use_contextual_rag:
-        kb_info.is_contextual_rag = False
-
     with db_session as session:
         kb = KnowledgeBases(
             name=kb_info.name,
             description=kb_info.description,
             user=current_user,
-            is_contextual_rag=kb_info.is_contextual_rag,
+            is_contextual_rag=True,
         )
 
         session.add(kb)
         session.commit()
         session.refresh(kb)
-
-        kb.user = current_user
 
         return kb
 
@@ -125,7 +115,7 @@ async def upload_file(
     file: Annotated[UploadFile, File(...)],
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
+    minio_client: Annotated[MinioClient, Depends(get_minio_client)],
 ):
     """
     Upload file to knowledge base for the current user
@@ -159,22 +149,22 @@ async def upload_file(
                 detail="You are not allowed to upload to this Knowledge Base",
             )
 
-        query = select(Documents).where(
-            Documents.knowledge_base_id == knowledge_base_id,
-            Documents.file_name == file.filename,
-        )
+        # query = select(Documents).where(
+        #     Documents.knowledge_base_id == knowledge_base_id,
+        #     Documents.file_name == file.filename,
+        # )
 
-        document_exist = session.exec(query).first()
+        # document_exist = session.exec(query).first()
 
-        if document_exist:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="File already exists in the Knowledge Base",
-            )
+        # if document_exist:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_409_CONFLICT,
+        #         detail="File already exists in the Knowledge Base",
+        #     )
 
         document = Documents(
             file_name=file.filename,
-            file_path_in_minio=f"{knowledge_base_id}/{file.filename}",
+            file_path_in_minio=f"{uuid.uuid4()}_{file.filename}",
             file_type=Path(file.filename).suffix,
             status=FileStatus.UPLOADED,
             knowledge_base=kb,
@@ -186,11 +176,13 @@ async def upload_file(
 
         knowledge_base = document.knowledge_base
 
-        db_manager.upload_file(
-            object_name=document.file_path_in_minio, file_path=str(file_path)
+        minio_client.upload_file(
+            bucket_name=setting.upload_bucket_name,
+            object_name=document.file_path_in_minio,
+            file_path=str(file_path),
         )
 
-        # Remove the file after uploading to Minio
+        # Remove the file in local after uploading to Minio
         Path(file_path).unlink()
 
         return UploadFileResponse(
@@ -207,7 +199,6 @@ async def process_document(
     document_id: str,
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
     """
     Process document
@@ -340,6 +331,8 @@ async def get_all_knowledge_bases(
             for kb in knowledge_bases
         ]
 
+        session.close()
+
         return result
 
 
@@ -373,7 +366,7 @@ async def get_knowledge_base(
                 detail="You are not allowed to access this Knowledge Base",
             )
 
-        return GetKnowledgeBaseResponse.model_validate(kb)
+        return kb
 
 
 @kb_router.get("/download/{document_id}")
@@ -403,7 +396,7 @@ async def download_document(
                 detail="You are not allowed to download this document",
             )
 
-        file_path = DOWNLOAD_FOLDER / document.file_name
+        file_path = DOWNLOAD_FOLDER / (f"{uuid.uuid4()}_" + document.file_name)
 
         minIoClient.download_file(
             bucket_name=setting.upload_bucket_name,
@@ -414,7 +407,95 @@ async def download_document(
         return FileResponse(path=file_path, filename=document.file_name)
 
 
-@kb_router.delete("/delete/{document_id}")
+@kb_router.post("/test")
+async def test(
+    index_name: str,
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
+):
+    return db_manager.contextual_rag_client.es.get_all_data_in_index(index_name)
+
+
+@kb_router.patch("/merge", response_model=GetKnowledgeBase)
+async def merge_knowledge_bases(
+    merge_request: Annotated[MergeKnowledgeBasesRequest, Body(...)],
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
+):
+    """
+    Merge knowledge bases
+    """
+
+    with db_session as session:
+        query = select(KnowledgeBases).where(
+            KnowledgeBases.id.in_(merge_request.knowledge_base_ids)
+        )
+
+        knowledge_bases = session.exec(query).all()
+
+        if not knowledge_bases:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge Bases not found !",
+            )
+
+        if any(
+            doc.status != FileStatus.PROCESSED
+            for kb in knowledge_bases
+            for doc in kb.documents
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Some documents are not processed or failed, so cannot merge these Knowledge Bases, please consider process or delete them",
+            )
+
+        if any(kb.user_id != current_user.id for kb in knowledge_bases):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to merge these Knowledge Bases",
+            )
+
+        target_knowledge_base = knowledge_bases[0]
+        target_knowledge_base_id = target_knowledge_base.id
+
+        source_knowledge_bases = knowledge_bases[1:]
+        source_knowledge_base_ids = [kb.id for kb in source_knowledge_bases]
+
+        # Add all the documents from source knowledge bases to target knowledge base
+        logger.debug(
+            "Moving documents from source knowledge bases to target knowledge base in SQL database ..."
+        )
+        for kb in source_knowledge_bases:
+            source_docs = kb.documents
+            for doc in source_docs:
+                doc.knowledge_base_id = target_knowledge_base_id
+                session.add(doc)
+                session.commit()
+
+                session.refresh(doc)
+                session.refresh(target_knowledge_base)
+                session.refresh(kb)
+
+        db_manager.merge_knowledge_bases(
+            target_knowledge_base_id=target_knowledge_base_id,
+            source_knowledge_base_ids=source_knowledge_base_ids,
+        )
+
+        target_knowledge_base.name = merge_request.name
+        target_knowledge_base.description = merge_request.description
+
+        session.add(target_knowledge_base)
+        session.commit()
+        session.refresh(target_knowledge_base)
+
+        for kb in source_knowledge_bases:
+            session.delete(kb)
+            session.commit()
+
+        return target_knowledge_base
+
+
+@kb_router.delete("/delete_document/{document_id}")
 async def delete_document(
     document_id: str,
     db_session: Annotated[Session, Depends(get_session)],
@@ -451,8 +532,53 @@ async def delete_document(
 
         session.delete(document)
         session.commit()
+        session.close()
 
         return JSONResponse(
             content={"message": "Document deleted successfully"},
+            status_code=status.HTTP_200_OK,
+        )
+
+
+@kb_router.delete("/delete_kb/{knowledge_base_id}")
+async def delete_knowledge_base(
+    knowledge_base_id: str,
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
+):
+    """
+    Delete knowledge base
+    """
+    with db_session as session:
+        query = select(KnowledgeBases).where(KnowledgeBases.id == knowledge_base_id)
+
+        kb = session.exec(query).first()
+
+        if not kb:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge Base not found !",
+            )
+
+        if kb.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to delete this Knowledge Base",
+            )
+
+        for doc in kb.documents:
+            db_manager.delete_file(
+                object_name=doc.file_path_in_minio,
+                document_id=doc.id,
+                knownledge_base_id=kb.id,
+                is_contextual_rag=kb.is_contextual_rag,
+            )
+
+        session.delete(kb)
+        session.commit()
+
+        return JSONResponse(
+            content={"message": "Knowledge Base deleted successfully"},
             status_code=status.HTTP_200_OK,
         )

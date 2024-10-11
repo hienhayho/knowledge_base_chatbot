@@ -87,7 +87,7 @@ def get_extractor():
         ".xlsx": PandasExcelReader(),
         ".json": JSONReader(),
         ".txt": TxtReader(),
-        ".pptx": PptxReader(),
+        # ".pptx": PptxReader(),
         ".md": MarkdownReader(),
         ".ipynb": IPYNBReader(),
         ".mbox": MboxReader(),

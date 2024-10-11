@@ -2,13 +2,13 @@ import sys
 from uuid import UUID
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from qdrant_client.http import models
+from qdrant_client import QdrantClient
+from typing import List, Dict, Any, Optional
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from pydantic import BaseModel
-from qdrant_client.http import models
-from qdrant_client import QdrantClient
+from src.constants import QdrantPayload
 from src.utils import get_formatted_logger
 
 logger = get_formatted_logger(__file__)
@@ -56,17 +56,6 @@ class BaseVectorDatabase(ABC):
         pass
 
 
-class QdrantPayload(BaseModel):
-    """
-    Payload for the vector
-
-    Args:
-        file_path (str): File path saved in Minio
-    """
-
-    file_path: str
-
-
 class QdrantVectorDatabase(BaseVectorDatabase):
     """
     QdrantVectorDatabase client
@@ -93,7 +82,11 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             )
 
     def add_vector(
-        self, collection_name: str, vector_id: str, vector: List[float], payload: Any
+        self,
+        collection_name: str,
+        vector_id: str,
+        vector: List[float],
+        payload: QdrantPayload,
     ):
         """
         Add a vector to the collection
@@ -112,7 +105,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             points=[
                 models.PointStruct(
                     id=vector_id,
-                    payload=payload,
+                    payload=payload.model_dump(),
                     vector=vector,
                 )
             ],
@@ -127,6 +120,10 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             document_id (str | UUID): Document ID to delete
         """
         document_id = str(document_id)
+
+        if not self.check_collection_exists(collection_name):
+            logger.debug(f"Collection {collection_name} does not exist")
+            return
 
         logger.debug(
             "collection_name: %s - document_id: %s", collection_name, document_id
@@ -144,4 +141,74 @@ class QdrantVectorDatabase(BaseVectorDatabase):
                     ]
                 )
             ),
+        )
+
+    def delete_collection(self, collection_name: str):
+        """
+        Delete a collection
+
+        Args:
+            collection_name (str): Collection name to delete
+        """
+        if not self.check_collection_exists(collection_name):
+            logger.debug(f"Collection {collection_name} does not exist")
+            return
+
+        self.client.delete_collection(collection_name)
+
+    def migrate_collection(
+        self, source_collection: str, target_collection: str, batch_size: int = 100
+    ):
+        """
+        Migrate all data from source collection to target collection.
+
+        Args:
+            source_collection (str): Name of the source collection
+            target_collection (str): Name of the target collection
+            batch_size (int): Number of points to process in each batch
+        """
+        if not self.check_collection_exists(source_collection):
+            logger.debug(f"Source collection: {source_collection} does not exist")
+            return
+
+        assert self.check_collection_exists(
+            target_collection
+        ), f"Target collection: {target_collection} does not exist"
+
+        offset: Optional[str] = None
+
+        while True:
+            response = self.client.scroll(
+                collection_name=source_collection,
+                limit=batch_size,
+                offset=offset,
+                with_payload=True,
+                with_vectors=True,
+            )
+
+            points = response[0]
+            if not points:
+                break
+
+            points_to_be_indexed = [
+                models.PointStruct(
+                    id=point.id,
+                    payload=point.payload,
+                    vector=point.vector,
+                )
+                for point in points
+            ]
+
+            self.client.upsert(
+                collection_name=target_collection, points=points_to_be_indexed
+            )
+
+            offset = response[1]
+            if offset is None:
+                break
+
+        self.delete_collection(source_collection)
+
+        logger.info(
+            f"Migration from {source_collection} to {target_collection} completed successfully!"
         )

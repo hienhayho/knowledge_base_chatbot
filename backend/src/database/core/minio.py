@@ -78,15 +78,19 @@ class MinioClient:
         logger.info(f"Bucket {bucket_name} created successfully !!!")
 
     @retry(stop=stop_after_attempt(3))
-    def upload_file(self, bucket_name: str, object_name: str, file_path: str) -> None:
+    def upload_file(
+        self, bucket_name: str, object_name: str, file_path: str | Path
+    ) -> None:
         """
         Upload file to Minio
 
         Args:
             bucket_name (str): Bucket name
             object_name (str): Object name to save in Minio
-            file_path (str): Local file path to be uploaded
+            file_path (str | Path): Local file path to be uploaded
         """
+        file_path = str(file_path)
+
         if not self.check_bucket_exists(bucket_name):
             logger.debug(f"Bucket {bucket_name} does not exist. Creating bucket...")
             self.create_bucket(bucket_name)
@@ -127,7 +131,7 @@ class MinioClient:
             return
 
         self.client.remove_object(bucket_name=bucket_name, object_name=object_name)
-        logger.debug(f"Removed: {bucket_name}/{object_name}")
+        logger.debug(f"Removed from minio: {bucket_name}/{object_name}")
 
     def remove_bucket(self, bucket_name: str) -> None:
         """

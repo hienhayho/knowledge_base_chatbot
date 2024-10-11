@@ -1,8 +1,8 @@
 from uuid import UUID
 from typing import Any
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict
+from pydantic import BaseModel, ConfigDict
 
 
 class AssistantCreate(BaseModel):

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, Upload, Info } from "lucide-react";
+import { X, Info } from "lucide-react";
 import { getCookie } from "cookies-next";
+import { message } from "antd";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
 const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
     const router = useRouter();
@@ -16,12 +16,33 @@ const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
     const [knowledgeBases, setKnowledgeBases] = useState([]);
     const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState("");
     const [model, setModel] = useState("gpt-4o-mini");
+    const [messageApi, contextHolder] = message.useMessage();
+    const token = getCookie("access_token");
+    const redirectURL = encodeURIComponent("/chat");
 
     useEffect(() => {
+        if (!token) {
+            router.push(`/login?redirect=${redirectURL}`);
+            return;
+        }
         if (isOpen) {
             fetchKnowledgeBases();
         }
     }, [isOpen]);
+
+    const successMessage = (content) => {
+        messageApi.open({
+            type: "success",
+            content: content,
+        });
+    };
+
+    const errorMessage = (content) => {
+        messageApi.open({
+            type: "error",
+            content: content,
+        });
+    };
 
     const fetchKnowledgeBases = async () => {
         const token = getCookie("access_token");
@@ -47,13 +68,10 @@ const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
     };
 
     const handleSubmit = async () => {
-        const token = getCookie("access_token");
-
         if (!token) {
             router.push("/login?redirect=/chat");
             return;
         }
-        console.log(selectedKnowledgeBase);
 
         const payload = {
             name: assistantName,
@@ -77,26 +95,31 @@ const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
                 body: JSON.stringify(payload),
             });
 
+            const data = await response.json();
             if (response.ok) {
-                const data = await response.json();
-                onClose();
-                onCreateSuccess(); // Call this to update the assistants list in the parent component
-                router.push(`/chat/${data.id}`); // Navigate to the new assistant's page
+                successMessage(
+                    `Assistant "${data.name}" created successfully!`
+                );
+                setTimeout(() => {
+                    onClose();
+                    onCreateSuccess();
+                    router.push(`/chat/${data.id}`);
+                }, 1500);
             } else {
+                errorMessage(data.detail);
                 console.error("Failed to create assistant");
-                // You might want to show an error message to the user here
             }
         } catch (error) {
+            errorMessage(`Error creating assistant: ${error.message}`);
             console.error("Error creating assistant:", error);
-            // You might want to show an error message to the user here
         }
     };
-    console.log(systemPrompt);
 
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start pt-16 z-50">
+            {contextHolder}
             <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
                 <div className="flex justify-between items-center p-6 border-b">
                     <div className="flex items-center space-x-3">

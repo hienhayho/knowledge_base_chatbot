@@ -6,6 +6,7 @@ from .knowledge_bases import (
     GetDocumentStatusReponse,
     GetKnowledgeBase,
     GetKnowledgeBaseResponse,
+    MergeKnowledgeBasesRequest,
 )
 from .assistants import (
     AssistantCreate,
@@ -34,4 +35,5 @@ __all__ = [
     "MessageResponse",
     "ChatResponse",
     "AssistantWithTotalCost",
+    "MergeKnowledgeBasesRequest",
 ]

@@ -160,3 +160,7 @@ class WsManager:
             metadata=metadata,
         )
         await self.send_chat_message(conversation_id, message)
+
+
+def get_ws_manager():
+    return WsManager()

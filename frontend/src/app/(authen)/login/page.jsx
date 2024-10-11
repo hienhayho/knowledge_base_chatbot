@@ -97,17 +97,24 @@ const SignInContent = () => {
                     <Input.Password />
                 </Form.Item>
 
-                <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-                    <Button type="primary" htmlType="submit">
-                        Submit
-                    </Button>
-                </Form.Item>
+                <div style={{
+                    display: "flex",
+                    justifyContent: "space-evenly",
+                }}>
+                    <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
+                        <Button type="primary" htmlType="submit">
+                            Login
+                        </Button>
+                    </Form.Item>
+
+                    <div style={styles.footer}>
+                        Don&#39;t have an account?&nbsp;
+                        <a href="/register" className="text-blue-500 block ml-4">Sign Up</a>
+                    </div>
+                </div>
             </Form>
 
-            <div style={styles.footer}>
-            Don&#39;t have an account?
-            <a href="/register" className="text-blue-500 block ml-4">Sign Up</a>
-            </div>
+
         </div>
     </div>
     )
@@ -143,9 +150,10 @@ const styles = {
         fontWeight: "bold",
         textAlign: "center",
         marginBottom: "32px",
+        color: "rgb(239 68 68)"
     },
     footer: {
-        textAlign: "center",
+        textAlign: "right",
         marginTop: "16px",
     },
 };

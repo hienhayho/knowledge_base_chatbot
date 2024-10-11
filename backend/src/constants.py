@@ -1,5 +1,6 @@
 import enum
 from uuid import UUID
+from typing import Optional
 from llama_index.core.bridge.pydantic import BaseModel
 
 SUPPORTED_FILE_EXTENSIONS = [
@@ -60,7 +61,23 @@ class ElasticSearchResponse(BaseModel):
     vector_id: UUID
     content: str
     contextualized_content: str
-    score: float
+    score: Optional[float] = None
+    document_id: Optional[UUID] = None
+
+
+class QdrantPayload(BaseModel):
+    """
+    Payload for the vector
+
+    Args:
+        document_id (str): Document ID
+        text (str): Text content, required to be able to be used with llama_index
+        vector_id (str): Vector ID
+    """
+
+    document_id: str
+    text: str
+    vector_id: str
 
 
 class FileStatus(str, enum.Enum):
@@ -123,6 +140,29 @@ class LLMService(str, enum.Enum):
         return str(self.value)
 
     OPENAI = "openai"
+
+
+class VectorDatabaseService(str, enum.Enum):
+    """
+    Vector database service schema.
+    """
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    QDRANT = "qdrant"
+
+
+class RerankerService(str, enum.Enum):
+    """
+    Reranker service schema.
+    """
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    CohereReranker = "cohere_reranker"
+    LLMReranker = "llm_reranker"
 
 
 class ErrorResponse(BaseModel):

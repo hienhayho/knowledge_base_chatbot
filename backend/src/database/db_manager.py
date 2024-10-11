@@ -1,4 +1,5 @@
 import sys
+import threading
 from uuid import UUID
 from pathlib import Path
 from fastapi import Depends
@@ -28,7 +29,6 @@ class DatabaseManager:
 
         Args:
             setting (GlobalSettings): Global settings
-            sql_db_session (Session): SQL Database session
         """
         self.setting = setting
 
@@ -37,13 +37,13 @@ class DatabaseManager:
 
         logger.info("DatabaseManager initialized successfully !!!")
 
-    def upload_file(self, object_name: str, file_path: str):
+    def upload_file(self, object_name: str, file_path: str | Path):
         """
         Upload file to Minio
 
         Args:
             object_name (str): Object name in Minio
-            file_path (str): Local file path
+            file_path (str | Path): Local file path
         """
 
         self.minio_client.upload_file(
@@ -152,7 +152,7 @@ class DatabaseManager:
             documents (list[Document]): List of documents
             document_id (UUID): Document ID
         """
-        self.contextual_rag_client.insert_data(
+        self.contextual_rag_client.qdrant_insert_data(
             collection_name=collection_name,
             chunks=chunks_documents,
             document_id=document_id,
@@ -179,7 +179,6 @@ class DatabaseManager:
             object_name=object_name,
         )
 
-        logger.debug("Removing from SQL Database ...")
         with get_session(setting=get_default_setting()) as session:
             query_document_chunks = select(DocumentChunks).where(
                 DocumentChunks.document_id == document_id
@@ -187,6 +186,7 @@ class DatabaseManager:
             document_chunks = session.exec(query_document_chunks).all()
 
             # Delete the document chunks before deleting the document
+            logger.debug(f"Removing: {document_id} from SQL Database ...")
             for document_chunk in document_chunks:
                 session.delete(document_chunk)
 
@@ -198,12 +198,85 @@ class DatabaseManager:
             )
 
             if is_contextual_rag:
-                self.es_delete_document(
+                self.contextual_rag_client.es_delete_document(
                     index_name=knownledge_base_id,
                     document_id=document_id,
                 )
 
         logger.info(f"Removed: {document_id}")
+
+    def es_migrate(
+        self, target_knowledge_base_id: str, source_knowledge_base_ids: list[str]
+    ):
+        """
+        Migrate ElasticSearch index
+
+        Args:
+            target_knowledge_base_id (str): Target knowledge base ID
+            source_knowledge_base_id (str): Source knowledge base ID
+        """
+        logger.debug(
+            "Merging source knowledge bases: %s into target knowledge base: %s",
+            source_knowledge_base_ids,
+            target_knowledge_base_id,
+        )
+        for source_knowledge_base_id in source_knowledge_base_ids:
+            self.contextual_rag_client.es.migrate_index(
+                target_index_name=target_knowledge_base_id,
+                source_index_name=source_knowledge_base_id,
+            )
+
+    def vector_db_migrate(
+        self, target_knowledge_base_id: str, source_knowledge_base_ids: list[str]
+    ):
+        """
+        Migrate Qdrant index
+
+        Args:
+            target_knowledge_base_id (str): Target knowledge base ID
+            source_knowledge_base_id (str): Source knowledge base ID
+        """
+        logger.debug(
+            "Merging source knowledge bases: %s into target knowledge base: %s",
+            source_knowledge_base_ids,
+            target_knowledge_base_id,
+        )
+        for source_knowledge_base_id in source_knowledge_base_ids:
+            self.contextual_rag_client.qdrant_client.migrate_collection(
+                source_collection=source_knowledge_base_id,
+                target_collection=target_knowledge_base_id,
+            )
+
+    def merge_knowledge_bases(
+        self,
+        target_knowledge_base_id: str,
+        source_knowledge_base_ids: list[str],
+    ):
+        """
+        Merge knowledge bases
+
+        Args:
+            target_knowledge_base_id (str): Target knowledge base ID
+            source_knowledge_base_ids (list[str]): Source knowledge base IDs to be merged into target knowledge base
+        """
+        ts = [
+            threading.Thread(
+                target=self.es_migrate,
+                args=(target_knowledge_base_id, source_knowledge_base_ids),
+            ),
+            threading.Thread(
+                target=self.vector_db_migrate,
+                args=(target_knowledge_base_id, source_knowledge_base_ids),
+            ),
+        ]
+
+        for t in ts:
+            t.start()
+
+        for t in ts:
+            t.join()
+
+        logger.debug("Merged knowledge bases successfully !!!")
 
 
 def get_db_manager(

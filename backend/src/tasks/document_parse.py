@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.celery import celery_app
 from src.settings import default_settings
 from src.utils import get_formatted_logger
-from src.readers import parse_multiple_files
+from src.readers import parse_multiple_files, get_extractor
 from src.database import (
     DatabaseManager,
     DocumentChunks,
@@ -26,6 +26,20 @@ db_session: Session = get_session(setting=default_settings)
 db_manager: DatabaseManager = get_db_manager(setting=default_settings)
 
 minio_client = MinioClient.from_setting(setting=default_settings)
+
+
+class FileExtractor:
+    def __init__(self) -> None:
+        self.extractor = get_extractor()
+
+    def get_extractor_for_file(self, file_path: str | Path) -> dict[str, str]:
+        file_suffix = Path(file_path).suffix
+        return {
+            file_suffix: self.extractor[file_suffix],
+        }
+
+
+file_extractor = FileExtractor()
 
 
 @celery_app.task(bind=True)
@@ -57,7 +71,10 @@ def parse_document(
     )
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
-    document = parse_multiple_files(str(file_path))
+    document = parse_multiple_files(
+        str(file_path),
+        extractor=file_extractor.get_extractor_for_file(file_path),
+    )
 
     self.update_state(state="PROGRESS", meta={"progress": 10})
 

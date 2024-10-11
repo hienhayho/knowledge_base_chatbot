@@ -28,8 +28,15 @@ const ChatAssistantPage = () => {
     const [assistants, setAssistants] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const token = getCookie("access_token");
+    const redirectUrl = encodeURIComponent(`/chat/${params.assistant_id}`);
+
 
     useEffect(() => {
+        if (!token) {
+            router.push(`/login?redirect=${redirectUrl}`);
+            return;
+        }
         if (conversation_id && conversations.length > 0) {
             const conv = conversations.find((c) => c.id === conversation_id);
             if (conv) {
@@ -44,11 +51,7 @@ const ChatAssistantPage = () => {
         fetchConversations();
     }, [assistant_id]);
 
-    const token = getCookie("access_token");
-    if (!token) {
-        router.push(`/login?redirect=/chat/${params.assistant_id}`);
-        return;
-    }
+
 
     const fetchAssistants = async () => {
         const token = getCookie("access_token");

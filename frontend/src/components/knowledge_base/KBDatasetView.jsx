@@ -16,6 +16,8 @@ import UploadFileModal from "@/components/knowledge_base/UploadFileModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
+import { message } from 'antd';
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -45,19 +47,17 @@ const DatasetView = ({ knowledgeBaseID }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [documents, setDocuments] = useState([]);
+    const router = useRouter();
     const token = getCookie("access_token");
-
-    if (!token) {
-        const redirectURL = encodeURIComponent(`/knowledge/${knowledgeBaseID}`);
-        window.location.href = `/login?redirect=${redirectURL}`;
-    }
+    const redirectURL = encodeURIComponent(`/knowledge/${knowledgeBaseID}`);
 
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
             const token = getCookie("access_token");
 
             if (!token) {
-                window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+                router.push(`/login?redirect=${redirectURL}`);
+                return;
             }
             try {
                 const response = await fetch(
@@ -90,7 +90,7 @@ const DatasetView = ({ knowledgeBaseID }) => {
         const checkProcessingDocuments = async () => {
             const token = getCookie("access_token");
             if (!token) {
-                window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+                window.location.href = `/login?redirect=${redirectURL}`;
             }
             const processingDocs = documents.filter(
                 (doc) => doc.status === "processing"
@@ -132,7 +132,7 @@ const DatasetView = ({ knowledgeBaseID }) => {
     const handleUpload = async (files) => {
         const token = getCookie("access_token");
         if (!token) {
-            window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+            window.location.href = `/login?redirect=${redirectURL}`;
         }
         for (const file of files) {
             const fileExtension =
@@ -187,9 +187,8 @@ const DatasetView = ({ knowledgeBaseID }) => {
     };
 
     const handleDownloadDocument = async (documentId, fileName) => {
-        const token = getCookie("access_token");
         if (!token) {
-            window.location.href = `/login?redirect=/knowledge/${knowledgeBaseID}`;
+            window.location.href = `/login?redirect=${redirectURL}`;
         }
         try {
             const response = await fetch(
@@ -221,7 +220,7 @@ const DatasetView = ({ knowledgeBaseID }) => {
         if (window.confirm("Are you sure you want to delete this document?")) {
             try {
                 const response = await fetch(
-                    `${API_BASE_URL}/api/kb/delete/${documentId}`,
+                    `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
                     {
                         method: "DELETE",
                         headers: {
@@ -318,7 +317,6 @@ const DatasetView = ({ knowledgeBaseID }) => {
 
     return (
         <div className="flex h-screen bg-gray-100">
-            {/* Sidebar */}
             <aside className="w-64 bg-white shadow-md">
                 <div className="p-4">
                     <div className="w-10 h-10 bg-gray-200 rounded-full mb-4"></div>
@@ -459,16 +457,29 @@ const DatasetView = ({ knowledgeBaseID }) => {
                                         </td>
                                         <td className="p-2">
                                             {doc.status === "uploaded" ? (
-                                                <button
-                                                    onClick={() =>
-                                                        handleProcessDocument(
-                                                            doc.id
-                                                        )
-                                                    }
-                                                    className="text-blue-500 hover:text-blue-700"
-                                                >
-                                                    Process
-                                                </button>
+                                                <div className="flex space-x-2">
+                                                    <button
+                                                        onClick={() =>
+                                                            handleProcessDocument(
+                                                                doc.id
+                                                            )
+                                                        }
+                                                        className="text-blue-500 hover:text-blue-700"
+                                                    >
+                                                        Process
+                                                    </button>
+                                                    <button
+                                                        onClick={() =>
+                                                            handleDeleteDocument(
+                                                                doc.id
+                                                            )
+                                                        }
+                                                        className="text-red-500 hover:text-red-700"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <div className="flex space-x-2">
                                                     <button

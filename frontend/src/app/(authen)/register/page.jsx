@@ -104,11 +104,22 @@ const SignUp = () => (
                     <Input.Password />
                 </Form.Item>
 
-                <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-                    <Button type="primary" htmlType="submit">
-                        Submit
-                    </Button>
-                </Form.Item>
+                <div style={{
+                    display: "flex",
+                    justifyContent: "space-evenly",
+                }}>
+                    <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
+                        <Button type="primary" htmlType="submit">
+                            Register
+                        </Button>
+                    </Form.Item>
+                    <div style={styles.footer}>
+                        Already have an account?&nbsp;
+                        <a href="/login" className="text-blue-500 block ml-4">
+                            Log In
+                        </a>
+                    </div>
+                </div>
             </Form>
         </div>
     </div>
@@ -123,19 +134,24 @@ const styles = {
         backgroundColor: "#f0f2f5",
     },
     formWrapper: {
-        padding: "32px", // Increased padding for a larger feel
+        padding: "32px",
         border: "1px solid #d9d9d9",
         borderRadius: "8px",
         backgroundColor: "#fff",
         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-        maxWidth: "800px", // Increased max width for a larger form
-        width: "100%", // Ensures the form takes full width up to the max width
+        maxWidth: "800px",
+        width: "100%",
     },
     header: {
-        fontSize: "28px", // Slightly larger font for the header
+        fontSize: "28px",
         fontWeight: "bold",
         textAlign: "center",
-        marginBottom: "32px", // Added more space below the header
+        marginBottom: "32px",
+        color: "rgb(239 68 68)"
+    },
+    footer: {
+        textAlign: "right",
+        marginTop: "16px",
     },
 };
 

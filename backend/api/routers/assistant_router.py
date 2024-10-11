@@ -27,13 +27,12 @@ from src.database import (
     WsManager,
     MediaType,
     EndStatus,
+    get_ws_manager,
 )
 from src.utils import get_formatted_logger
 from api.services import AssistantService
 
 logger = get_formatted_logger(__file__)
-
-ws_manager = WsManager()
 
 assistant_router = APIRouter()
 
@@ -59,6 +58,12 @@ async def create_assistant(
         if not knowledge_base:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found"
+            )
+
+        if knowledge_base.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to access this knowledge base",
             )
 
         new_assistant = Assistants(
@@ -198,6 +203,32 @@ async def get_conversation_history(
     return assistant_service.get_conversation_history(conversation_id, current_user.id)
 
 
+@assistant_router.delete("/{assistant_id}")
+async def delete_assistant(
+    assistant_id: str,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        if not is_valid_uuid(assistant_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
+            )
+
+        query = select(Assistants).where(
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+        )
+        assistant = session.exec(query).first()
+        if not assistant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+            )
+
+        session.delete(assistant)
+        session.commit()
+        return {"message": "Assistant deleted successfully"}
+
+
 @assistant_router.websocket(
     "/{assistant_id}/conversations/{conversation_id}/{token}/ws"
 )
@@ -206,8 +237,9 @@ async def websocket_endpoint(
     assistant_id: UUID,
     conversation_id: UUID,
     token: str,
-    assistant_service: Annotated[AssistantService, Depends()],
     db_session: Annotated[Session, Depends(get_session)],
+    ws_manager: Annotated[WsManager, Depends(get_ws_manager)],
+    assistant_service: Annotated[AssistantService, Depends()],
 ):
     assistant_id = str(assistant_id)
     conversation_id = str(conversation_id)

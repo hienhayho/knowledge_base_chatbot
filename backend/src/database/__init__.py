@@ -17,7 +17,14 @@ from .core import (
 from .contextual_rag_manager import ContextualRAG
 from .db_manager import DatabaseManager, get_db_manager
 from .utils import get_embedding, validate_email, is_valid_uuid
-from .ws_manager import WsManager, MediaType, Message, MessageType, EndStatus
+from .ws_manager import (
+    WsManager,
+    MediaType,
+    Message,
+    MessageType,
+    EndStatus,
+    get_ws_manager,
+)
 
 __all__ = [
     "validate_email",
@@ -45,4 +52,5 @@ __all__ = [
     "Message",
     "MessageType",
     "EndStatus",
+    "get_ws_manager",
 ]

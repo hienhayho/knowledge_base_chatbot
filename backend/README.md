@@ -29,24 +29,10 @@ Please create `.env` file from `.env.example` and fill in all API keys below.
 | `LANGFUSE_PUBLIC_KEY` |      [LangfuseCloud](https://cloud.langfuse.com/)       |
 |    `LANGFUSE_HOST`    |      [LangfuseCloud](https://cloud.langfuse.com/)       |
 
-### Choose to use ContextualRAG or not:
-
-> Note: ContextualRAG is a little bit expensive, so it's disabled by default.
-
-Please set `use_contextual_rag` to `True` in [config.py](config.py) to use ContextualRAG.
-
 ### Database Setup
 
--   If you use ContextualRAG, run this:
-
 ```bash
-docker compose -f contextual_rag_services.yml up -d
-```
-
--   Otherwise, run this:
-
-```bash
-docker compose -f original_rag_services.yml up -d
+docker compose up -d
 ```
 
 ### Run celery worker

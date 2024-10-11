@@ -1,6 +1,7 @@
 import os
 import asyncio
 from pathlib import Path
+from fastapi import status
 from fastapi import FastAPI
 from datetime import datetime
 from dotenv import load_dotenv
@@ -16,11 +17,37 @@ load_dotenv()
 
 BACKEND_PORT = int(os.getenv("BACKEND_PORT"))
 RELOAD = os.getenv("MODE") == "development"
+CLEAN_INTERVAL = int(os.getenv("CLEAN_INTERVAL")) or 10
+
+
+async def delete_old_files():
+    while True:
+        logger.warning("Cleaning up download folder ...")
+
+        interval = 20
+        current_time = datetime.now()
+
+        for file in Path(DOWNLOAD_FOLDER).iterdir():
+            if file.is_file():
+                file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
+                age = (current_time - file_mod_time).total_seconds()
+
+                if age > interval:
+                    try:
+                        file.unlink()
+                        logger.info(f"Deleted file: {file}")
+                    except Exception as e:
+                        logger.error(f"Error deleting file {file}: {e}")
+                else:
+                    logger.info(f"Skipping file: {file}")
+
+        await asyncio.sleep(5 * 60)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting application ...")
+    logger.debug(f"Cleaning up download folder every {CLEAN_INTERVAL} minutes ...")
     asyncio.create_task(delete_old_files())
     yield
 
@@ -41,32 +68,9 @@ app.add_middleware(
 )
 
 
-async def delete_old_files():
-    while True:
-        logger.warning("Cleaning up download folder ...")
-        interval = 20
-        current_time = datetime.now()
-
-        for file in Path(DOWNLOAD_FOLDER).iterdir():
-            if file.is_file():
-                file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
-                age = (current_time - file_mod_time).total_seconds()
-
-                if age > interval:
-                    try:
-                        file.unlink()
-                        logger.info(f"Deleted file: {file}")
-                    except Exception as e:
-                        logger.error(f"Error deleting file {file}: {e}")
-                else:
-                    logger.info(f"Skipping file: {file}")
-
-        await asyncio.sleep(5 * 60)  # 5 minutes
-
-
-@app.get("/", tags=["health_check"])
+@app.get("/", tags=["health_check"], status_code=status.HTTP_200_OK)
 def health_check():
-    return JSONResponse(status_code=200, content={"ping": "pong"})
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"ping": "pong"})
 
 
 # Include routers

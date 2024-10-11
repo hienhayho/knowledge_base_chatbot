@@ -23,10 +23,23 @@ class KnowledgeBaseRequest(BaseModel):
         title="Description of the Knowledge Base",
         description="Description of the Knowledge Base",
     )
-    is_contextual_rag: bool = Field(
+
+
+class MergeKnowledgeBasesRequest(BaseModel):
+    knowledge_base_ids: list[UUID] = Field(
         ...,
-        title="Contextual RAG Flag",
-        description="Use this flag to mark the Knowledge Base use Contextual RAG",
+        title="List of Knowledge Base IDs",
+        description="List of Knowledge Base IDs to be merged",
+    )
+    name: str = Field(
+        default="Merged Knowledge Base",
+        title="Name of the merged Knowledge Base",
+        description="Name of the merged Knowledge Base",
+    )
+    description: str = Field(
+        default="No description",
+        title="Description of the merged Knowledge Base",
+        description="Description of the merged Knowledge Base",
     )
 
 

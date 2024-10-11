@@ -5,6 +5,8 @@ from typing import Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
+from src.constants import RerankerService, VectorDatabaseService
+
 load_dotenv()
 
 config = Config.fromfile("config.py")
@@ -117,6 +119,8 @@ class ContextualRAGConfig(BaseModel):
 
     semantic_weight: float
     bm25_weight: float
+    vector_database_service: VectorDatabaseService
+    reranker_service: RerankerService
     top_k: int
     top_n: int
 
@@ -158,11 +162,6 @@ class GlobalSettings(BaseModel):
         embedding_config (EmbeddingConfig): Embedding configuration
         llm_config (LLMConfig): LLM configuration
     """
-
-    use_contextual_rag: bool = Field(
-        default=config.use_contextual_rag,
-        description="Use contextual RAG for reranking",
-    )
 
     api_keys: APIKeys = Field(
         default=APIKeys(
@@ -231,6 +230,8 @@ class GlobalSettings(BaseModel):
         default=ContextualRAGConfig(
             semantic_weight=config.contextual_rag_config.semantic_weight,
             bm25_weight=config.contextual_rag_config.bm25_weight,
+            vector_database_service=config.contextual_rag_config.vector_database_service,
+            reranker_service=config.contextual_rag_config.reranker_service,
             top_k=config.contextual_rag_config.top_k,
             top_n=config.contextual_rag_config.top_n,
         ),

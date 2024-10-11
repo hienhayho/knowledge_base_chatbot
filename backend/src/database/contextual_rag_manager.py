@@ -3,6 +3,7 @@ import sys
 import json
 import uuid
 import requests
+from uuid import UUID
 from tqdm import tqdm
 from pathlib import Path
 from dotenv import load_dotenv
@@ -20,6 +21,7 @@ from langfuse import Langfuse
 from qdrant_client import QdrantClient
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
+from llama_index.core.postprocessor import LLMRerank
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.schema import NodeWithScore, Node
 from langfuse.decorators import langfuse_context, observe
@@ -42,6 +44,8 @@ from src.settings import GlobalSettings, default_settings
 from src.constants import (
     QA_PROMPT,
     LLMService,
+    QdrantPayload,
+    RerankerService,
     DocumentMetadata,
     EmbeddingService,
     CONTEXTUAL_PROMPT,
@@ -105,18 +109,14 @@ class ContextualRAG:
             buffer_size=1, breakpoint_percentile_threshold=95, embed_model=embed_model
         )
 
-        if setting.use_contextual_rag:
-            self.es = ElasticSearch(url=setting.elastic_search_config.url)
-        else:
-            logger.critical(
-                "ContextualRAG is globally disabled, so ElasticSearch is not used."
-            )
+        self.es = ElasticSearch(url=setting.elastic_search_config.url)
+        self.reranker = self.load_reranker(
+            setting.contextual_rag_config.reranker_service
+        )
 
         self.qdrant_client = QdrantVectorDatabase(
             url=setting.qdrant_config.url,
         )
-
-        self.use_contextual_rag = setting.use_contextual_rag
 
         logger.info("ContextualRAG initialized successfully !!!")
 
@@ -167,6 +167,31 @@ class ContextualRAG:
             return OpenAI(model=model_name, system_prompt=system_prompt)
         else:
             raise ValueError("Unsupported service")
+
+    def load_reranker(self, reranker_service: RerankerService, top_n: int = 3):
+        """
+        Load the reranker only used for the contextualRAG.
+        """
+        logger.info("Loading reranker: %s", reranker_service)
+
+        supported_rerankers = [e.value for e in RerankerService]
+
+        if reranker_service == RerankerService.CohereReranker:
+            assert (
+                self.setting.api_keys.COHERE_API_KEY is not None
+            ), "COHERE_API_KEY is required for CohereReranker."
+
+            return CohereRerank(
+                top_n=top_n, api_key=self.setting.api_keys.COHERE_API_KEY
+            )
+
+        elif reranker_service == RerankerService.LLMReranker:
+            return LLMRerank(top_n=top_n, choice_batch_size=5)
+
+        else:
+            raise ValueError(
+                f"Unsupported reranker: {reranker_service}. Please choose from: {supported_rerankers}"
+            )
 
     def split_document(
         self,
@@ -338,7 +363,7 @@ class ContextualRAG:
         logger.debug("index_name: %s - document_id: %s", index_name, document_id)
         self.es.delete_documents(index_name=index_name, document_id=document_id)
 
-    def insert_data(
+    def qdrant_insert_data(
         self,
         collection_name: str,
         chunks: list[Document],
@@ -358,11 +383,11 @@ class ContextualRAG:
                 collection_name=collection_name,
                 vector=get_embedding(doc.text),
                 vector_id=doc.metadata["vector_id"],
-                payload={
-                    "document_id": str(document_id),
-                    "text": doc.text,
-                    "vector_id": doc.metadata["vector_id"],
-                },
+                payload=QdrantPayload(
+                    document_id=str(document_id),
+                    text=doc.text,
+                    vector_id=doc.metadata["vector_id"],
+                ),
             )
 
     def get_qdrant_vector_store_index(
@@ -458,7 +483,6 @@ class ContextualRAG:
         )
 
         langfuse_callback_handler.set_trace_params(
-            input=query,
             session_id=str(session_id),
         )
 
@@ -496,7 +520,7 @@ class ContextualRAG:
 
         logger.debug("Rank Fusion ...")
         combined_nodes: list[NodeWithScore] = []
-        combined_ids = list(set(semantic_doc_id + bm25_doc_id))
+        combined_ids: list[UUID] = list(set(semantic_doc_id + bm25_doc_id))
 
         # Compute score according to: https://github.com/anthropics/anthropic-cookbook/blob/main/skills/contextual-embeddings/guide.ipynb
         semantic_count = 0
@@ -542,15 +566,10 @@ class ContextualRAG:
                 both_count,
             )
 
-        reranker = CohereRerank(
-            top_n=top_n,
-            api_key=os.getenv("COHERE_API_KEY"),
-        )
-
         query_bundle = QueryBundle(query_str=query)
 
         logger.debug("Reranking ...")
-        retrieved_nodes = reranker.postprocess_nodes(combined_nodes, query_bundle)
+        retrieved_nodes = self.reranker.postprocess_nodes(combined_nodes, query_bundle)
 
         contexts = [n.node.text for n in retrieved_nodes]
 
