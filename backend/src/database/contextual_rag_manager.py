@@ -1,15 +1,10 @@
-import os
 import sys
 import json
 import uuid
-import requests
 from uuid import UUID
 from tqdm import tqdm
 from pathlib import Path
 from dotenv import load_dotenv
-
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
 from llama_index.core import (
     Settings,
     Document,
@@ -36,6 +31,7 @@ from llama_index.postprocessor.cohere_rerank import CohereRerank
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from .utils import get_embedding
 from src.utils import get_formatted_logger
@@ -62,20 +58,9 @@ langfuse = Langfuse()
 Settings.chunk_size = default_settings.embedding_config.chunk_size
 
 
-def get_cost(session_id: str):
-    url = f"https://cloud.langfuse.com/api/public/sessions/{session_id}"
-    response = requests.get(
-        url, auth=(os.getenv("LANGFUSE_PUBLIC_KEY"), os.getenv("LANGFUSE_SECRET_KEY"))
-    )
-
-    data = response.json()
-
-    print(data)
-
-
 class ContextualRAG:
     """
-    Contextual Retrieval-Augmented Generation (RAG) class to handle the indexing and searching of Contextual RAG.
+    Contextual Retrieval-Augmented Generation (RAG) class to handle the indexing and searching.
     """
 
     setting: GlobalSettings
@@ -126,7 +111,7 @@ class ContextualRAG:
         Create an instance of the ContextualRAG from the settings.
 
         Args:
-            setting (GlobalSettings): The settings for the RAG.
+            setting (GlobalSettings): The settings for the ContextualRAG.
 
         Returns:
             ContextualRAG: The instance of the ContextualRAG.

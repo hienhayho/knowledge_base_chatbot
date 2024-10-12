@@ -20,11 +20,17 @@ class APIKeys(BaseModel):
         OPENAI_API_KEY (Optional[str]): OpenAI API key
         LLAMA_PARSE_API_KEY (Optional[str]): LlamaParse API key for parsing .pdf files
         COHERE_API_KEY (Optional[str]): Cohere API key for reranking
+        LANGFUSE_SECRET_KEY (Optional[str]): Langfuse secret key
+        LANGFUSE_PUBLIC_KEY (Optional[str]): Langfuse public key
+        LANGFUSE_HOST (Optional[str]): Langfuse host
     """
 
     OPENAI_API_KEY: Optional[str] = None
     LLAMA_PARSE_API_KEY: Optional[str] = None
     COHERE_API_KEY: Optional[str] = None
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_HOST: Optional[str] = None
 
 
 class MinioConfig(BaseModel):
@@ -168,6 +174,9 @@ class GlobalSettings(BaseModel):
             OPENAI_API_KEY=os.getenv("OPENAI_API_KEY"),
             LLAMA_PARSE_API_KEY=os.getenv("LLAMA_PARSE_API_KEY"),
             COHERE_API_KEY=os.getenv("COHERE_API_KEY"),
+            LANGFUSE_SECRET_KEY=os.getenv("LANGFUSE_SECRET_KEY"),
+            LANGFUSE_PUBLIC_KEY=os.getenv("LANGFUSE_PUBLIC_KEY"),
+            LANGFUSE_HOST=os.getenv("LANGFUSE_HOST"),
         ),
         description="API keys configuration",
     )

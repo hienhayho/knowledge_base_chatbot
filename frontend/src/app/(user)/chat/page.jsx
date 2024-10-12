@@ -7,8 +7,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
-import { message } from 'antd';
-
+import { message } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -33,23 +32,23 @@ const ChatMainPage = () => {
 
     const successMessage = (content) => {
         messageApi.open({
-          type: 'success',
-          content: content,
-          duration: 1,
+            type: "success",
+            content: content,
+            duration: 1,
         });
-      };
+    };
 
-      const errorMessage = (content) => {
+    const errorMessage = (content) => {
         messageApi.open({
-          type: 'error',
-          content: content,
-          duration: 2,
+            type: "error",
+            content: content,
+            duration: 2,
         });
-      };
+    };
 
     const fetchAssistants = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant`, {
+            const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -65,7 +64,6 @@ const ChatMainPage = () => {
             successMessage("Successfully fetched assistants");
             setAssistants(sortedAssistants);
             setIsLoading(false);
-
         } catch (err) {
             errorMessage("Failed to fetch assistants");
             setError(err.message);
@@ -99,7 +97,9 @@ const ChatMainPage = () => {
                 throw new Error("Failed to delete assistant");
             }
 
-            successMessage(`Assistant: ${assistantId} was deleted successfully !`);
+            successMessage(
+                `Assistant: ${assistantId} was deleted successfully !`
+            );
 
             // Remove the deleted assistant from the state
             setAssistants(

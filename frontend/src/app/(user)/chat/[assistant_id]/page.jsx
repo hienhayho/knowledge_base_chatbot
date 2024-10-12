@@ -8,8 +8,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
 const ChatAssistantPage = () => {
     const router = useRouter();
@@ -31,7 +30,6 @@ const ChatAssistantPage = () => {
     const token = getCookie("access_token");
     const redirectUrl = encodeURIComponent(`/chat/${params.assistant_id}`);
 
-
     useEffect(() => {
         if (!token) {
             router.push(`/login?redirect=${redirectUrl}`);
@@ -51,12 +49,10 @@ const ChatAssistantPage = () => {
         fetchConversations();
     }, [assistant_id]);
 
-
-
     const fetchAssistants = async () => {
         const token = getCookie("access_token");
         try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant`, {
+            const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },

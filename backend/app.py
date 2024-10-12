@@ -35,7 +35,7 @@ async def delete_old_files():
                 if age > interval:
                     try:
                         file.unlink()
-                        logger.info(f"Deleted file: {file}")
+                        logger.warning(f"Deleted file: {file}")
                     except Exception as e:
                         logger.error(f"Error deleting file {file}: {e}")
                 else:

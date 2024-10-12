@@ -3,3 +3,4 @@ postgres-data/
 env/
 logs/
 uploads/
+downloads/

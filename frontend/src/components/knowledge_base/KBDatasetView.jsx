@@ -16,11 +16,10 @@ import UploadFileModal from "@/components/knowledge_base/UploadFileModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
-import { message } from 'antd';
+import { message } from "antd";
 import { useRouter } from "next/navigation";
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
 const ALLOWED_FILE_TYPES = [
     ".docx",

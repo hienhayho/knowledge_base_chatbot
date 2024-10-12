@@ -72,7 +72,7 @@ async def create_assistant(
             system_prompt=assistant.system_prompt,
             knowledge_base_id=assistant.knowledge_base_id,
             configuration=assistant.configuration,
-            user=current_user,
+            user=session.merge(current_user),
         )
         session.add(new_assistant)
         session.commit()
@@ -160,7 +160,9 @@ async def create_conversation(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
-        new_conversation = Conversations(assistant=assistant, user=current_user)
+        new_conversation = Conversations(
+            assistant=assistant, user=session.merge(current_user)
+        )
         session.add(new_conversation)
         session.commit()
         return new_conversation

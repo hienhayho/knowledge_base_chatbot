@@ -68,7 +68,7 @@ async def create_new_knowledge_base(
         kb = KnowledgeBases(
             name=kb_info.name,
             description=kb_info.description,
-            user=current_user,
+            user=session.merge(current_user),
             is_contextual_rag=True,
         )
 
