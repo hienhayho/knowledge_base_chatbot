@@ -47,7 +47,24 @@ def get_session(setting: GlobalSettings = Depends(get_default_setting)):
 
 
 @contextmanager
-def get_session_manager(session: Session):
+def get_session_manager(setting: GlobalSettings = Depends(get_default_setting)):
+    sql_url = setting.sql_config.url
+    if not sql_url:
+        sql_url = os.getenv("SQL_DB_URL")
+
+    assert sql_url, "SQL_DB_URL is not set"
+
+    engine = create_engine(
+        sql_url,
+        pool_pre_ping=True,
+        connect_args={
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        },
+    )
+    session = Session(engine, expire_on_commit=False)
     try:
         yield session
     finally:

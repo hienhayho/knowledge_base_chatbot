@@ -45,7 +45,7 @@ const KnowledgeBasePage = () => {
         messageApi.open({
             type: "error",
             content: content,
-            duration: 1.5,
+            duration: 3,
         });
     };
 

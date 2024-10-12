@@ -10,6 +10,7 @@ from .core import (
     get_minio_client,
     ElasticSearch,
     get_session,
+    get_session_manager,
     QdrantPayload,
     BaseVectorDatabase,
     QdrantVectorDatabase,
@@ -53,4 +54,5 @@ __all__ = [
     "MessageType",
     "EndStatus",
     "get_ws_manager",
+    "get_session_manager",
 ]

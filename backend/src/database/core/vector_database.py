@@ -154,7 +154,10 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             logger.debug(f"Collection {collection_name} does not exist")
             return
 
-        self.client.delete_collection(collection_name)
+        success = self.client.delete_collection(collection_name)
+
+        if success:
+            logger.debug(f"Collection {collection_name} deleted successfully!")
 
     def migrate_collection(
         self, source_collection: str, target_collection: str, batch_size: int = 100

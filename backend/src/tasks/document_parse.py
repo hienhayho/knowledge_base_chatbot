@@ -16,13 +16,13 @@ from src.database import (
     DatabaseManager,
     DocumentChunks,
     MinioClient,
-    get_session,
+    get_session_manager,
     get_db_manager,
 )
 
 logger = get_formatted_logger(__file__)
 
-db_session: Session = get_session(setting=default_settings)
+db_session: Session = get_session_manager(setting=default_settings)
 db_manager: DatabaseManager = get_db_manager(setting=default_settings)
 
 minio_client = MinioClient.from_setting(setting=default_settings)

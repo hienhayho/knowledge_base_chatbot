@@ -3,13 +3,12 @@ import threading
 from uuid import UUID
 from pathlib import Path
 from fastapi import Depends
-from sqlmodel import select
 from llama_index.core import Document
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from .contextual_rag_manager import ContextualRAG
-from .core import MinioClient, get_session, DocumentChunks
+from .core import MinioClient
 
 from src.utils import get_formatted_logger
 from src.constants import DocumentMetadata
@@ -179,29 +178,16 @@ class DatabaseManager:
             object_name=object_name,
         )
 
-        with get_session(setting=get_default_setting()) as session:
-            query_document_chunks = select(DocumentChunks).where(
-                DocumentChunks.document_id == document_id
-            )
-            document_chunks = session.exec(query_document_chunks).all()
+        self.contextual_rag_client.qdrant_client.delete_vector(
+            collection_name=knownledge_base_id,
+            document_id=document_id,
+        )
 
-            # Delete the document chunks before deleting the document
-            logger.debug(f"Removing: {document_id} from SQL Database ...")
-            for document_chunk in document_chunks:
-                session.delete(document_chunk)
-
-            session.commit()
-
-            self.contextual_rag_client.qdrant_client.delete_vector(
-                collection_name=knownledge_base_id,
+        if is_contextual_rag:
+            self.contextual_rag_client.es_delete_document(
+                index_name=knownledge_base_id,
                 document_id=document_id,
             )
-
-            if is_contextual_rag:
-                self.contextual_rag_client.es_delete_document(
-                    index_name=knownledge_base_id,
-                    document_id=document_id,
-                )
 
         logger.info(f"Removed: {document_id}")
 

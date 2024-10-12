@@ -439,16 +439,6 @@ async def merge_knowledge_bases(
                 detail="Knowledge Bases not found !",
             )
 
-        if any(
-            doc.status != FileStatus.PROCESSED
-            for kb in knowledge_bases
-            for doc in kb.documents
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Some documents are not processed or failed, so cannot merge these Knowledge Bases, please consider process or delete them",
-            )
-
         if any(kb.user_id != current_user.id for kb in knowledge_bases):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
