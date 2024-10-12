@@ -9,6 +9,9 @@
 First, please fill in your API Keys and [Langfuse](https://cloud.langfuse.com/) keys in [.env.production](.env.production), then run:
 
 ```bash
+cp .env.production .env
+cp .env.production frontend/.env.local
+
 docker compose up -d --build
 ```
 
