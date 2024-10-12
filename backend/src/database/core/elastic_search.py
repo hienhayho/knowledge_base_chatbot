@@ -201,7 +201,7 @@ class ElasticSearch:
             index_name (str): Name of the index to get all data
 
         Returns:
-            list[dict]: List of all data in the index
+            list[ElasticSearchResponse]: List of all data in the index
         """
         self.es_client.indices.refresh(index=index_name)
         response = self.es_client.search(

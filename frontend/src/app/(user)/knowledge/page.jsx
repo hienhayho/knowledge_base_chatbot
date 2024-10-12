@@ -152,9 +152,6 @@ const KnowledgeBasePage = () => {
 
             const newKnowledgeBase = await response.json();
             setKnowledgeBases([...knowledgeBases, newKnowledgeBase]);
-            router.push(
-                `/knowledge/${encodeURIComponent(newKnowledgeBase.id)}`
-            );
         } catch (err) {
             console.error("Error creating knowledge base:", err);
             // Here you might want to show an error message to the user

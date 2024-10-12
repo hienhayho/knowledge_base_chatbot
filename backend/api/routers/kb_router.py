@@ -16,7 +16,7 @@ from fastapi import (
 )
 
 from .user_router import get_current_user
-from src.settings import GlobalSettings, get_default_setting
+from src.settings import default_settings
 from api.models import (
     KnowledgeBaseRequest,
     KnowledgeBaseResponse,
@@ -46,10 +46,8 @@ logger = get_formatted_logger(__file__)
 
 kb_router = APIRouter()
 
-setting = GlobalSettings()
 
-
-UPLOAD_FOLDER = Path(setting.upload_temp_folder)
+UPLOAD_FOLDER = Path(default_settings.upload_temp_folder)
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 DOWNLOAD_FOLDER = Path("downloads")
@@ -177,7 +175,7 @@ async def upload_file(
         knowledge_base = document.knowledge_base
 
         minio_client.upload_file(
-            bucket_name=setting.upload_bucket_name,
+            bucket_name=default_settings.upload_bucket_name,
             object_name=document.file_path_in_minio,
             file_path=str(file_path),
         )
@@ -375,7 +373,6 @@ async def download_document(
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
     minIoClient: Annotated[MinioClient, Depends(get_minio_client)],
-    setting: Annotated[GlobalSettings, Depends(get_default_setting)],
 ):
     """
     Download document
@@ -399,7 +396,7 @@ async def download_document(
         file_path = DOWNLOAD_FOLDER / (f"{uuid.uuid4()}_" + document.file_name)
 
         minIoClient.download_file(
-            bucket_name=setting.upload_bucket_name,
+            bucket_name=default_settings.upload_bucket_name,
             object_name=document.file_path_in_minio,
             file_path=str(file_path),
         )

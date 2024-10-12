@@ -15,7 +15,7 @@ from src.database import (
     DatabaseManager,
     DocumentChunks,
     MinioClient,
-    get_session,
+    get_instance_session,
     get_db_manager,
 )
 
@@ -113,25 +113,24 @@ def parse_document(
 
     indexed_document = contextual_documents if is_contextual_rag else new_chunks
 
-    with get_session(setting=default_settings) as session:
-        for idx, chunk in enumerate(indexed_document):
-            document_chunk = DocumentChunks(
-                chunk_index=idx,
-                content=chunk.text,
-                document_id=document_id,
-                vector_id=chunk.metadata["vector_id"],
-            )
-            session.add(document_chunk)
-            session.commit()
-            session.refresh(document_chunk)
+    session = get_instance_session()
+    for idx, chunk in enumerate(indexed_document):
+        document_chunk = DocumentChunks(
+            chunk_index=idx,
+            content=chunk.text,
+            document_id=document_id,
+            vector_id=chunk.metadata["vector_id"],
+        )
+        session.add(document_chunk)
+        session.commit()
+        session.refresh(document_chunk)
 
-            self.update_state(
-                state="PROGRESS",
-                meta={
-                    "progress": 80 + math.ceil(20 / len(indexed_document) * (idx + 1))
-                },
-            )
-        session.close()
+        self.update_state(
+            state="PROGRESS",
+            meta={"progress": 80 + math.ceil(20 / len(indexed_document) * (idx + 1))},
+        )
+
+    session.close()
 
     file_path.unlink()
 
