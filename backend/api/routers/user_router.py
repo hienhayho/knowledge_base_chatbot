@@ -91,10 +91,12 @@ def get_user(
 
     if not username and not email:
         raise ValueError("Username or email is required")
-
-    query = select(Users).where(or_(Users.username == username, Users.email == email))
-    user = session.exec(query).first()
-    return user
+    with session as session_db:
+        query = select(Users).where(
+            or_(Users.username == username, Users.email == email)
+        )
+        user = session_db.exec(query).first()
+        return user
 
 
 def authenticate_user(session: Session, username: str, password: str) -> Users | bool:

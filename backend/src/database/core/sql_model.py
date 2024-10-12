@@ -40,9 +40,11 @@ def get_session(setting: GlobalSettings = Depends(get_default_setting)):
         },
     )
     SQLModel.metadata.create_all(engine)
+    session = Session(engine, expire_on_commit=False)
     try:
-        yield Session(engine, expire_on_commit=False)
+        yield session
     finally:
+        session.close()
         engine.dispose()
 
 
@@ -69,6 +71,7 @@ def get_session_manager(setting: GlobalSettings = Depends(get_default_setting)):
         yield session
     finally:
         session.close()
+        engine.dispose()
 
 
 class Users(SQLModel, table=True):

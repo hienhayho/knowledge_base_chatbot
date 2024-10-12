@@ -3,7 +3,6 @@ import math
 import celery
 import tempfile
 from pathlib import Path
-from sqlmodel import Session
 
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -16,13 +15,12 @@ from src.database import (
     DatabaseManager,
     DocumentChunks,
     MinioClient,
-    get_session_manager,
+    get_session,
     get_db_manager,
 )
 
 logger = get_formatted_logger(__file__)
 
-db_session: Session = get_session_manager(setting=default_settings)
 db_manager: DatabaseManager = get_db_manager(setting=default_settings)
 
 minio_client = MinioClient.from_setting(setting=default_settings)
@@ -115,7 +113,7 @@ def parse_document(
 
     indexed_document = contextual_documents if is_contextual_rag else new_chunks
 
-    with db_session as session:
+    with get_session(setting=default_settings) as session:
         for idx, chunk in enumerate(indexed_document):
             document_chunk = DocumentChunks(
                 chunk_index=idx,
@@ -133,6 +131,7 @@ def parse_document(
                     "progress": 80 + math.ceil(20 / len(indexed_document) * (idx + 1))
                 },
             )
+        session.close()
 
     file_path.unlink()
 
