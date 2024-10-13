@@ -166,6 +166,7 @@ class AssistantService:
             session.add(user_message)
             session.flush()
 
+            session_id = str(uuid.uuid4())
             assistant_config = {
                 "model": configuration["model"],
                 "service": configuration["service"],
@@ -173,7 +174,7 @@ class AssistantService:
                 "embedding_service": "openai",
                 "embedding_model_name": "text-embedding-3-small",
                 "collection_name": f"{assistant.knowledge_base_id}",
-                "conversation_id": conversation_id,
+                "session_id": session_id,
                 "is_contextual_rag": is_contextual_rag,
             }
 
@@ -181,7 +182,6 @@ class AssistantService:
 
             full_response = ""
 
-            session_id = str(uuid.uuid4())
             response = await assistant_instance.astream_chat(
                 message.content, message_history, session_id=session_id
             )

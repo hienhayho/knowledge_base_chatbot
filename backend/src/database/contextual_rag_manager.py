@@ -450,7 +450,7 @@ class ContextualRAG:
         Args:
             collection_name (str): The qdrant collection name (knowledge_bases.id).
             query (str): The query to search.
-            session_id (str | uuid.UUID): The session ID (conversations.id) to check cost in langfuse.
+            session_id (str | uuid.UUID): The session ID (messages.id) to check cost in langfuse.
             top_k (int): The top K documents to retrieve. Default to `150`.
             top_n (int): The top N documents to return after reranking. Default to `3`.
             debug (bool): debug mode.
@@ -460,15 +460,6 @@ class ContextualRAG:
         """
         logger.info(
             "collection_name: %s - top_k: %s - query: %s", collection_name, top_k, query
-        )
-
-        langfuse_context.update_current_observation(
-            input=query,
-            session_id=str(session_id),
-        )
-
-        langfuse_callback_handler.set_trace_params(
-            session_id=str(session_id),
         )
 
         bm25_weight = self.setting.contextual_rag_config.bm25_weight
@@ -558,6 +549,15 @@ class ContextualRAG:
 
         contexts = [n.node.text for n in retrieved_nodes]
 
+        langfuse_context.update_current_observation(
+            input=json.dumps(contexts),
+            session_id=str(session_id),
+        )
+
+        langfuse_callback_handler.set_trace_params(
+            session_id=str(session_id),
+        )
+
         logger.debug("Generating response ...")
         messages = [
             ChatMessage(
@@ -575,9 +575,10 @@ class ContextualRAG:
 
         response = self.llm.chat(messages).message.content
 
+        langfuse.flush()
+
         return response
 
-    @observe(capture_input=False)
     def search(
         self,
         session_id: str | uuid.UUID,
@@ -600,10 +601,6 @@ class ContextualRAG:
             top_n (int): The top N documents to return after reranking. Default to `3`.
             debug (bool): debug mode.
         """
-
-        langfuse_context.update_current_observation(
-            input=query, session_id=str(session_id)
-        )
 
         if is_contextual_rag:
             response = self.contextual_rag_search(

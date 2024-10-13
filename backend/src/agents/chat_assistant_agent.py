@@ -33,7 +33,7 @@ class ChatAssistant:
             load_kb_tool(
                 setting=default_settings,
                 collection_name=self.configuration.get("collection_name"),
-                conversation_id=self.configuration.get("conversation_id"),
+                session_id=self.configuration.get("session_id"),
                 is_contextual_rag=self.configuration.get("is_contextual_rag"),
             )
         ]

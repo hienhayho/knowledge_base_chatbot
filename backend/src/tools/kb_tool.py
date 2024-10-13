@@ -12,7 +12,7 @@ from src.settings import GlobalSettings
 def load_kb_tool(
     setting: GlobalSettings,
     collection_name: str,
-    conversation_id: str | UUID,
+    session_id: str | UUID,
     is_contextual_rag: bool = False,
 ) -> FunctionTool:
     contextual_rag = ContextualRAG.from_setting(setting=setting)
@@ -28,7 +28,7 @@ def load_kb_tool(
             str: Response from the contextual RAG
         """
         return contextual_rag.search(
-            session_id=conversation_id,
+            session_id=session_id,
             is_contextual_rag=is_contextual_rag,
             collection_name=collection_name,
             query=query,
