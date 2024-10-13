@@ -6,14 +6,27 @@ import { message } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
-const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
+interface IKnowledgeBase {
+    id: string;
+    name: string;
+}
+
+const CreateAssistantModal = ({
+    isOpen,
+    onClose,
+    onCreateSuccess,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onCreateSuccess: () => void;
+}) => {
     const router = useRouter();
     const [assistantName, setAssistantName] = useState("");
     const [description, setDescription] = useState("");
     const [systemPrompt, setSystemPrompt] = useState(
         "You are a helpful assistant."
     );
-    const [knowledgeBases, setKnowledgeBases] = useState([]);
+    const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
     const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState("");
     const [model, setModel] = useState("gpt-4o-mini");
     const [messageApi, contextHolder] = message.useMessage();
@@ -30,14 +43,14 @@ const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
         }
     }, [isOpen]);
 
-    const successMessage = (content) => {
+    const successMessage = (content: string) => {
         messageApi.open({
             type: "success",
             content: content,
         });
     };
 
-    const errorMessage = (content) => {
+    const errorMessage = (content: string) => {
         messageApi.open({
             type: "error",
             content: content,
@@ -110,7 +123,9 @@ const CreateAssistantModal = ({ isOpen, onClose, onCreateSuccess }) => {
                 console.error("Failed to create assistant");
             }
         } catch (error) {
-            errorMessage(`Error creating assistant: ${error.message}`);
+            errorMessage(
+                `Error creating assistant: ${(error as Error).message}`
+            );
             console.error("Error creating assistant:", error);
         }
     };

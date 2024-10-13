@@ -12,7 +12,7 @@ import { message, Button, Modal, Space, Select, Input } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
-interface IKnowledgeBase {
+export interface IKnowledgeBase {
     id: string;
     name: string;
     description: string;

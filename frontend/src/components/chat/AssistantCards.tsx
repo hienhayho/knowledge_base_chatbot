@@ -3,6 +3,8 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Cpu, Book, MoreVertical, Trash2, Loader } from "lucide-react";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
+import { IAssistant } from "@/app/(user)/chat/page";
+import { IKnowledgeBase } from "@/app/(user)/knowledge/page";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -14,12 +16,18 @@ const getRandomGradient = () => {
     return `linear-gradient(${angle}deg, ${color1}, ${color2})`;
 };
 
-const getBadgeText = (createdAt, updatedAt) => {
+const getBadgeText = (createdAt: string, updatedAt: string) => {
     const now = new Date();
     const created = new Date(createdAt);
     const updated = new Date(updatedAt);
-    const daysSinceCreation = (now - created) / (1000 * 60 * 60 * 24);
-    const daysSinceUpdate = (now - updated) / (1000 * 60 * 60 * 24);
+    if (isNaN(created.getTime()) || isNaN(updated.getTime())) {
+        throw new Error("Invalid date provided");
+    }
+
+    const daysSinceCreation =
+        (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    const daysSinceUpdate =
+        (now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24);
 
     if (daysSinceCreation <= 7) {
         return "New";
@@ -29,13 +37,23 @@ const getBadgeText = (createdAt, updatedAt) => {
     return null;
 };
 
-const AssistantCard = ({ assistant, onSelect, onDelete }) => {
-    const [knowledgeBase, setKnowledgeBase] = useState(null);
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [cost, setCost] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+const AssistantCard = ({
+    assistant,
+    onSelect,
+    onDelete,
+}: {
+    assistant: IAssistant;
+    onSelect: (assistant: IAssistant) => void;
+    onDelete: (assistantId: string) => void;
+}) => {
     const router = useRouter();
-    const menuRef = useRef(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const [knowledgeBase, setKnowledgeBase] = useState<IKnowledgeBase | null>(
+        null
+    );
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [cost, setCost] = useState<number | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
     const randomGradient = useMemo(() => getRandomGradient(), []);
     const token = getCookie("access_token");
     const redirectUrl = encodeURIComponent("/chat");
@@ -75,8 +93,11 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
             router.push(`/login?redirect=${redirectUrl}`);
             return;
         }
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(event.target as Node)
+            ) {
                 setIsMenuOpen(false);
             }
         };
@@ -87,12 +108,12 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
         };
     }, [menuRef]);
 
-    const handleMenuToggle = (e) => {
+    const handleMenuToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
         setIsMenuOpen(!isMenuOpen);
     };
 
-    const handleDelete = (e) => {
+    const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         setIsMenuOpen(false);
         if (window.confirm("Are you sure you want to delete this assistant?")) {
@@ -100,7 +121,7 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
         }
     };
 
-    const handleGetTotalCost = async (e) => {
+    const handleGetTotalCost = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isLoading) return;
 
@@ -121,7 +142,6 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
             setCost(data.total_cost);
         } catch (error) {
             console.error("Error fetching total cost:", error);
-            setCost("Error");
         } finally {
             setIsLoading(false);
         }
@@ -172,7 +192,9 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
             <div className="px-4 pt-2 pb-4">
                 <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
                     <Cpu size={16} className="inline mr-1" />
-                    {assistant.configuration.model}
+                    {assistant.configuration
+                        ? assistant.configuration.model
+                        : "No Info..."}
                 </span>
                 <div className="flex items-center text-gray-700 text-sm mt-2">
                     <Book size={16} className="mr-2" />
@@ -204,7 +226,15 @@ const AssistantCard = ({ assistant, onSelect, onDelete }) => {
     );
 };
 
-const AssistantCards = ({ assistants, onSelect, onDelete }) => {
+const AssistantCards = ({
+    assistants,
+    onSelect,
+    onDelete,
+}: {
+    assistants: IAssistant[];
+    onSelect: (assistant: IAssistant) => void;
+    onDelete: (assistantId: string) => void;
+}) => {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {assistants.map((assistant) => (

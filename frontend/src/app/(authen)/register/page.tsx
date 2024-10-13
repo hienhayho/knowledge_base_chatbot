@@ -88,6 +88,7 @@ const SignUp: React.FC = () => {
                 });
             }
         } catch (error) {
+            console.error(error);
             errorMessage({
                 content: "An unexpected error occurred",
             });

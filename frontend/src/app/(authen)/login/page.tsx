@@ -3,6 +3,7 @@
 import React, { useEffect, Suspense } from "react";
 import { setCookie } from "cookies-next";
 import { Button, Form, Input, FormProps, message } from "antd";
+import { ValidateErrorEntity } from "rc-field-form/lib/interface";
 import { useSearchParams, useRouter } from "next/navigation";
 
 interface LoginFormValues {
@@ -139,9 +140,14 @@ const SignInContent: React.FC = () => {
         }
     };
 
-    const onFinishFailed: FormProps["onFinishFailed"] = (errorInfo: any) => {
+    const onFinishFailed: FormProps["onFinishFailed"] = (
+        errorInfo: ValidateErrorEntity<LoginFormValues>
+    ) => {
+        console.error("Failed:", errorInfo);
         errorMessage({
-            content: "Please fill in all required fields.",
+            content: `Some fields are missing or invalid, ${errorInfo.errorFields.map(
+                (field) => field.name
+            )}`,
         });
     };
 
@@ -198,7 +204,7 @@ const SignInContent: React.FC = () => {
                         </Form.Item>
 
                         <div style={styles.footer}>
-                            Don't have an account?&nbsp;
+                            Don&apos;t have an account?&nbsp;
                             <a
                                 href="/register"
                                 className="text-blue-500 block ml-4"

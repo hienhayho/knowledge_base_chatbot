@@ -2,29 +2,35 @@
 
 import React, { useState } from "react";
 
-const KnowledgeBaseModal = ({ isOpen, onClose, onCreate }) => {
+const KnowledgeBaseModal = ({
+    isOpen,
+    onClose,
+    onCreate,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onCreate: (formData: {
+        name: string;
+        description: string;
+        useContextualRag: boolean;
+    }) => void;
+}) => {
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [useContextualRag, setUseContextualRag] = useState(false); // State for tracking contextual RAG
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const formData = {
             name,
             description,
-            useContextualRag, // Include the Contextual RAG status in the data
+            useContextualRag: true,
         };
         onCreate(formData);
         setName("");
         setDescription("");
-        setUseContextualRag(false); // Reset the RAG state after submission
         onClose();
-    };
-
-    const handleToggleRag = () => {
-        setUseContextualRag((prev) => !prev); // Toggle the state
     };
 
     return (
@@ -70,7 +76,6 @@ const KnowledgeBaseModal = ({ isOpen, onClose, onCreate }) => {
                                 required
                             />
                         </div>
-
                     </form>
                 </div>
                 <div className="p-6 bg-gray-50 rounded-b-lg flex justify-end space-x-3">

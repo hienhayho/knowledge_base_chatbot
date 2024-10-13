@@ -5,24 +5,41 @@ import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { Popover, message } from "antd";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
+const API_BASE_URL =
+    process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
 
-const ChatArea = ({ conversation, assistantId }) => {
+interface IMessage {
+    sender_type: string;
+    content: string;
+    media_type?: string;
+    type?: string;
+    metadata?: Record<string, string>;
+}
+
+const ChatArea = ({
+    conversation,
+    assistantId,
+}: {
+    conversation: { id: string };
+    assistantId: string;
+}) => {
     const [messageApi, contextHolder] = message.useMessage();
     const token = getCookie("access_token");
     const router = useRouter();
     const redirectUrl = encodeURIComponent(
         `/chat/${assistantId}?conversation=${conversation.id}`
     );
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState<IMessage[]>([]);
     const [inputMessage, setInputMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [streamingMessage, setStreamingMessage] = useState("");
+    const [streamingMessage, setStreamingMessage] = useState<IMessage | null>(
+        null
+    );
     const [isAssistantTyping, setIsAssistantTyping] = useState(false);
 
-    const messagesEndRef = useRef(null);
-    const textareaRef = useRef(null);
-    const websocketRef = useRef(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const websocketRef = useRef<WebSocket | null>(null);
     const ws_url = `ws://${API_BASE_URL.replace(
         /^https?:\/\//,
         ""
@@ -47,16 +64,25 @@ const ChatArea = ({ conversation, assistantId }) => {
                 case "message":
                     setIsAssistantTyping(false);
                     if (data.media_type === "text") {
-                        setStreamingMessage((prev) => ({
-                            ...prev,
-                            content: (prev?.content || "") + data.content,
-                            type: "text",
-                        }));
+                        setStreamingMessage((prev) => {
+                            if (prev === null) {
+                                return {
+                                    content: data.content,
+                                    type: "text",
+                                    sender_type: "assistant",
+                                };
+                            }
+                            return {
+                                ...prev,
+                                content: prev.content + data.content,
+                                type: "text",
+                            };
+                        });
                     } else if (data.media_type === "video") {
                         setStreamingMessage({
+                            content: data.content,
                             type: "video",
-                            content: data.content, // This should be the video URL
-                            metadata: data.metadata,
+                            sender_type: "assistant",
                         });
                     }
                     break;
@@ -70,16 +96,16 @@ const ChatArea = ({ conversation, assistantId }) => {
                     setIsAssistantTyping(false);
                     console.log("END MESSAGE");
 
-                    let newMessage = {
+                    const newMessage: IMessage = {
                         sender_type: "assistant",
                         media_type: "",
                         content: "",
                         metadata: {},
                     };
                     setStreamingMessage((prev) => {
-                        newMessage.type = prev.type;
-                        newMessage.content = prev.content;
-                        newMessage.metadata = prev.metadata;
+                        newMessage.type = prev?.type;
+                        newMessage.content = prev?.content || "";
+                        newMessage.metadata = prev?.metadata;
                         return null;
                     });
 
@@ -139,7 +165,7 @@ const ChatArea = ({ conversation, assistantId }) => {
         }
     };
 
-    const sendMessage = async (e) => {
+    const sendMessage = async (e: React.FormEvent | React.KeyboardEvent) => {
         e.preventDefault();
         if (!inputMessage.trim()) return;
 
@@ -169,7 +195,7 @@ const ChatArea = ({ conversation, assistantId }) => {
     };
 
     const scrollToBottom = () => {
-        const scrollableDiv = messagesEndRef.current?.parentNode;
+        const scrollableDiv = messagesEndRef.current?.parentNode as HTMLElement;
         const isUserNearBottom =
             scrollableDiv.scrollHeight - scrollableDiv.scrollTop <=
             scrollableDiv.clientHeight + 100;
@@ -179,12 +205,12 @@ const ChatArea = ({ conversation, assistantId }) => {
         }
     };
 
-    const handleInputChange = (e) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInputMessage(e.target.value);
         adjustTextareaHeight();
     };
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage(e);
@@ -198,7 +224,7 @@ const ChatArea = ({ conversation, assistantId }) => {
         }
     };
 
-    const renderMessage = (message) => {
+    const renderMessage = (message: IMessage) => {
         switch (message.type) {
             case "text":
                 return (
@@ -306,8 +332,8 @@ const ChatArea = ({ conversation, assistantId }) => {
                                 className="flex-1 bg-transparent border-none rounded-3xl py-4 px-5 focus:outline-none resize-none text-gray-800"
                                 rows={1}
                                 style={{
-                                    maxHeight: "150px", // Set a maximum height for the textarea
-                                    overflowY: "auto", // Allow scrolling when content exceeds the height
+                                    maxHeight: "150px",
+                                    overflowY: "auto",
                                 }}
                                 disabled={isLoading}
                             />
