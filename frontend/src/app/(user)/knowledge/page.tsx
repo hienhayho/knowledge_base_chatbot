@@ -12,40 +12,75 @@ import { message, Button, Modal, Space, Select, Input } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
-const KnowledgeBasePage = () => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isModalMergeOpen, setIsModalMergeOpen] = useState(false);
-    const [knowledgeBases, setKnowledgeBases] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+interface IKnowledgeBase {
+    id: string;
+    name: string;
+    description: string;
+    document_count: number;
+    last_updated: string;
+}
+
+interface ICreateKnowledgeBase {
+    name: string;
+    description: string;
+    useContextualRag: boolean;
+}
+
+interface IApiResponseError {
+    detail: string;
+}
+
+const KnowledgeBasePage: React.FC = () => {
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [isModalMergeOpen, setIsModalMergeOpen] = useState<boolean>(false);
+    const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [messageApi, contextHolder] = message.useMessage();
-    const [error, setError] = useState(null);
-    const token = getCookie("access_token");
+    const [error, setError] = useState<string | null>(null);
     const redirectURL = encodeURIComponent("/knowledge");
-    const router = useRouter();
-    const [knowledgeBasesInfo, setKnowledgeBasesInfo] = useState([]);
-    const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState([]);
+    const [knowledgeBasesInfo, setKnowledgeBasesInfo] = useState<
+        { label: string; value: string }[]
+    >([]);
+    const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<
+        string[]
+    >([]);
     const [newKnowledgeBaseName, setNewKnowledgeBaseName] =
-        useState("Merged KB");
+        useState<string>("Merged KB");
     const [newKnowledgeBaseDescription, setNewKnowledgeBaseDescription] =
-        useState("Merged KB description");
+        useState<string>("Merged KB description");
+
+    const router = useRouter();
+    const token = getCookie("access_token");
 
     const showMergeModal = () => {
         setIsModalMergeOpen(true);
     };
 
-    const successMessage = (content) => {
+    const successMessage = ({
+        content,
+        duration,
+    }: {
+        content: string;
+        duration?: number;
+    }) => {
         messageApi.open({
             type: "success",
             content: content,
-            duration: 1,
+            duration: duration || 2,
         });
     };
 
-    const errorMessage = (content) => {
+    const errorMessage = ({
+        content,
+        duration,
+    }: {
+        content: string;
+        duration?: number;
+    }) => {
         messageApi.open({
             type: "error",
             content: content,
-            duration: 3,
+            duration: duration || 2,
         });
     };
 
@@ -65,22 +100,29 @@ const KnowledgeBasePage = () => {
                 }),
             });
 
-            const data = await response.json();
-            console.log(data);
+            const data: IKnowledgeBase | IApiResponseError =
+                await response.json();
 
             if (!response.ok) {
-                errorMessage(data.detail);
+                errorMessage({
+                    content: (data as IApiResponseError).detail,
+                });
                 return;
             }
-            successMessage("Successfully merged knowledge bases");
+
+            successMessage({
+                content: "Knowledge bases merged successfully",
+            });
             setKnowledgeBases([
                 ...knowledgeBases.filter(
                     (kb) => !selectedKnowledgeBases.includes(kb.id)
                 ),
-                data,
+                data as IKnowledgeBase,
             ]);
         } catch (err) {
-            errorMessage("Failed to merge knowledge bases");
+            errorMessage({
+                content: "Failed to merge knowledge bases",
+            });
             console.error("Error merging knowledge bases:", err);
         }
     };
@@ -89,7 +131,7 @@ const KnowledgeBasePage = () => {
         setIsModalMergeOpen(false);
     };
 
-    const handleChange = (value) => {
+    const handleChange = (value: string[]) => {
         setSelectedKnowledgeBases(value);
     };
 
@@ -111,27 +153,27 @@ const KnowledgeBasePage = () => {
                     throw new Error("Failed to fetch knowledge bases");
                 }
 
-                const data = await response.json();
+                const data: IKnowledgeBase[] = await response.json();
                 setKnowledgeBasesInfo(
-                    data.map((kb) => {
-                        return {
-                            label: kb.name,
-                            value: kb.id,
-                        };
-                    })
+                    data.map((kb) => ({
+                        label: kb.name,
+                        value: kb.id,
+                    }))
                 );
                 setKnowledgeBases(data);
                 setIsLoading(false);
             } catch (err) {
-                setError(err.message);
+                setError((err as Error).message);
                 setIsLoading(false);
             }
         };
 
         fetchKnowledgeBases();
-    }, []);
+    }, [token, redirectURL, router]);
 
-    const handleCreateKnowledgeBase = async (formData) => {
+    const handleCreateKnowledgeBase = async (
+        formData: ICreateKnowledgeBase
+    ) => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/kb/create`, {
                 method: "POST",
@@ -150,15 +192,22 @@ const KnowledgeBasePage = () => {
                 throw new Error("Failed to create knowledge base");
             }
 
-            const newKnowledgeBase = await response.json();
+            const newKnowledgeBase: IKnowledgeBase = await response.json();
+
+            successMessage({
+                content: "Knowledge base created successfully",
+            });
+
             setKnowledgeBases([...knowledgeBases, newKnowledgeBase]);
         } catch (err) {
             console.error("Error creating knowledge base:", err);
-            // Here you might want to show an error message to the user
+            errorMessage({
+                content: "Failed to create knowledge base",
+            });
         }
     };
 
-    const handleDeleteKnowledgeBase = async (id) => {
+    const handleDeleteKnowledgeBase = async (id: string) => {
         try {
             messageApi.open({
                 type: "loading",
@@ -179,20 +228,30 @@ const KnowledgeBasePage = () => {
             messageApi.destroy();
 
             if (!response.ok) {
-                throw new Error("Failed to delete knowledge base");
+                errorMessage({
+                    content: "Failed to delete knowledge base",
+                });
+                return;
             }
 
             setKnowledgeBases(knowledgeBases.filter((kb) => kb.id !== id));
+
+            successMessage({
+                content: "Deleted successfully",
+            });
         } catch (err) {
             console.error("Error deleting knowledge base:", err);
+            errorMessage({
+                content: "Failed to delete knowledge base",
+            });
         }
     };
 
-    const handleKnowledgeBaseClick = (id) => {
+    const handleKnowledgeBaseClick = (id: string) => {
         router.push(`/knowledge/${encodeURIComponent(id)}`);
     };
 
-    const formatDate = (dateString) => {
+    const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date
             .toLocaleString("en-GB", {

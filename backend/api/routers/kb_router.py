@@ -147,19 +147,6 @@ async def upload_file(
                 detail="You are not allowed to upload to this Knowledge Base",
             )
 
-        # query = select(Documents).where(
-        #     Documents.knowledge_base_id == knowledge_base_id,
-        #     Documents.file_name == file.filename,
-        # )
-
-        # document_exist = session.exec(query).first()
-
-        # if document_exist:
-        #     raise HTTPException(
-        #         status_code=status.HTTP_409_CONFLICT,
-        #         detail="File already exists in the Knowledge Base",
-        #     )
-
         document = Documents(
             file_name=file.filename,
             file_path_in_minio=f"{uuid.uuid4()}_{file.filename}",
@@ -189,6 +176,7 @@ async def upload_file(
             file_type=document.file_type,
             status=document.status,
             knowledge_base=knowledge_base,
+            created_at=document.created_at,
         )
 
 
@@ -297,11 +285,10 @@ async def get_document_status(
 
         elif state == "PROGRESS":
             response["status"] = FileStatus.PROCESSING
-            response["metadata"] = task.info
+            response["progress"] = task.info["progress"]
 
         session.add(document)
         session.commit()
-
         return response
 
 

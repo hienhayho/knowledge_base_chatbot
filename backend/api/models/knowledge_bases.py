@@ -97,6 +97,11 @@ class UploadFileResponse(BaseModel):
         title="Status of the Document",
         description="Status of the Document",
     )
+    created_at: datetime = Field(
+        ...,
+        title="Created At time",
+        description="Created At time",
+    )
     knowledge_base: KnowledgeBases = Field(
         ...,
         title="Knowledge Base",

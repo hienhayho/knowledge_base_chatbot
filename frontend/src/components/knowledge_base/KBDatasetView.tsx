@@ -16,8 +16,8 @@ import UploadFileModal from "@/components/knowledge_base/UploadFileModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
-import { message } from "antd";
 import { useRouter } from "next/navigation";
+import { message } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -40,20 +40,46 @@ const ALLOWED_FILE_TYPES = [
     ".mp4",
 ];
 
-const DatasetView = ({ knowledgeBaseID }) => {
+interface Document {
+    id: string;
+    file_name: string;
+    created_at: string;
+    file_type: string;
+    status: string;
+    progress?: number;
+}
+
+interface KnowledgeBase {
+    name: string;
+    documents: Document[];
+}
+
+interface IUploadFile {
+    doc_id: string;
+    file_name: string;
+    file_type: string;
+    created_at: string;
+    status: string;
+}
+
+const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
+    knowledgeBaseID,
+}) => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-    const [knowledgeBase, setKnowledgeBase] = useState(null);
+    const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(
+        null
+    );
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [documents, setDocuments] = useState([]);
+    const [error, setError] = useState<string | null>(null);
+    const [documents, setDocuments] = useState<Document[]>([]);
+
+    const [messageApi, contextHolder] = message.useMessage();
     const router = useRouter();
-    const token = getCookie("access_token");
+    const token = getCookie("access_token") as string | undefined;
     const redirectURL = encodeURIComponent(`/knowledge/${knowledgeBaseID}`);
 
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
-            const token = getCookie("access_token");
-
             if (!token) {
                 router.push(`/login?redirect=${redirectURL}`);
                 return;
@@ -70,26 +96,26 @@ const DatasetView = ({ knowledgeBaseID }) => {
                 if (!response.ok) {
                     throw new Error("Failed to fetch knowledge base data");
                 }
-                const data = await response.json();
+                const data: KnowledgeBase = await response.json();
 
-                console.log(data);
                 setKnowledgeBase(data);
                 setDocuments(data.documents);
                 setIsLoading(false);
-            } catch (err) {
-                setError(err.message);
+            } catch (error) {
+                console.error("Error fetching knowledge base data:", error);
+                setError((error as Error).message);
                 setIsLoading(false);
             }
         };
 
         fetchKnowledgeBase();
-    }, [knowledgeBaseID]);
+    }, [knowledgeBaseID, token, router, redirectURL]);
 
     useEffect(() => {
         const checkProcessingDocuments = async () => {
-            const token = getCookie("access_token");
             if (!token) {
-                window.location.href = `/login?redirect=${redirectURL}`;
+                router.push(`/login?redirect=${redirectURL}`);
+                return;
             }
             const processingDocs = documents.filter(
                 (doc) => doc.status === "processing"
@@ -116,7 +142,10 @@ const DatasetView = ({ knowledgeBaseID }) => {
                             (s) => s.id === doc.id
                         );
                         return updatedStatus
-                            ? { ...doc, ...updatedStatus }
+                            ? {
+                                  ...doc,
+                                  ...updatedStatus,
+                              }
                             : doc;
                     })
                 );
@@ -126,16 +155,44 @@ const DatasetView = ({ knowledgeBaseID }) => {
         const intervalId = setInterval(checkProcessingDocuments, 5000);
 
         return () => clearInterval(intervalId);
-    }, [documents]);
+    }, [documents, token, redirectURL]);
 
-    const handleUpload = async (files) => {
-        const token = getCookie("access_token");
+    const successMessage = ({
+        content,
+        duration = 2,
+    }: {
+        content: string;
+        duration?: number;
+    }) => {
+        messageApi.open({
+            type: "success",
+            content: content,
+            duration: duration,
+        });
+    };
+
+    const errorMessage = ({
+        content,
+        duration = 2,
+    }: {
+        content: string;
+        duration?: number;
+    }) => {
+        messageApi.open({
+            type: "error",
+            content: content,
+            duration: duration,
+        });
+    };
+
+    const handleUpload = async (files: FileList) => {
         if (!token) {
             window.location.href = `/login?redirect=${redirectURL}`;
+            return;
         }
         for (const file of files) {
             const fileExtension =
-                "." + file.name.split(".").pop().toLowerCase();
+                "." + file.name.split(".").pop()?.toLowerCase();
             if (!ALLOWED_FILE_TYPES.includes(fileExtension)) {
                 setError(
                     `File type ${fileExtension} is not allowed. Allowed types are: ${ALLOWED_FILE_TYPES.join(
@@ -167,7 +224,7 @@ const DatasetView = ({ knowledgeBaseID }) => {
                     );
                 }
 
-                const result = await response.json();
+                const result: IUploadFile = await response.json();
                 setDocuments((prevDocuments) => [
                     ...prevDocuments,
                     {
@@ -178,16 +235,27 @@ const DatasetView = ({ knowledgeBaseID }) => {
                         status: "uploaded",
                     },
                 ]);
+
+                successMessage({
+                    content: `File ${file.name} uploaded successfully`,
+                });
             } catch (error) {
                 console.error("Error uploading document:", error);
-                setError(error.message);
+                errorMessage({
+                    content: (error as Error).message,
+                });
+                setError((error as Error).message);
             }
         }
     };
 
-    const handleDownloadDocument = async (documentId, fileName) => {
+    const handleDownloadDocument = async (
+        documentId: string,
+        fileName: string
+    ) => {
         if (!token) {
             window.location.href = `/login?redirect=${redirectURL}`;
+            return;
         }
         try {
             const response = await fetch(
@@ -199,8 +267,16 @@ const DatasetView = ({ knowledgeBaseID }) => {
                 }
             );
             if (!response.ok) {
-                throw new Error("Failed to download document");
+                errorMessage({
+                    content: "Failed to download document",
+                });
+                return;
             }
+
+            successMessage({
+                content: `Get ${fileName} successfully !!!`,
+            });
+
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -211,11 +287,14 @@ const DatasetView = ({ knowledgeBaseID }) => {
             window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error("Error downloading document:", error);
-            setError(error.message);
+            errorMessage({
+                content: (error as Error).message,
+            });
+            setError((error as Error).message);
         }
     };
 
-    const handleDeleteDocument = async (documentId) => {
+    const handleDeleteDocument = async (documentId: string) => {
         if (window.confirm("Are you sure you want to delete this document?")) {
             try {
                 const response = await fetch(
@@ -228,25 +307,38 @@ const DatasetView = ({ knowledgeBaseID }) => {
                     }
                 );
                 if (!response.ok) {
-                    throw new Error("Failed to delete document");
+                    const errorData = await response.json();
+                    errorMessage({
+                        content:
+                            errorData.detail || "Failed to delete document",
+                    });
+                    return;
                 }
+
+                successMessage({
+                    content: "Document deleted successfully",
+                });
+
                 setDocuments((prevDocuments) =>
                     prevDocuments.filter((doc) => doc.id !== documentId)
                 );
             } catch (error) {
                 console.error("Error deleting document:", error);
-                setError(error.message);
+                errorMessage({
+                    content: (error as Error).message,
+                });
+                setError((error as Error).message);
             }
         }
     };
 
-    const handleProcessDocument = async (documentId) => {
-        const token = getCookie("access_token");
+    const handleProcessDocument = async (documentId: string) => {
         if (!token) {
             const redirectURL = encodeURIComponent(
                 `/knowledge/${knowledgeBaseID}`
             );
-            window.location.href = `/login?redirect=${redirectURL}`;
+            router.push(`/login?redirect=${redirectURL}`);
+            return;
         }
         try {
             const response = await fetch(
@@ -269,17 +361,23 @@ const DatasetView = ({ knowledgeBaseID }) => {
             setDocuments((prevDocuments) =>
                 prevDocuments.map((doc) =>
                     doc.id === documentId
-                        ? { ...doc, status: "processing" }
+                        ? {
+                              ...doc,
+                              status: "processing",
+                          }
                         : doc
                 )
             );
         } catch (error) {
             console.error("Error processing document:", error);
-            setError(error.message);
+            errorMessage({
+                content: (error as Error).message,
+            });
+            setError((error as Error).message);
         }
     };
 
-    const getFileIcon = (fileName) => {
+    const getFileIcon = (fileName: string) => {
         if (fileName.endsWith(".pdf")) {
             return (
                 <FileIcon
@@ -301,9 +399,9 @@ const DatasetView = ({ knowledgeBaseID }) => {
         }
     };
 
-    const truncateFileName = (fileName, maxLength = 80) => {
+    const truncateFileName = (fileName: string, maxLength = 80) => {
         if (fileName.length <= maxLength) return fileName;
-        const extension = fileName.split(".").pop();
+        const extension = fileName.split(".").pop() || "";
         const nameWithoutExtension = fileName.slice(0, -(extension.length + 1));
         const truncatedName =
             nameWithoutExtension.slice(0, maxLength - 3 - extension.length) +
@@ -313,9 +411,11 @@ const DatasetView = ({ knowledgeBaseID }) => {
 
     if (isLoading) return <LoadingSpinner />;
     if (error) return <ErrorComponent message={error} />;
+    if (!knowledgeBase) return null;
 
     return (
         <div className="flex h-screen bg-gray-100">
+            {contextHolder}
             <aside className="w-64 bg-white shadow-md">
                 <div className="p-4">
                     <div className="w-10 h-10 bg-gray-200 rounded-full mb-4"></div>
@@ -342,7 +442,6 @@ const DatasetView = ({ knowledgeBaseID }) => {
                 </nav>
             </aside>
 
-            {/* Main content */}
             <main className="flex-1 p-8">
                 <div className="mb-4">
                     <h1 className="text-2xl font-bold">Dataset</h1>
@@ -440,8 +539,8 @@ const DatasetView = ({ knowledgeBaseID }) => {
                                         </td>
                                         <td className="p-2">
                                             {doc.status === "processing" &&
-                                            doc.progress ? (
-                                                `Processing (${doc.progress.current}/${doc.progress.total})`
+                                            doc.progress !== undefined ? (
+                                                `Processing: ${doc.progress}%`
                                             ) : doc.status === "processed" ? (
                                                 <span className="flex items-center">
                                                     <Check
@@ -512,7 +611,7 @@ const DatasetView = ({ knowledgeBaseID }) => {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="5"
+                                        colSpan={5}
                                         className="text-center py-4"
                                     >
                                         <div className="flex flex-col items-center text-gray-400">
