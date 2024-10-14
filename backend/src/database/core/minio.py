@@ -74,7 +74,7 @@ class MinioClient:
         except MaxRetryError:
             raise ConnectionError("Minio connection failed")
 
-    def check_bucket_exists(self, bucket_name) -> bool:
+    def check_bucket_exists(self, bucket_name: str) -> bool:
         """
         Check if bucket exists in Minio
 
