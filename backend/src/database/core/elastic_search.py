@@ -1,7 +1,8 @@
 import sys
+import logging
 from uuid import UUID
 from pathlib import Path
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_fixed, after_log, before_sleep_log
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
@@ -22,6 +23,13 @@ class ElasticSearch:
 
     url: str = Field(..., description="Elastic Search URL")
 
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_fixed(5),
+        after=after_log(logger, logging.DEBUG),
+        before_sleep=before_sleep_log(logger, logging.DEBUG),
+    )
     def __init__(self, url: str):
         """
         Initialize the ElasticSearch client.
@@ -34,7 +42,6 @@ class ElasticSearch:
         self.test_connection()
         logger.info("ElasticSearch client initialized successfully !!!")
 
-    @retry(stop=stop_after_attempt(10), wait=wait_fixed(10))
     def test_connection(self):
         """
         Test the connection with the ElasticSearch server.

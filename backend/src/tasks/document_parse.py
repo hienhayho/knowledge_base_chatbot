@@ -16,14 +16,13 @@ from src.database import (
     DocumentChunks,
     MinioClient,
     get_instance_session,
-    get_db_manager,
 )
 
 logger = get_formatted_logger(__file__)
 
-db_manager: DatabaseManager = get_db_manager(setting=default_settings)
+db_manager: DatabaseManager = DatabaseManager.from_setting(setting=default_settings)
 
-minio_client = MinioClient.from_setting(setting=default_settings)
+minio_client: MinioClient = MinioClient.from_setting(setting=default_settings)
 
 
 class FileExtractor:
@@ -46,7 +45,7 @@ def parse_document(
     file_path_in_minio: str,
     document_id: str,
     knowledge_base_id: str,
-    is_contextual_rag: bool = False,
+    is_contextual_rag: bool = True,
 ):
     """
     Parse a document.
@@ -55,6 +54,7 @@ def parse_document(
         file_path_in_minio (str | Path): The file path in Minio.
         document_id (str): The document ID from Documents table.
         knowledge_base_id (str): The knowledge base ID as collection name for vector database and also index name for elasticsearch.
+        is_contextual_rag (bool): Whether to use contextual RAG or not (deprecated). Always set to `True`.
 
     Returns:
         dict: The task ID and status.
@@ -62,12 +62,15 @@ def parse_document(
     extension = Path(file_path_in_minio).suffix
     file_path = Path(tempfile.mktemp(suffix=extension))
 
+    self.update_state(state="PROGRESS", meta={"progress": 0})
+
     minio_client.download_file(
         bucket_name=default_settings.upload_bucket_name,
         object_name=file_path_in_minio,
         file_path=file_path,
     )
-    self.update_state(state="PROGRESS", meta={"progress": 0})
+
+    self.update_state(state="PROGRESS", meta={"progress": 5})
 
     document = parse_multiple_files(
         str(file_path),

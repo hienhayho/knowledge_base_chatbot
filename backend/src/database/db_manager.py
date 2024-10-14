@@ -36,6 +36,19 @@ class DatabaseManager:
 
         logger.info("DatabaseManager initialized successfully !!!")
 
+    @classmethod
+    def from_setting(cls, setting: GlobalSettings) -> "DatabaseManager":
+        """
+        Initialize the database manager from setting
+
+        Args:
+            setting (GlobalSettings): Global settings
+
+        Returns:
+            DatabaseManager: Database manager instance
+        """
+        return cls(setting)
+
     def upload_file(self, object_name: str, file_path: str | Path):
         """
         Upload file to Minio

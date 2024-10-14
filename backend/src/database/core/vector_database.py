@@ -1,10 +1,20 @@
 import sys
+import logging
 from uuid import UUID
 from pathlib import Path
 from abc import ABC, abstractmethod
 from qdrant_client.http import models
 from qdrant_client import QdrantClient
 from typing import List, Dict, Any, Optional
+from qdrant_client.http.exceptions import ResponseHandlingException
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    after_log,
+    before_sleep_log,
+    retry_if_exception_type,
+)
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -22,6 +32,13 @@ class BaseVectorDatabase(ABC):
 
         Args:
             collection_name (str): Collection name to check
+        """
+        pass
+
+    @abstractmethod
+    def test_connection(self):
+        """
+        Test the connection with the server.
         """
         pass
 
@@ -61,12 +78,30 @@ class QdrantVectorDatabase(BaseVectorDatabase):
     QdrantVectorDatabase client
     """
 
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_fixed(5),
+        after=after_log(logger, logging.DEBUG),
+        before_sleep=before_sleep_log(logger, logging.DEBUG),
+        retry=retry_if_exception_type(ConnectionError),
+    )
     def __init__(self, url: str, distance: str = models.Distance.COSINE) -> None:
         self.url = url
         self.client = QdrantClient(url)
         self.distance = distance
+        self.test_connection()
 
         logger.info("Qdrant client initialized successfully !!!")
+
+    def test_connection(self):
+        """
+        Test the connection with the Qdrant server.
+        """
+        try:
+            self.client.get_collections()
+        except ResponseHandlingException:
+            raise ConnectionError("Qdrant connection failed")
 
     def check_collection_exists(self, collection_name: str):
         return self.client.collection_exists(collection_name)

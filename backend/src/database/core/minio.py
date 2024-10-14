@@ -1,9 +1,11 @@
 import sys
+import logging
 from minio import Minio
-from typing import Annotated
-from fastapi import Depends
 from pathlib import Path
-from tenacity import retry, stop_after_attempt
+from fastapi import Depends
+from typing import Annotated
+from urllib3.exceptions import MaxRetryError
+from tenacity import retry, stop_after_attempt, wait_fixed, after_log, before_sleep_log
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from src.settings import GlobalSettings, get_default_setting
@@ -28,6 +30,13 @@ class MinioClient:
     Minio client to interact with Minio server
     """
 
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(4),
+        wait=wait_fixed(4),
+        after=after_log(logger, logging.DEBUG),
+        before_sleep=before_sleep_log(logger, logging.DEBUG),
+    )
     def __init__(
         self, url: str, access_key: str, secret_key: str, secure: bool = False
     ):
@@ -44,6 +53,7 @@ class MinioClient:
         self.client = Minio(
             endpoint=url, access_key=access_key, secret_key=secret_key, secure=secure
         )
+        self.test_connection()
         logger.info("MinioClient initialized successfully !!!")
 
     @classmethod
@@ -54,6 +64,15 @@ class MinioClient:
             secret_key=setting.minio_config.secret_key,
             secure=setting.minio_config.secure,
         )
+
+    def test_connection(self):
+        """
+        Test the connection with the Minio server by listing buckets
+        """
+        try:
+            self.client.list_buckets()
+        except MaxRetryError:
+            raise ConnectionError("Minio connection failed")
 
     def check_bucket_exists(self, bucket_name) -> bool:
         """

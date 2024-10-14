@@ -38,7 +38,7 @@ def get_cost_from_trace_id(trace_id: str | UUID) -> float:
     data = response.json()
 
     if "totalCost" not in data:
-        logger.error(
+        logger.warning(
             f"Failed to get cost for trace ID: {trace_id}, response: {response.text}. So returning 0.0"
         )
         return 0.0
@@ -64,7 +64,7 @@ def get_cost_from_session_id(session_id: str | UUID) -> float:
     response = requests.get(url, auth=(LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY))
 
     if response.status_code != 200:
-        logger.error(
+        logger.warning(
             f"Failed to get cost for session ID: {session_id}, status code: {response.status_code}, response: {response.text}. So returning 0.0"
         )
         return 0.0
