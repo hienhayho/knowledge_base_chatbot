@@ -134,6 +134,9 @@ const ChatArea = ({
             fetchConversationHistory();
             connectWebSocket();
         }
+        if (textareaRef.current) {
+            textareaRef.current.focus();
+        }
 
         return () => {
             if (websocketRef.current) {
@@ -258,11 +261,12 @@ const ChatArea = ({
     };
 
     return (
-        <div className="flex flex-col h-full bg-white">
+        <div className="flex flex-col h-screen bg-white">
+            {" "}
             {contextHolder}
             <div
                 className="flex-1 overflow-y-auto p-4"
-                style={{ maxHeight: "80vh" }}
+                style={{ maxHeight: "90vh" }}
             >
                 <div className="max-w-4xl mx-auto mt-20">
                     {messages.map((message, index) => (
@@ -316,12 +320,10 @@ const ChatArea = ({
                     <div ref={messagesEndRef} />
                 </div>
             </div>
-            <div>
-                <form
-                    onSubmit={sendMessage}
-                    className="p-1 border-t border-gray-200"
-                >
-                    <div className="max-w-4xl mx-auto max-h-10">
+            <div className="sticky bottom-0 w-full bg-white p-2 border-t border-gray-200">
+                {" "}
+                <form onSubmit={sendMessage} className="p-1">
+                    <div className="max-w-4xl mx-auto">
                         <div className="flex items-end bg-white rounded-3xl shadow-lg border border-gray-300 shrink">
                             <textarea
                                 ref={textareaRef}
@@ -332,7 +334,7 @@ const ChatArea = ({
                                 className="flex-1 bg-transparent border-none rounded-3xl py-4 px-5 focus:outline-none resize-none text-gray-800"
                                 rows={1}
                                 style={{
-                                    maxHeight: "150px",
+                                    maxHeight: "10vh",
                                     overflowY: "auto",
                                 }}
                                 disabled={isLoading}

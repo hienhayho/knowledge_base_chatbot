@@ -46,7 +46,7 @@ const KnowledgeBaseCard = ({
 
     return (
         <div
-            className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300 w-full h-full relative"
+            className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300 w-full h-full relative cursor-pointer"
             onClick={onClick}
         >
             <div className="flex justify-start items-start mb-4">

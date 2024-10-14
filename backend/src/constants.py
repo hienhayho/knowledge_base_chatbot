@@ -163,6 +163,8 @@ class RerankerService(str, enum.Enum):
 
     CohereReranker = "cohere_reranker"
     LLMReranker = "llm_reranker"
+    RankGPTReranker = "rankgpt_reranker"
+    RankLLMReranker = "rankllm_reranker"
 
 
 class ErrorResponse(BaseModel):

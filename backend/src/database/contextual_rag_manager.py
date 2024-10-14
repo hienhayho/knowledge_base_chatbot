@@ -1,6 +1,7 @@
 import sys
 import json
 import uuid
+import torch
 from uuid import UUID
 from tqdm import tqdm
 from pathlib import Path
@@ -16,7 +17,6 @@ from langfuse import Langfuse
 from qdrant_client import QdrantClient
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
-from llama_index.core.postprocessor import LLMRerank
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.schema import NodeWithScore, Node
 from langfuse.decorators import langfuse_context, observe
@@ -27,9 +27,13 @@ from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.base.embeddings.base import BaseEmbedding
-from llama_index.postprocessor.cohere_rerank import CohereRerank
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.llms.function_calling import FunctionCallingLLM
+
+from llama_index.core.postprocessor import LLMRerank
+from llama_index.postprocessor.cohere_rerank import CohereRerank
+from llama_index.postprocessor.rankllm_rerank import RankLLMRerank
+from llama_index.postprocessor.rankgpt_rerank import RankGPTRerank
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -172,6 +176,19 @@ class ContextualRAG:
 
         elif reranker_service == RerankerService.LLMReranker:
             return LLMRerank(top_n=top_n, choice_batch_size=5)
+
+        elif reranker_service == RerankerService.RankGPTReranker:
+            return RankGPTRerank(
+                llm=self.llm,
+                top_n=top_n,
+            )
+
+        elif reranker_service == RerankerService.RankLLMReranker:
+            assert torch.cuda.is_available(), "GPU is required for RankLLMReranker."
+            return RankLLMRerank(
+                llm=self.llm,
+                top_n=top_n,
+            )
 
         else:
             raise ValueError(
@@ -432,6 +449,8 @@ class ContextualRAG:
 
         response = query_engine.query(query)
 
+        langfuse.flush()
+
         return response
 
     @observe(capture_input=False)
@@ -542,6 +561,10 @@ class ContextualRAG:
                 both_count,
             )
 
+        langfuse_callback_handler.set_trace_params(
+            session_id=str(session_id),
+        )
+
         query_bundle = QueryBundle(query_str=query)
 
         logger.debug("Reranking ...")
@@ -551,10 +574,6 @@ class ContextualRAG:
 
         langfuse_context.update_current_observation(
             input=json.dumps(contexts),
-            session_id=str(session_id),
-        )
-
-        langfuse_callback_handler.set_trace_params(
             session_id=str(session_id),
         )
 

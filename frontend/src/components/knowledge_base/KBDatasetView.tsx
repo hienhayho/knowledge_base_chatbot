@@ -18,6 +18,7 @@ import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { message } from "antd";
+import { formatDate } from "@/utils";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -533,9 +534,10 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                         </td>
                                         <td className="p-2">{doc.file_type}</td>
                                         <td className="p-2">
-                                            {new Date(
+                                            {/* {new Date(
                                                 doc.created_at
-                                            ).toLocaleString()}
+                                            ).toLocaleString()} */}
+                                            {formatDate(doc.created_at)}
                                         </td>
                                         <td className="p-2">
                                             {doc.status === "processing" &&

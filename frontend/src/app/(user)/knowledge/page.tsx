@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { message, Button, Modal, Space, Select, Input } from "antd";
+import { formatDate } from "@/utils/";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -255,20 +256,6 @@ const KnowledgeBasePage: React.FC = () => {
 
     const handleKnowledgeBaseClick = (id: string) => {
         router.push(`/knowledge/${encodeURIComponent(id)}`);
-    };
-
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date
-            .toLocaleString("en-GB", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-            })
-            .replace(",", "");
     };
 
     if (isLoading) {

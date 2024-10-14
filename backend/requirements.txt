@@ -10,6 +10,8 @@ llama-index==0.11.14
 llama-index-readers-json==0.2.0
 llama-index-vector-stores-qdrant==0.3.0
 llama-index-postprocessor-cohere-rerank==0.2.1
+llama-index-postprocessor-rankgpt-rerank==0.2.0
+llama-index-postprocessor-rankllm-rerank==0.2.0
 
 schedule==1.2.2
 theflow==0.8.6
@@ -42,3 +44,4 @@ flower==2.0.1
 uvicorn[standard]==0.31.0
 fastapi-utils==0.7.0
 langfuse==2.51.4
+tiktoken==0.8.0
