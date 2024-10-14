@@ -1,1 +1,4 @@
-temp/
+*temp/
+minio_storage/
+postgres-data/
+.env

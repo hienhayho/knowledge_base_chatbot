@@ -24,7 +24,7 @@ jobs:
               with:
                   python-version: ${{ matrix.python-version }}
 
-            - name: Intall Package
+            - name: Install Package
               run: |
                   cd backend/
                   pip install --upgrade pip

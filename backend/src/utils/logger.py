@@ -4,46 +4,10 @@ import sys
 import click
 import logging
 from copy import copy
+from pathlib import Path
 from typing import Literal
 
 TRACE_LOG_LEVEL = 5
-
-
-def get_formatted_logger(name: str, file_path: str | None = None):
-    """
-    Get a coloured logger.
-
-    Args:
-        name (str): The name of the logger.
-        file_path (str | None): The path to the log file. Defaults to `None`.
-
-    Returns:
-        logging.Logger: The logger object.
-
-    **Note:** Name is only used to prevent from being root logger.
-    """
-    logger = logging.getLogger(name=name)
-    logger.setLevel(TRACE_LOG_LEVEL)
-
-    if not logger.hasHandlers():
-        stream_handler = logging.StreamHandler()
-        stream_formatter = DefaultFormatter(
-            "%(asctime)s | %(levelprefix)s - [%(filename)s %(funcName)s(%(lineno)d)] - %(message)s",
-            datefmt="%Y/%m/%d  %H:%M:%S",
-        )
-        stream_handler.setFormatter(stream_formatter)
-        logger.addHandler(stream_handler)
-
-        if file_path:
-            file_handler = logging.FileHandler(file_path)
-            file_formatter = logging.Formatter(
-                "%(asctime)s - %(levelname)-8s - [%(filename)s %(funcName)s(%(lineno)d)] - %(message)s",
-                datefmt="%Y/%m/%d - %H:%M:%S",
-            )
-            file_handler.setFormatter(file_formatter)
-            logger.addHandler(file_handler)
-
-    return logger
 
 
 class ColourizedFormatter(logging.Formatter):
@@ -117,7 +81,7 @@ class ColourizedFormatter(logging.Formatter):
             str: The colorized date.
         """
         date_str = self.formatTime(record, self.datefmt)
-        return click.style(date_str, fg="green")
+        return click.style(date_str, fg=(200, 200, 200))
 
     def should_use_colors(self) -> bool:
         """
@@ -143,6 +107,36 @@ class ColourizedFormatter(logging.Formatter):
         seperator = " " * (8 - len(recordcopy.levelname))
 
         if self.use_colors:
+            relpathname = "/".join(recordcopy.pathname.split("/")[-2:])
+            levelname = self.color_level_name(levelname, recordcopy.levelno)
+            recordcopy.msg = self.color_message(recordcopy.msg, recordcopy.levelno)
+            recordcopy.__dict__["message"] = recordcopy.getMessage()
+            recordcopy.asctime = self.color_date(recordcopy)
+            recordcopy.__dict__["relpathname"] = relpathname
+
+        recordcopy.__dict__["levelprefix"] = levelname + seperator
+        return super().formatMessage(recordcopy)
+
+
+class DefaultFormatter(ColourizedFormatter):
+    def should_use_colors(self) -> bool:
+        return sys.stderr.isatty()
+
+    def formatMessage(self, record: logging.LogRecord) -> str:
+        recordcopy = copy(record)
+
+        if "pathname" in recordcopy.__dict__:
+            relpathname = "/".join(recordcopy.pathname.split("/")[-2:])
+            recordcopy.__dict__["relpathname"] = relpathname
+        else:
+            recordcopy.__dict__["relpathname"] = (
+                "N/A"  # Fallback when pathname is missing
+            )
+
+        levelname = recordcopy.levelname
+        seperator = " " * (8 - len(levelname))
+
+        if self.use_colors:
             levelname = self.color_level_name(levelname, recordcopy.levelno)
             recordcopy.msg = self.color_message(recordcopy.msg, recordcopy.levelno)
             recordcopy.__dict__["message"] = recordcopy.getMessage()
@@ -152,6 +146,69 @@ class ColourizedFormatter(logging.Formatter):
         return super().formatMessage(recordcopy)
 
 
-class DefaultFormatter(ColourizedFormatter):
-    def should_use_colors(self) -> bool:
-        return sys.stderr.isatty()
+class FileFormater(logging.Formatter):
+    def formatMessage(self, record: logging.LogRecord) -> str:
+        recordcopy = copy(record)
+
+        if "pathname" in recordcopy.__dict__:
+            relpathname = "/".join(recordcopy.pathname.split("/")[-2:])
+            recordcopy.__dict__["relpathname"] = relpathname
+        else:
+            recordcopy.__dict__["relpathname"] = (
+                "N/A"  # Fallback when pathname is missing
+            )
+
+        return super().formatMessage(recordcopy)
+
+
+def get_formatted_logger(
+    name: str, file_path: str | None = None, global_file_log: bool = False
+) -> logging.Logger:
+    """
+    Get a coloured logger.
+
+    Args:
+        name (str): The name of the logger.
+        file_path (str | None): The path to the log file. Defaults to `None`.
+        global_file_log (bool): Whether to log to the global file. Defaults to `False`.
+
+    Returns:
+        logging.Logger: The logger object.
+
+    **Note:** Name is only used to prevent from being root logger.
+    """
+    logger = logging.getLogger(name=name)
+    logger.setLevel(TRACE_LOG_LEVEL)
+
+    if not logger.hasHandlers():
+        stream_handler = logging.StreamHandler()
+        stream_formatter = DefaultFormatter(
+            "%(asctime)s | %(levelprefix)s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
+            datefmt="%Y/%m/%d  %H:%M:%S",
+        )
+        stream_handler.setFormatter(stream_formatter)
+        logger.addHandler(stream_handler)
+
+        if file_path:
+            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+
+            file_handler = logging.FileHandler(file_path)
+            file_formatter = FileFormater(
+                "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
+                datefmt="%Y/%m/%d - %H:%M:%S",
+            )
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
+
+        if global_file_log:
+            Path("logs").mkdir(parents=True, exist_ok=True)
+
+            global_file = logging.FileHandler("logs/global.log")
+            file_formatter = FileFormater(
+                "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
+                datefmt="%Y/%m/%d - %H:%M:%S",
+            )
+            global_file.setFormatter(file_formatter)
+            logger.addHandler(global_file)
+
+    return logger

@@ -1,8 +1,11 @@
 import os
+import enum
 from mmengine import Config
+from typing import Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from typing import Optional
+
+from src.constants import RerankerService, VectorDatabaseService
 
 load_dotenv()
 
@@ -15,11 +18,19 @@ class APIKeys(BaseModel):
 
     Attributes:
         OPENAI_API_KEY (Optional[str]): OpenAI API key
-        LLAMA_PARSE_API_KEY (Optional[str]): Llama Parse API key
+        LLAMA_PARSE_API_KEY (Optional[str]): LlamaParse API key for parsing .pdf files
+        COHERE_API_KEY (Optional[str]): Cohere API key for reranking
+        LANGFUSE_SECRET_KEY (Optional[str]): Langfuse secret key
+        LANGFUSE_PUBLIC_KEY (Optional[str]): Langfuse public key
+        LANGFUSE_HOST (Optional[str]): Langfuse host
     """
 
     OPENAI_API_KEY: Optional[str] = None
     LLAMA_PARSE_API_KEY: Optional[str] = None
+    COHERE_API_KEY: Optional[str] = None
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_HOST: Optional[str] = None
 
 
 class MinioConfig(BaseModel):
@@ -61,15 +72,28 @@ class QdrantConfig(BaseModel):
     url: Optional[str] = None
 
 
+class ElasticSearchConfig(BaseModel):
+    """
+    ElasticSearch configuration.
+
+    Attributes:
+        url (Optional[str]): ElasticSearch url
+    """
+
+    url: Optional[str] = None
+
+
 class EmbeddingConfig(BaseModel):
     """
     Embedding configuration.
 
     Attributes:
+        chunk_size (int): Embedding chunk size
         service (str): Embedding service
         model_name (str): Embedding model
     """
 
+    chunk_size: int
     service: str
     name: str
 
@@ -85,6 +109,50 @@ class LLMConfig(BaseModel):
 
     service: str
     name: str
+    system_prompt: str
+
+
+class ContextualRAGConfig(BaseModel):
+    """
+    Contextual RAG configuration.
+
+    Attributes:
+        semantic_weight (float): Semantic weight for rank fusion
+        bm25_weight (float): BM25 weight for rank fusion
+        top_k (int): Top K documents for reranking
+        top_n (int): Top N documents after reranking
+    """
+
+    semantic_weight: float
+    bm25_weight: float
+    vector_database_service: VectorDatabaseService
+    reranker_service: RerankerService
+    top_k: int
+    top_n: int
+
+
+class LLMCollection(str, enum.Enum):
+    """
+    LLM collection configuration.
+
+    Attributes:
+        OPENAI (str): OpenAI
+        REACT (str): React
+    """
+
+    OPENAI = "openai"
+    REACT = "react"
+
+
+class AgentConfig(BaseModel):
+    """
+    Agent configuration.
+
+    Attributes:
+        type (LLMCollection): LLM collection type
+    """
+
+    type: LLMCollection
 
 
 class GlobalSettings(BaseModel):
@@ -105,6 +173,10 @@ class GlobalSettings(BaseModel):
         default=APIKeys(
             OPENAI_API_KEY=os.getenv("OPENAI_API_KEY"),
             LLAMA_PARSE_API_KEY=os.getenv("LLAMA_PARSE_API_KEY"),
+            COHERE_API_KEY=os.getenv("COHERE_API_KEY"),
+            LANGFUSE_SECRET_KEY=os.getenv("LANGFUSE_SECRET_KEY"),
+            LANGFUSE_PUBLIC_KEY=os.getenv("LANGFUSE_PUBLIC_KEY"),
+            LANGFUSE_HOST=os.getenv("LANGFUSE_HOST"),
         ),
         description="API keys configuration",
     )
@@ -123,7 +195,7 @@ class GlobalSettings(BaseModel):
         default=SQLConfig(
             url=os.getenv("SQL_DB_URL"),
         ),
-        description="SQL configuration",
+        description="SQL Database configuration",
     )
 
     qdrant_config: QdrantConfig = Field(
@@ -133,10 +205,21 @@ class GlobalSettings(BaseModel):
         description="Qdrant configuration",
     )
 
+    elastic_search_config: ElasticSearchConfig = Field(
+        default=ElasticSearchConfig(
+            url=os.getenv("ELASTIC_SEARCH_URL"),
+        ),
+        description="ElasticSearch configuration",
+    )
+
     upload_bucket_name: str = Field(default=config.minio_config.upload_bucket_name)
+    upload_temp_folder: str = Field(
+        default="uploads", description="Temporary upload folder before moving to Minio"
+    )
 
     embedding_config: EmbeddingConfig = Field(
         default=EmbeddingConfig(
+            chunk_size=config.embeddings_config.chunk_size,
             service=config.embeddings_config.service,
             name=config.embeddings_config.model,
         ),
@@ -147,6 +230,36 @@ class GlobalSettings(BaseModel):
         default=LLMConfig(
             service=config.llm_config.service,
             name=config.llm_config.model,
+            system_prompt="Please answer in markdown format",
         ),
         description="LLM configuration",
     )
+
+    contextual_rag_config: ContextualRAGConfig = Field(
+        default=ContextualRAGConfig(
+            semantic_weight=config.contextual_rag_config.semantic_weight,
+            bm25_weight=config.contextual_rag_config.bm25_weight,
+            vector_database_service=config.contextual_rag_config.vector_database_service,
+            reranker_service=config.contextual_rag_config.reranker_service,
+            top_k=config.contextual_rag_config.top_k,
+            top_n=config.contextual_rag_config.top_n,
+        ),
+        description="Contextual RAG configuration",
+    )
+
+    agent_config: AgentConfig = Field(
+        default=AgentConfig(
+            type=config.agent_config.type,
+        ),
+        description="Agent configuration",
+    )
+
+
+default_settings = GlobalSettings()
+
+
+def get_default_setting():
+    """
+    Get default settings
+    """
+    return default_settings

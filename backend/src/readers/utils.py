@@ -1,6 +1,5 @@
 # This file contains utility functions for the readers module.
 
-import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
@@ -14,6 +13,11 @@ from llama_index.readers.file import (
     PptxReader,  # noqa
     PandasExcelReader,
     UnstructuredReader,
+    MarkdownReader,
+    IPYNBReader,
+    MboxReader,
+    XMLReader,
+    RTFReader,
 )
 
 from .kotaemon import DocxReader, HtmlReader, TxtReader  # noqa
@@ -84,4 +88,9 @@ def get_extractor():
         ".json": JSONReader(),
         ".txt": TxtReader(),
         # ".pptx": PptxReader(),
+        ".md": MarkdownReader(),
+        ".ipynb": IPYNBReader(),
+        ".mbox": MboxReader(),
+        ".xml": XMLReader(),
+        ".rtf": RTFReader(),
     }

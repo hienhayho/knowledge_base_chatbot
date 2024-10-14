@@ -1,0 +1,6 @@
+minio_storage/
+postgres-data/
+env/
+logs/
+uploads/
+downloads/

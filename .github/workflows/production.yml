@@ -1,0 +1,32 @@
+name: Production-Ready
+
+on:
+    push:
+        branches: ["main", "hien_dev"]
+    pull_request:
+        branches: ["main", "hien_dev"]
+
+jobs:
+    build-production:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+            - name: docker compose build
+              run: |
+                  cp .env.production .env
+                  cp .env.production frontend/.env.local
+                  docker compose up -d --build
+
+            - name: Sleep for 120 seconds
+              uses: jakejarvis/wait-action@master
+              with:
+                  time: "120"
+
+            - name: List all docker images
+              run: |
+                  docker images
+
+            - name: List all docker containers
+              run: |
+                  docker ps -as
