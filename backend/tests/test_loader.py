@@ -9,17 +9,10 @@ from llama_index.readers.llama_parse import LlamaParse  # noqa
 from src.readers import (
     DocxReader,
     JSONReader,
-    UnstructuredReader,
     PandasCSVReader,
     PandasExcelReader,
     TxtReader,
 )
-
-
-def test_load_html():
-    path = Path("sample/test.html")
-    _ = UnstructuredReader().load_data(path)
-    assert True
 
 
 def test_load_docx():
