@@ -18,6 +18,7 @@ export interface IKnowledgeBase {
     description: string;
     document_count: number;
     last_updated: string;
+    updated_at: string;
 }
 
 interface ICreateKnowledgeBase {
@@ -58,7 +59,7 @@ const KnowledgeBasePage: React.FC = () => {
 
     const successMessage = ({
         content,
-        duration,
+        duration = 1,
     }: {
         content: string;
         duration?: number;
@@ -66,7 +67,7 @@ const KnowledgeBasePage: React.FC = () => {
         messageApi.open({
             type: "success",
             content: content,
-            duration: duration || 2,
+            duration: duration,
         });
     };
 
@@ -154,6 +155,11 @@ const KnowledgeBasePage: React.FC = () => {
                 }
 
                 const data: IKnowledgeBase[] = await response.json();
+
+                successMessage({
+                    content: "Knowledge bases fetched successfully",
+                });
+
                 setKnowledgeBasesInfo(
                     data.map((kb) => ({
                         label: kb.name,
@@ -369,7 +375,9 @@ const KnowledgeBasePage: React.FC = () => {
                         title={kb.name}
                         description={kb.description}
                         docCount={kb.document_count}
-                        lastUpdated={formatDate(kb.last_updated)}
+                        lastUpdated={formatDate(
+                            kb.updated_at || kb.last_updated
+                        )}
                         onClick={() => handleKnowledgeBaseClick(kb.id)}
                         onDelete={() => handleDeleteKnowledgeBase(kb.id)}
                     />
