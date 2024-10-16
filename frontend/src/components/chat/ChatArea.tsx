@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, User, Bot, Loader2, Link } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import Markdown from "react-markdown";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";

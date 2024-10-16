@@ -1,13 +1,11 @@
 import React from "react";
-import { ChevronDown, Layout, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Layout, Plus } from "lucide-react";
 import { IAssistant } from "@/app/(user)/chat/page";
 
 const TopBar = ({
     isSideView,
     setIsSideView,
     onCreateAssistant,
-    selectedAssistant,
     showSidebarButton = true,
     showCreateAssistantButton = true,
 }: {

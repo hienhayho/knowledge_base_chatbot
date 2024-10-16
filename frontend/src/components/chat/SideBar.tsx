@@ -311,8 +311,9 @@ const Sidebar = ({
                 onCancel={handleCancel}
             >
                 <label className="block text-sm font-medium text-gray-700 my-3">
-                    Type anything you want your bot to concentrate on and press
-                    Enter ...
+                    {
+                        "Type anything you want your bot to concentrate on and press Enter"
+                    }
                 </label>
                 <Select
                     defaultValue={interestPrompt}
@@ -323,8 +324,9 @@ const Sidebar = ({
                     showSearch={false}
                 />
                 <label className="block text-sm font-medium text-gray-700 my-3">
-                    Type anything you don't want your bot to talk about and
-                    press Enter ...
+                    {
+                        "Type anything you don't want your bot to talk about and press Enter"
+                    }
                 </label>
                 <Select
                     defaultValue={guardPrompt}
