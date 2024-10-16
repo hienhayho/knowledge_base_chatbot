@@ -13,7 +13,7 @@ from api.models import (
     ChatResponse,
     MessageResponse,
 )
-from src.constants import SenderType
+from src.constants import SenderType, ChatAssistantConfig
 
 
 class AssistantService:
@@ -111,7 +111,7 @@ class AssistantService:
             assistant = conversation.assistant
             configuration = assistant.configuration
 
-            assistant_config = {
+            assistant_config: ChatAssistantConfig = {
                 "model": configuration["model"],
                 "service": configuration["service"],
                 "temperature": configuration["temperature"],
@@ -167,18 +167,31 @@ class AssistantService:
             session.flush()
 
             session_id = str(uuid.uuid4())
-            assistant_config = {
-                "model": configuration["model"],
-                "service": configuration["service"],
-                "temperature": configuration["temperature"],
-                "embedding_service": "openai",
-                "embedding_model_name": "text-embedding-3-small",
-                "collection_name": f"{assistant.knowledge_base_id}",
-                "session_id": session_id,
-                "is_contextual_rag": is_contextual_rag,
-            }
+            # assistant_config = {
+            #     "model": configuration["model"],
+            #     "service": configuration["service"],
+            #     "temperature": configuration["temperature"],
+            #     "embedding_service": "openai",
+            #     "embedding_model_name": "text-embedding-3-small",
+            #     "collection_name": f"{assistant.knowledge_base_id}",
+            #     "session_id": session_id,
+            #     "is_contextual_rag": is_contextual_rag,
+            # }
 
-            assistant_instance = ChatAssistant(assistant_config)
+            assistant_config = ChatAssistantConfig(
+                model=configuration["model"],
+                service=configuration["service"],
+                temperature=configuration["temperature"],
+                embedding_service="openai",
+                embedding_model_name="text-embedding-3-small",
+                collection_name=f"{assistant.knowledge_base_id}",
+                session_id=session_id,
+                is_contextual_rag=is_contextual_rag,
+                interested_phrases=assistant.interested_phrases,
+                guard_phrases=assistant.guard_phrases,
+            )
+
+            assistant_instance = ChatAssistant(configuration=assistant_config)
 
             full_response = ""
 

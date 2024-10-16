@@ -16,6 +16,7 @@ from .assistants import (
     MessageResponse,
     ChatResponse,
     AssistantWithTotalCost,
+    AsistantUpdatePhraseRequest,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "ChatResponse",
     "AssistantWithTotalCost",
     "MergeKnowledgeBasesRequest",
+    "AsistantUpdatePhraseRequest",
 ]

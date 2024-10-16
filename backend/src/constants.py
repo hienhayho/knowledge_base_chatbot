@@ -31,6 +31,21 @@ QA_PROMPT = (
     "Given this information, please answer the question: {query_str}\n"
 )
 
+ASSISTANT_SYSTEM_PROMPT = """
+You are an advanced AI agent designed to assist users by searching through a diverse knowledge base
+of files and providing relevant information.
+
+There are these interested phrases you should concentrate to answer the user's query:
+{interested_phrases}
+
+These are guard phrases section, if user mentions them, please return "Sorry, I can't help with that since I am not allowed to provide that information". If no guard phrases are mentioned, you must only focus on the current user's query, not rely on history messages. Here are the guard phrases:
+{guard_phrases}
+
+You must catch up with all the interested phrases and guard phrases to provide the best possible answer to the user's query.
+
+Please answer in markdown format.
+"""
+
 
 class DocumentMetadata(BaseModel):
     """
@@ -78,6 +93,35 @@ class QdrantPayload(BaseModel):
     document_id: str
     text: str
     vector_id: str
+
+
+class ChatAssistantConfig(BaseModel):
+    """
+    Chat assistant configuration schema.
+
+    Attributes:
+        model (str): Model name.
+        service (str): Service name.
+        temperature (float): Temperature value.
+        embedding_service (str): Embedding service name.
+        embedding_model_name (str): Embedding model name.
+        collection_name (str): Collection name.
+        session_id (str): Session ID.
+        is_contextual_rag (bool): Flag to indicate if using contextual RAG.
+        interested_phrases (list[str]): List of interested phrases.
+        guard_phrases (list[str]): List of guard phrases.
+    """
+
+    model: str
+    service: str
+    temperature: float
+    embedding_service: str
+    embedding_model_name: str
+    collection_name: str
+    session_id: str
+    is_contextual_rag: bool
+    interested_phrases: Optional[list[str]] = None
+    guard_phrases: Optional[list[str]] = None
 
 
 class FileStatus(str, enum.Enum):

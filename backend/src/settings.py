@@ -5,7 +5,11 @@ from typing import Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-from src.constants import RerankerService, VectorDatabaseService
+from src.constants import (
+    RerankerService,
+    VectorDatabaseService,
+    ASSISTANT_SYSTEM_PROMPT,
+)
 
 load_dotenv()
 
@@ -230,7 +234,7 @@ class GlobalSettings(BaseModel):
         default=LLMConfig(
             service=config.llm_config.service,
             name=config.llm_config.model,
-            system_prompt="Please answer in markdown format",
+            system_prompt=ASSISTANT_SYSTEM_PROMPT,
         ),
         description="LLM configuration",
     )

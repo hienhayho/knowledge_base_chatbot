@@ -45,3 +45,4 @@ uvicorn[standard]==0.31.0
 fastapi-utils==0.7.0
 langfuse==2.51.4
 tiktoken==0.8.0
+json_repair==0.30.0

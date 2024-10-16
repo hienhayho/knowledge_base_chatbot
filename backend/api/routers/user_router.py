@@ -96,6 +96,8 @@ def get_user(
             or_(Users.username == username, Users.email == email)
         )
         user = session_db.exec(query).first()
+
+        session_db.close()
         return user
 
 
@@ -225,6 +227,7 @@ def create_new_user(
         session.add(new_user)
         session.commit()
         session.refresh(new_user)
+        session.close()
 
         return new_user
 
@@ -287,7 +290,9 @@ async def delete_user(
 
         session.delete(user)
         session.commit()
+        session.close()
 
         return JSONResponse(
-            status_code=204, content={"message": f"User: {username} deleted"}
+            status_code=status.HTTP_200_OK,
+            content={"message": f"User: {username} deleted"},
         )

@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from llama_index.readers.json import JSONReader
-from llama_index.readers.llama_parse import LlamaParse
 from llama_index.readers.file import (
     PandasCSVReader,
     PptxReader,  # noqa
@@ -17,6 +16,7 @@ from llama_index.readers.file import (
     IPYNBReader,
     MboxReader,
     XMLReader,
+    PDFReader,
     RTFReader,
 )
 
@@ -77,10 +77,11 @@ def get_files_from_folder_or_file_paths(files_or_folders: list[str]) -> list[str
 
 def get_extractor():
     return {
-        ".pdf": LlamaParse(
-            result_type="markdown",
-            api_key=setting.api_keys.LLAMA_PARSE_API_KEY,
-        ),
+        # ".pdf": LlamaParse(
+        #     result_type="markdown",
+        #     api_key=setting.api_keys.LLAMA_PARSE_API_KEY,
+        # ),
+        ".pdf": PDFReader(),
         ".docx": DocxReader(),
         ".html": UnstructuredReader(),
         ".csv": PandasCSVReader(pandas_config=dict(on_bad_lines="skip")),

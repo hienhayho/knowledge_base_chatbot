@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Info } from "lucide-react";
 import { getCookie } from "cookies-next";
-import { message } from "antd";
+import { message, Select } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -23,15 +23,15 @@ const CreateAssistantModal = ({
     const router = useRouter();
     const [assistantName, setAssistantName] = useState("");
     const [description, setDescription] = useState("");
-    const [systemPrompt, setSystemPrompt] = useState(
-        "You are a helpful assistant."
-    );
+    const [guardPrompt, setGuardPrompt] = useState<string[]>([]);
+    const [interestedPrompt, setInterestedPrompt] = useState<string[]>([]);
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
     const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState("");
     const [model, setModel] = useState("gpt-4o-mini");
     const [messageApi, contextHolder] = message.useMessage();
     const token = getCookie("access_token");
     const redirectURL = encodeURIComponent("/chat");
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
         if (!token) {
@@ -39,7 +39,10 @@ const CreateAssistantModal = ({
             return;
         }
         if (isOpen) {
+            setIsVisible(true);
             fetchKnowledgeBases();
+        } else {
+            setIsVisible(false);
         }
     }, [isOpen]);
 
@@ -80,6 +83,13 @@ const CreateAssistantModal = ({
         }
     };
 
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(() => {
+            onClose();
+        }, 300);
+    };
+
     const handleSubmit = async () => {
         if (!token) {
             router.push("/login?redirect=/chat");
@@ -89,7 +99,8 @@ const CreateAssistantModal = ({
         const payload = {
             name: assistantName,
             description: description,
-            system_prompt: systemPrompt,
+            guard_prompt: guardPrompt,
+            interested_prompt: interestedPrompt,
             knowledge_base_id: selectedKnowledgeBase,
             configuration: {
                 model: model,
@@ -97,7 +108,7 @@ const CreateAssistantModal = ({
                 temperature: "0.8",
             },
         };
-
+        console.log(payload);
         try {
             const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
                 method: "POST",
@@ -130,12 +141,30 @@ const CreateAssistantModal = ({
         }
     };
 
+    const handleChange = (value: string[]) => {
+        setInterestedPrompt(value);
+    };
+
+    const handleGuardPromptChange = (value: string[]) => {
+        setGuardPrompt(value);
+    };
+
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start pt-16 z-50">
+        <div
+            className={`fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start pt-16 z-50 transition-all duration-300 ease-in-out ${
+                isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+        >
             {contextHolder}
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div
+                className={`bg-white rounded-lg shadow-xl w-full max-w-2xl transform transition-all duration-300 ease-in-out ${
+                    isVisible
+                        ? "translate-y-0 opacity-100"
+                        : "-translate-y-4 opacity-0"
+                }`}
+            >
                 <div className="flex justify-between items-center p-6 border-b">
                     <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -152,7 +181,7 @@ const CreateAssistantModal = ({
                         </div>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="text-gray-400 hover:text-gray-600"
                     >
                         <X size={24} />
@@ -182,18 +211,31 @@ const CreateAssistantModal = ({
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                            placeholder="e.g. Personal math assistant."
                             rows={3}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2"
                         />
-                        <label className="block text-sm font-medium text-gray-700">
-                            System Prompt
-                            <Info className="inline-block w-4 h-4 text-gray-400" />
+                        <label className="block text-sm font-medium text-gray-700 my-3">
+                            Type anything you want your bot to concentrate on
+                            ...
                         </label>
-                        <textarea
-                            value={systemPrompt}
-                            onChange={(e) => setSystemPrompt(e.target.value)}
-                            rows={3}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2"
+                        <Select
+                            mode="tags"
+                            style={{ width: "100%" }}
+                            placeholder="Tags Mode"
+                            onChange={handleChange}
+                            showSearch={false}
+                        />
+                        <label className="block text-sm font-medium text-gray-700 my-3">
+                            Type anything you don't want your bot to talk about
+                            ...
+                        </label>
+                        <Select
+                            mode="tags"
+                            style={{ width: "100%" }}
+                            placeholder="Tags Mode"
+                            onChange={handleGuardPromptChange}
+                            showSearch={false}
                         />
                     </div>
 
@@ -207,7 +249,6 @@ const CreateAssistantModal = ({
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2"
                         >
                             <option value="gpt-4o-mini">GPT-4o mini</option>
-                            {/* Add more options here for future extensions */}
                         </select>
                     </div>
 
@@ -236,7 +277,7 @@ const CreateAssistantModal = ({
 
                 <div className="flex justify-end space-x-2 p-6 border-t">
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                         Cancel

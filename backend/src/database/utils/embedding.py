@@ -9,7 +9,7 @@ from src.constants import EmbeddingService
 from src.settings import default_settings
 
 
-@observe(capture_input=False)
+@observe(capture_input=False, as_type="generation")
 def get_embedding(
     chunk: str,
     service: EmbeddingService = default_settings.embedding_config.service,

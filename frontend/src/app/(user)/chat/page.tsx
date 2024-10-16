@@ -17,6 +17,8 @@ export interface IAssistant {
     description: string;
     created_at: string;
     updated_at: string;
+    interested_phrases?: string[];
+    guard_phrases?: string[];
     knowledge_base_id?: string;
     configuration?: Record<string, string | number>;
 }
@@ -137,11 +139,8 @@ const ChatMainPage = () => {
             {contextHolder}
             <TopBar
                 selectedAssistant={selectedAssistant}
-                setSelectedAssistant={setSelectedAssistant}
-                assistants={assistants}
                 onCreateAssistant={handleCreateAssistant}
                 showSidebarButton={false}
-                showAssistantSelect={false}
             />
             <main className="flex-1 overflow-auto p-6">
                 <div className="max-w-7xl mx-auto">

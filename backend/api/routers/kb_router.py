@@ -351,6 +351,8 @@ async def get_knowledge_base(
                 detail="You are not allowed to access this Knowledge Base",
             )
 
+        session.close()
+
         return kb
 
 
@@ -387,6 +389,8 @@ async def download_document(
             object_name=document.file_path_in_minio,
             file_path=str(file_path),
         )
+
+        session.close()
 
         return FileResponse(path=file_path, filename=document.file_name)
 
@@ -465,6 +469,8 @@ async def merge_knowledge_bases(
         for kb in source_knowledge_bases:
             session.delete(kb)
             session.commit()
+
+        session.close()
 
         return target_knowledge_base
 
@@ -551,6 +557,7 @@ async def delete_knowledge_base(
 
         session.delete(kb)
         session.commit()
+        session.close()
 
         return JSONResponse(
             content={"message": "Knowledge Base deleted successfully"},

@@ -8,6 +8,7 @@ from api.models import (
     AssistantResponse,
     ChatMessage,
     AssistantWithTotalCost,
+    AsistantUpdatePhraseRequest,
 )
 from .user_router import decode_user_token
 from fastapi import (
@@ -29,6 +30,7 @@ from src.database import (
     EndStatus,
     get_ws_manager,
 )
+from fastapi.responses import JSONResponse
 from src.utils import get_formatted_logger
 from api.services import AssistantService
 
@@ -43,6 +45,9 @@ async def create_assistant(
     current_user: Annotated[Users, Depends(get_current_user)],
     db_session: Annotated[Session, Depends(get_session)],
 ):
+    """
+    Create a new assistant for the given user
+    """
     with db_session as session:
         if not is_valid_uuid(assistant.knowledge_base_id):
             raise HTTPException(
@@ -69,13 +74,17 @@ async def create_assistant(
         new_assistant = Assistants(
             name=assistant.name,
             description=assistant.description,
-            system_prompt=assistant.system_prompt,
             knowledge_base_id=assistant.knowledge_base_id,
             configuration=assistant.configuration,
             user=session.merge(current_user),
+            guard_phrases=assistant.guard_prompt,
+            interested_phrases=assistant.interested_prompt,
         )
         session.add(new_assistant)
         session.commit()
+        session.refresh(new_assistant)
+        session.close()
+
         return new_assistant
 
 
@@ -87,6 +96,9 @@ async def get_all_assistants(
     with db_session as session:
         query = select(Assistants).where(Assistants.user_id == current_user.id)
         assistants = session.exec(query).all()
+
+        session.close()
+
         return assistants
 
 
@@ -110,6 +122,40 @@ async def get_assistant(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
+
+        session.close()
+
+        return assistant
+
+
+@assistant_router.post("/{assistant_id}/update", response_model=AssistantResponse)
+async def update_assistant(
+    assistant_id: str,
+    assistant_phrases: AsistantUpdatePhraseRequest,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        if not is_valid_uuid(assistant_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
+            )
+
+        query = select(Assistants).where(
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+        )
+        assistant = session.exec(query).first()
+        if not assistant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+            )
+
+        assistant.guard_phrases = assistant_phrases.guard_phrases
+        assistant.interested_phrases = assistant_phrases.interested_phrases
+
+        session.commit()
+        session.refresh(assistant)
+
         return assistant
 
 
@@ -135,6 +181,8 @@ async def get_assistant_with_total_cost(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
+
+        session.close()
 
         return assistant
 
@@ -195,6 +243,48 @@ async def get_assistant_conversations(
         return conversations
 
 
+@assistant_router.delete("/{assistant_id}/conversations/{conversation_id}")
+async def delete_conversation(
+    assistant_id: str,
+    conversation_id: str,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        if not is_valid_uuid(assistant_id) or not is_valid_uuid(conversation_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid assistant or conversation id",
+            )
+
+        query = select(Assistants).where(
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+        )
+        assistant = session.exec(query).first()
+        if not assistant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+            )
+
+        query = select(Conversations).where(
+            Conversations.id == conversation_id,
+            Conversations.assistant_id == assistant.id,
+        )
+        conversation = session.exec(query).first()
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+            )
+
+        session.delete(conversation)
+        session.commit()
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Conversation deleted successfully"},
+        )
+
+
 @assistant_router.get("/{assistant_id}/conversations/{conversation_id}/history")
 async def get_conversation_history(
     assistant_id: UUID,
@@ -228,7 +318,11 @@ async def delete_assistant(
 
         session.delete(assistant)
         session.commit()
-        return {"message": "Assistant deleted successfully"}
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Assistant deleted successfully"},
+        )
 
 
 @assistant_router.websocket(

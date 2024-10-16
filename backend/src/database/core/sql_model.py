@@ -10,7 +10,15 @@ from contextlib import contextmanager
 from typing import List, Dict, Optional
 from pydantic import EmailStr, ConfigDict
 from sqlalchemy.dialects.postgresql import TEXT, JSON
-from sqlmodel import SQLModel, Field, String, create_engine, Session, Relationship
+from sqlmodel import (
+    SQLModel,
+    Field,
+    String,
+    create_engine,
+    Session,
+    Relationship,
+    ARRAY,
+)
 
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
@@ -151,6 +159,16 @@ class Assistants(SQLModel, table=True):
         default="You are a helpful assistant",
         description="System Prompt",
     )
+    guard_phrases: list[str] = Field(
+        sa_column=Column(ARRAY(String())),
+        default=[],
+        description="List of guard phrases that the assistant should not respond to",
+    )
+    interested_phrases: list[str] = Field(
+        sa_column=Column(ARRAY(String())),
+        default=[],
+        description="List of interested phrases that the assistant should concentrate on",
+    )
     knowledge_base_id: uuid_pkg.UUID = Field(foreign_key="knowledge_bases.id")
     configuration: Optional[Dict] = Field(
         default_factory=dict,
@@ -170,7 +188,9 @@ class Assistants(SQLModel, table=True):
     )
 
     user: Users = Relationship(back_populates="assistants")
-    knowledge_base: "KnowledgeBases" = Relationship(back_populates="assistant")
+    knowledge_base: "KnowledgeBases" = Relationship(
+        back_populates="assistants", sa_relationship_kwargs={"lazy": "selectin"}
+    )
     conversations: List["Conversations"] = Relationship(
         back_populates="assistant",
         sa_relationship_kwargs={"lazy": "selectin"},
@@ -220,7 +240,7 @@ class KnowledgeBases(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "selectin"},
         cascade_delete=True,
     )
-    assistant: "Assistants" = Relationship(
+    assistants: list["Assistants"] = Relationship(
         back_populates="knowledge_base",
         sa_relationship_kwargs={"lazy": "selectin"},
         cascade_delete=True,
@@ -302,9 +322,13 @@ class DocumentChunks(SQLModel, table=True):
         nullable=False,
         description="Index of the Chunk in the origin document",
     )
+    original_content: str = Field(
+        sa_column=Column(TEXT),
+        description="Original Content of the Chunk",
+    )
     content: str = Field(
         sa_column=Column(TEXT),
-        description="Content of the Chunk",
+        description="Content of the Chunk after adding context",
     )
     vector_id: str = Field(
         nullable=True,
@@ -358,7 +382,9 @@ class Conversations(SQLModel, table=True):
     )
 
     user: Users = Relationship(back_populates="conversations")
-    assistant: Assistants = Relationship(back_populates="conversations")
+    assistant: Assistants = Relationship(
+        back_populates="conversations", sa_relationship_kwargs={"lazy": "selectin"}
+    )
     messages: List["Messages"] = Relationship(
         back_populates="conversation",
         sa_relationship_kwargs={"lazy": "selectin"},
@@ -402,6 +428,10 @@ class Messages(SQLModel, table=True):
     cost: float = Field(
         default=0.0,
         description="Cost of the message, if from user then 0.0, else any other positive value",
+    )
+    is_chat_false: bool = Field(
+        nullable=True,
+        description="If the assistant response message is correct with the query and context. If the message is from user then it is None",
     )
 
     conversation: Conversations = Relationship(

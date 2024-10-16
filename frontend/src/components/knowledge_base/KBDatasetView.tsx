@@ -11,13 +11,14 @@ import {
     File,
     Download,
     Trash2,
+    Play,
 } from "lucide-react";
 import UploadFileModal from "@/components/knowledge_base/UploadFileModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
-import { message } from "antd";
+import { message, Tooltip } from "antd";
 import { formatDate } from "@/utils";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
@@ -160,7 +161,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
     const successMessage = ({
         content,
-        duration = 2,
+        duration = 1,
     }: {
         content: string;
         duration?: number;
@@ -174,7 +175,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
     const errorMessage = ({
         content,
-        duration = 2,
+        duration = 1,
     }: {
         content: string;
         duration?: number;
@@ -534,9 +535,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                         </td>
                                         <td className="p-2">{doc.file_type}</td>
                                         <td className="p-2">
-                                            {/* {new Date(
-                                                doc.created_at
-                                            ).toLocaleString()} */}
                                             {formatDate(doc.created_at)}
                                         </td>
                                         <td className="p-2">
@@ -558,53 +556,79 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                         <td className="p-2">
                                             {doc.status === "uploaded" ? (
                                                 <div className="flex space-x-2">
-                                                    <button
-                                                        onClick={() =>
-                                                            handleProcessDocument(
-                                                                doc.id
-                                                            )
-                                                        }
-                                                        className="text-blue-500 hover:text-blue-700"
-                                                    >
-                                                        Process
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            handleDeleteDocument(
-                                                                doc.id
-                                                            )
-                                                        }
-                                                        className="text-red-500 hover:text-red-700"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    <Tooltip title="Process the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleProcessDocument(
+                                                                    doc.id
+                                                                )
+                                                            }
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                        >
+                                                            <Play size={16} />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="Download the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDownloadDocument(
+                                                                    doc.id,
+                                                                    doc.file_name
+                                                                )
+                                                            }
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                            title="Download"
+                                                        >
+                                                            <Download
+                                                                size={16}
+                                                            />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDeleteDocument(
+                                                                    doc.id
+                                                                )
+                                                            }
+                                                            className="text-red-500 hover:text-red-700"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </Tooltip>
                                                 </div>
                                             ) : (
                                                 <div className="flex space-x-2">
-                                                    <button
-                                                        onClick={() =>
-                                                            handleDownloadDocument(
-                                                                doc.id,
-                                                                doc.file_name
-                                                            )
-                                                        }
-                                                        className="text-blue-500 hover:text-blue-700"
-                                                        title="Download"
-                                                    >
-                                                        <Download size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            handleDeleteDocument(
-                                                                doc.id
-                                                            )
-                                                        }
-                                                        className="text-red-500 hover:text-red-700"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    <Tooltip title="Download the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDownloadDocument(
+                                                                    doc.id,
+                                                                    doc.file_name
+                                                                )
+                                                            }
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                            title="Download"
+                                                        >
+                                                            <Download
+                                                                size={16}
+                                                            />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDeleteDocument(
+                                                                    doc.id
+                                                                )
+                                                            }
+                                                            className="text-red-500 hover:text-red-700"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </Tooltip>
                                                 </div>
                                             )}
                                         </td>

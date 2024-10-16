@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict
 class AssistantCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    system_prompt: Optional[str] = None
+    guard_prompt: Optional[list[str]] = None
+    interested_prompt: Optional[list[str]] = None
     knowledge_base_id: str
     configuration: Dict[str, Any]
 
@@ -18,11 +19,19 @@ class AssistantResponse(BaseModel):
     user_id: UUID
     name: str
     description: Optional[str]
-    system_prompt: Optional[str]
+    interested_phrases: Optional[list[str]]
+    guard_phrases: Optional[list[str]]
     knowledge_base_id: UUID
     configuration: Dict[str, str]
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AsistantUpdatePhraseRequest(BaseModel):
+    guard_phrases: Optional[list[str]] = None
+    interested_phrases: Optional[list[str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
