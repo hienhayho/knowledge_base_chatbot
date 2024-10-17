@@ -16,8 +16,8 @@ const TopBar = ({
     showCreateAssistantButton = true,
     showUpdateAssistantButton = false,
 }: {
-    isSideView?: boolean;
-    setIsSideView?: (isSideView: boolean) => void;
+    isSideView: boolean;
+    setIsSideView: (isSideView: boolean) => void;
     onCreateAssistant?: () => void;
     selectedAssistant: IAssistant | null;
     setSelectedAssistant: (assistant: IAssistant) => void;
