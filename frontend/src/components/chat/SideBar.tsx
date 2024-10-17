@@ -1,5 +1,5 @@
 import { getCookie } from "cookies-next";
-import { Button, Modal, Select, message, Popover } from "antd";
+import { Button, message, Popover } from "antd";
 import { Plus, MessageSquare, HelpCircle, Trash2 } from "lucide-react";
 import React, { useCallback, useRef, useState, useEffect } from "react";
 
@@ -24,7 +24,6 @@ const Sidebar = ({
     onConversationSelect,
     onCreateConversation,
     selectedAssistant,
-    setSelectedAssistant,
 }: {
     isVisible: boolean;
     width: number;
@@ -40,13 +39,6 @@ const Sidebar = ({
     const token = getCookie("access_token");
     const sidebarRef = useRef<HTMLDivElement>(null);
     const [isResizing, setIsResizing] = useState(false);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [interestPrompt, setInterestPrompt] = useState<string[]>(
-        selectedAssistant?.interested_phrases || []
-    );
-    const [guardPrompt, setGuardPrompt] = useState<string[]>(
-        selectedAssistant?.guard_phrases || []
-    );
     const [messageApi, contextHolder] = message.useMessage();
 
     const startResizing = useCallback(
@@ -84,53 +76,6 @@ const Sidebar = ({
         };
     }, [resize, stopResizing]);
 
-    const showModal = () => {
-        setIsModalOpen(true);
-    };
-
-    const handleOk = async () => {
-        try {
-            if (!selectedAssistant) {
-                errorMessage("No assistant selected");
-                setIsModalOpen(false);
-                return;
-            }
-            const response = await fetch(
-                `${BASE_API_URL}/api/assistant/${selectedAssistant.id}/update`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        interested_phrases: interestPrompt,
-                        guard_phrases: guardPrompt,
-                    }),
-                }
-            );
-            if (response.ok) {
-                successMessage("Assistant updated successfully");
-                setTimeout(() => {
-                    setSelectedAssistant({
-                        ...selectedAssistant,
-                        interested_phrases: interestPrompt,
-                        guard_phrases: guardPrompt,
-                    });
-                    setIsModalOpen(false);
-                }, 1000);
-            }
-        } catch (error) {
-            console.error(error);
-            errorMessage(`Update failed. Error: ${(error as Error).message}`);
-            setIsModalOpen(false);
-        }
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-    };
-
     const successMessage = (content: string, duration: number = 1) => {
         messageApi.open({
             type: "success",
@@ -145,14 +90,6 @@ const Sidebar = ({
             content: content,
             duration: duration,
         });
-    };
-
-    const handleInterestPromptChange = (value: string[]) => {
-        setInterestPrompt(value);
-    };
-
-    const handleGuardPromptChange = (value: string[]) => {
-        setGuardPrompt(value);
     };
 
     const handleDeleteConversation = (conversationId: string) => async () => {
@@ -199,20 +136,6 @@ const Sidebar = ({
                 className="bg-white shadow-md relative flex flex-col"
                 style={{ width: `${width}px`, height: "100vh" }}
             >
-                <div className="flex-shrink-0 p-4">
-                    <Button
-                        type="primary"
-                        onClick={showModal}
-                        style={{
-                            width: "100%",
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                        }}
-                    >
-                        Update Assistant
-                    </Button>
-                </div>
                 <h2 className="text-lg font-semibold px-4 py-2 flex-shrink-0">
                     Conversations
                 </h2>
@@ -304,39 +227,6 @@ const Sidebar = ({
                 className="w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors duration-200"
                 onMouseDown={startResizing}
             />
-            <Modal
-                title="Update Your Assistant"
-                open={isModalOpen}
-                onOk={handleOk}
-                onCancel={handleCancel}
-            >
-                <label className="block text-sm font-medium text-gray-700 my-3">
-                    {
-                        "Type anything you want your bot to concentrate on and press Enter"
-                    }
-                </label>
-                <Select
-                    defaultValue={interestPrompt}
-                    mode="tags"
-                    style={{ width: "100%" }}
-                    placeholder="eg. definition"
-                    onChange={handleInterestPromptChange}
-                    showSearch={false}
-                />
-                <label className="block text-sm font-medium text-gray-700 my-3">
-                    {
-                        "Type anything you don't want your bot to talk about and press Enter"
-                    }
-                </label>
-                <Select
-                    defaultValue={guardPrompt}
-                    mode="tags"
-                    style={{ width: "100%" }}
-                    placeholder="eg. author"
-                    onChange={handleGuardPromptChange}
-                    showSearch={false}
-                />
-            </Modal>
         </>
     );
 };
