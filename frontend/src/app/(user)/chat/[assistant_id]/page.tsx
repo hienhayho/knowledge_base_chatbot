@@ -8,6 +8,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { IAssistant } from "@/app/(user)/chat/page";
+import { message } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -26,6 +27,7 @@ const ChatAssistantPage = () => {
 
     const assistant_id = params.assistant_id;
     const conversation_id = searchParams.get("conversation");
+    const [messageApi, contextHolder] = message.useMessage();
 
     const [isSideView, setIsSideView] = useState(true);
     const [selectedAssistant, setSelectedAssistant] =
@@ -40,10 +42,6 @@ const ChatAssistantPage = () => {
     const redirectUrl = encodeURIComponent(`/chat/${params.assistant_id}`);
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectUrl}`);
-            return;
-        }
         if (conversation_id && conversations.length > 0) {
             const conv = conversations.find((c) => c.id === conversation_id);
             if (conv) {
@@ -53,9 +51,27 @@ const ChatAssistantPage = () => {
     }, [conversation_id, conversations]);
 
     useEffect(() => {
+        if (!token) {
+            errorMessage(
+                "Your session has expired. Please log in to continue.",
+                1
+            );
+            setTimeout(() => {
+                router.push(`/login?redirect=${redirectUrl}`);
+            }, 2000);
+            return;
+        }
         fetchAssistant();
         fetchConversations();
     }, [assistant_id]);
+
+    const errorMessage = (content: string, duration: number = 1) => {
+        messageApi.open({
+            type: "error",
+            content: content,
+            duration: duration,
+        });
+    };
 
     const fetchAssistant = async () => {
         try {
@@ -110,7 +126,6 @@ const ChatAssistantPage = () => {
 
     const handleCreateConversation = async () => {
         try {
-            console.log(assistant_id);
             const response = await fetch(
                 `${API_BASE_URL}/api/assistant/${assistant_id}/conversations`,
                 {
@@ -141,43 +156,46 @@ const ChatAssistantPage = () => {
     if (error) return <ErrorComponent message={error} />;
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] bg-gray-100">
-            <Sidebar
-                isVisible={isSideView}
-                width={sidebarWidth}
-                setWidth={setSidebarWidth}
-                conversations={conversations}
-                setConversations={setConversations}
-                selectedConversation={selectedConversation}
-                onConversationSelect={handleConversationSelect}
-                onCreateConversation={handleCreateConversation}
-                selectedAssistant={selectedAssistant}
-                setSelectedAssistant={setSelectedAssistant}
-            />
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <div>
-                    <TopBar
-                        isSideView={isSideView}
-                        setIsSideView={setIsSideView}
-                        selectedAssistant={selectedAssistant}
-                        onCreateAssistant={() => {}}
-                        showSidebarButton={true}
-                        showCreateAssistantButton={false}
-                    />
-                    {selectedConversation && selectedAssistant ? (
-                        <ChatArea
-                            conversation={selectedConversation}
-                            assistantId={selectedAssistant.id}
+        <>
+            {contextHolder}
+            <div className="flex h-[calc(100vh-4rem)] bg-gray-100">
+                <Sidebar
+                    isVisible={isSideView}
+                    width={sidebarWidth}
+                    setWidth={setSidebarWidth}
+                    conversations={conversations}
+                    setConversations={setConversations}
+                    selectedConversation={selectedConversation}
+                    onConversationSelect={handleConversationSelect}
+                    onCreateConversation={handleCreateConversation}
+                    selectedAssistant={selectedAssistant}
+                />
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <div>
+                        <TopBar
+                            isSideView={isSideView}
+                            setIsSideView={setIsSideView}
+                            selectedAssistant={selectedAssistant}
+                            setSelectedAssistant={setSelectedAssistant}
+                            showSidebarButton={true}
+                            showCreateAssistantButton={false}
+                            showUpdateAssistantButton={true}
                         />
-                    ) : (
-                        <div className="flex-1 flex items-center justify-center text-gray-500">
-                            Select a conversation or create a new one to start
-                            chatting.
-                        </div>
-                    )}
-                </div>
-            </main>
-        </div>
+                        {selectedConversation && selectedAssistant ? (
+                            <ChatArea
+                                conversation={selectedConversation}
+                                assistantId={selectedAssistant.id}
+                            />
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center text-gray-500">
+                                Select a conversation or create a new one to
+                                start chatting.
+                            </div>
+                        )}
+                    </div>
+                </main>
+            </div>
+        </>
     );
 };
 

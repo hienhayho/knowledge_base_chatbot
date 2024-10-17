@@ -276,7 +276,7 @@ const ChatArea = ({
                 className="flex-1 overflow-y-auto p-4"
                 style={{ maxHeight: "90vh" }}
             >
-                <div className="max-w-4xl mx-auto mt-32">
+                <div className="max-w-4xl mx-auto mt-36">
                     {messages.map((message, index) => (
                         <div
                             key={index}
