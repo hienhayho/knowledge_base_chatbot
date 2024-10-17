@@ -1,5 +1,4 @@
 import { getCookie } from "cookies-next";
-import { useRouter } from "next/navigation";
 import { Button, message, Popover } from "antd";
 import { Plus, MessageSquare, HelpCircle, Trash2 } from "lucide-react";
 import React, { useCallback, useRef, useState, useEffect } from "react";
@@ -35,12 +34,12 @@ const Sidebar = ({
     onConversationSelect: (conversation: IConversation | null) => void;
     onCreateConversation: () => void;
     selectedAssistant: IAssistant | null;
+    setSelectedAssistant: (assistant: IAssistant) => void;
 }) => {
     const token = getCookie("access_token");
     const sidebarRef = useRef<HTMLDivElement>(null);
     const [isResizing, setIsResizing] = useState(false);
     const [messageApi, contextHolder] = message.useMessage();
-    const router = useRouter();
 
     const startResizing = useCallback(
         (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
@@ -57,27 +56,18 @@ const Sidebar = ({
     const resize = useCallback(
         (mouseMoveEvent: MouseEvent) => {
             if (isResizing) {
-                requestAnimationFrame(() => {
-                    const newWidth =
-                        mouseMoveEvent.clientX -
-                        sidebarRef.current!.getBoundingClientRect().left;
-                    if (newWidth > 150 && newWidth < 480) {
-                        setWidth(newWidth);
-                    }
-                });
+                const newWidth =
+                    mouseMoveEvent.clientX -
+                    sidebarRef.current!.getBoundingClientRect().left;
+                if (newWidth > 150 && newWidth < 480) {
+                    setWidth(newWidth);
+                }
             }
         },
         [isResizing, setWidth]
     );
 
     useEffect(() => {
-        if (!token) {
-            errorMessage(
-                "Your session has expired. Please log in to continue."
-            );
-            router.push("/login");
-            return;
-        }
         window.addEventListener("mousemove", resize);
         window.addEventListener("mouseup", stopResizing);
         return () => {
@@ -104,6 +94,7 @@ const Sidebar = ({
 
     const handleDeleteConversation = (conversationId: string) => async () => {
         try {
+            console.log("Deleting conversation", conversationId);
             const response = await fetch(
                 `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/conversations/${conversationId}`,
                 {
@@ -135,25 +126,17 @@ const Sidebar = ({
         }
     };
 
+    if (!isVisible) return null;
+
     return (
         <>
             {contextHolder}
             <aside
                 ref={sidebarRef}
-                className={`bg-white shadow-md relative flex flex-col transition-all duration-300 ease-in-out ${
-                    isVisible ? "translate-x-0" : "-translate-x-full"
-                }`}
-                style={{
-                    width: `${width}px`,
-                    height: "100vh",
-                    position: "relative",
-                    left: 0,
-                    top: 0,
-                    zIndex: 10,
-                    borderRight: isVisible ? "1px solid #e0e0e0" : "none",
-                }}
+                className="bg-white shadow-md relative flex flex-col"
+                style={{ width: `${width}px`, height: "100vh" }}
             >
-                <h2 className="text-lg font-semibold px-4 py-2 flex-shrink-0 flex justify-center">
+                <h2 className="text-lg font-semibold px-4 py-2 flex-shrink-0">
                     Conversations
                 </h2>
                 <div className="flex-grow overflow-y-auto px-4">
@@ -241,16 +224,7 @@ const Sidebar = ({
                 </div>
             </aside>
             <div
-                className={`w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors duration-200 ${
-                    isVisible ? "opacity-0 hover:opacity-100" : "opacity-0"
-                }`}
-                style={{
-                    position: "absolute",
-                    left: `${width}px`,
-                    top: "100px",
-                    height: "calc(100% - 100px)",
-                    transition: "opacity 0.3s ease-in-out",
-                }}
+                className="w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors duration-200"
                 onMouseDown={startResizing}
             />
         </>

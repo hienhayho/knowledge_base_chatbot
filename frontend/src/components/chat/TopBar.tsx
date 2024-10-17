@@ -1,8 +1,8 @@
 import React from "react";
-import { getCookie } from "cookies-next";
 import { Layout, Plus } from "lucide-react";
 import { IAssistant } from "@/app/(user)/chat/page";
-import { Button, Modal, Select, message } from "antd";
+import { Button, Select, message, Modal } from "antd";
+import { getCookie } from "cookies-next";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -16,11 +16,11 @@ const TopBar = ({
     showCreateAssistantButton = true,
     showUpdateAssistantButton = false,
 }: {
-    isSideView: boolean;
-    setIsSideView: (isSideView: boolean) => void;
-    onCreateAssistant?: () => void;
+    isSideView?: boolean;
+    setIsSideView?: (isSideView: boolean) => void;
+    onCreateAssistant: () => void;
     selectedAssistant: IAssistant | null;
-    setSelectedAssistant: (assistant: IAssistant) => void;
+    setSelectedAssistant?: (assistant: IAssistant) => void;
     showSidebarButton?: boolean;
     showCreateAssistantButton?: boolean;
     showUpdateAssistantButton?: boolean;
@@ -35,8 +35,32 @@ const TopBar = ({
         selectedAssistant?.guard_phrases || []
     );
 
+    const successMessage = (content: string, duration: number = 1) => {
+        messageApi.open({
+            type: "success",
+            content: content,
+            duration: duration,
+        });
+    };
+
+    const errorMessage = (content: string, duration: number = 1) => {
+        messageApi.open({
+            type: "error",
+            content: content,
+            duration: duration,
+        });
+    };
+
     const showModal = () => {
         setIsModalOpen(true);
+    };
+
+    const handleInterestPromptChange = (value: string[]) => {
+        setInterestPrompt(value);
+    };
+
+    const handleGuardPromptChange = (value: string[]) => {
+        setGuardPrompt(value);
     };
 
     const handleOk = async () => {
@@ -61,13 +85,20 @@ const TopBar = ({
                 }
             );
             if (response.ok) {
+                if (!selectedAssistant) {
+                    errorMessage("No assistant selected");
+                    setIsModalOpen(false);
+                    return;
+                }
                 successMessage("Assistant updated successfully");
                 setTimeout(() => {
-                    setSelectedAssistant({
-                        ...selectedAssistant,
-                        interested_phrases: interestPrompt,
-                        guard_phrases: guardPrompt,
-                    });
+                    if (setSelectedAssistant) {
+                        setSelectedAssistant({
+                            ...selectedAssistant,
+                            interested_phrases: interestPrompt,
+                            guard_phrases: guardPrompt,
+                        });
+                    }
                     setIsModalOpen(false);
                 }, 1000);
             }
@@ -82,43 +113,21 @@ const TopBar = ({
         setIsModalOpen(false);
     };
 
-    const successMessage = (content: string, duration: number = 1) => {
-        messageApi.open({
-            type: "success",
-            content: content,
-            duration: duration,
-        });
-    };
-
-    const errorMessage = (content: string, duration: number = 1) => {
-        messageApi.open({
-            type: "error",
-            content: content,
-            duration: duration,
-        });
-    };
-
-    const handleInterestPromptChange = (value: string[]) => {
-        setInterestPrompt(value);
-    };
-
-    const handleGuardPromptChange = (value: string[]) => {
-        setGuardPrompt(value);
-    };
-
     return (
-        <div className="bg-white shadow-sm p-4 flex items-end justify-end sticky top-0 z-10 w-full">
+        <div className="bg-white shadow-sm p-4 flex items-center justify-between sticky top-0 z-10">
             {contextHolder}
-            {/* <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4">
                 {showSidebarButton && (
                     <button
-                        onClick={() => setIsSideView(!isSideView)}
+                        onClick={() =>
+                            setIsSideView && setIsSideView(!isSideView)
+                        }
                         className="p-2 hover:bg-gray-100 rounded"
                     >
                         <Layout size={20} />
                     </button>
                 )}
-            </div> */}
+            </div>
             {showCreateAssistantButton && (
                 <button
                     onClick={onCreateAssistant}
