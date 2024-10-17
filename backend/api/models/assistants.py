@@ -8,8 +8,8 @@ from pydantic import BaseModel, ConfigDict
 class AssistantCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    guard_prompt: Optional[list[str]] = None
-    interested_prompt: Optional[list[str]] = None
+    guard_prompt: Optional[str] = None
+    interested_prompt: Optional[str] = None
     knowledge_base_id: str
     configuration: Dict[str, Any]
 
@@ -19,8 +19,8 @@ class AssistantResponse(BaseModel):
     user_id: UUID
     name: str
     description: Optional[str]
-    interested_phrases: Optional[list[str]]
-    guard_phrases: Optional[list[str]]
+    interested_prompt: str
+    guard_prompt: str
     knowledge_base_id: UUID
     configuration: Dict[str, str]
     created_at: datetime
@@ -30,8 +30,8 @@ class AssistantResponse(BaseModel):
 
 
 class AsistantUpdatePhraseRequest(BaseModel):
-    guard_phrases: Optional[list[str]] = None
-    interested_phrases: Optional[list[str]] = None
+    guard_prompt: str = None
+    interested_prompt: str = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -41,7 +41,6 @@ class AssistantWithTotalCost(BaseModel):
     user_id: UUID
     name: str
     description: Optional[str]
-    system_prompt: Optional[str]
     knowledge_base_id: UUID
     configuration: Dict[str, str]
     created_at: datetime

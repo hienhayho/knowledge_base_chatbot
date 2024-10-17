@@ -1,8 +1,10 @@
 import React from "react";
 import { Layout, Plus } from "lucide-react";
 import { IAssistant } from "@/app/(user)/chat/page";
-import { Button, Select, message, Modal } from "antd";
+import { Button, message, Modal, Input } from "antd";
 import { getCookie } from "cookies-next";
+
+const { TextArea } = Input;
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -28,11 +30,11 @@ const TopBar = ({
     const token = getCookie("access_token");
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [interestPrompt, setInterestPrompt] = React.useState<string[]>(
-        selectedAssistant?.interested_phrases || []
+    const [interestPrompt, setInterestPrompt] = React.useState<string>(
+        selectedAssistant?.interested_prompt || ""
     );
-    const [guardPrompt, setGuardPrompt] = React.useState<string[]>(
-        selectedAssistant?.guard_phrases || []
+    const [guardPrompt, setGuardPrompt] = React.useState<string>(
+        selectedAssistant?.guard_prompt || ""
     );
 
     const successMessage = (content: string, duration: number = 1) => {
@@ -55,14 +57,6 @@ const TopBar = ({
         setIsModalOpen(true);
     };
 
-    const handleInterestPromptChange = (value: string[]) => {
-        setInterestPrompt(value);
-    };
-
-    const handleGuardPromptChange = (value: string[]) => {
-        setGuardPrompt(value);
-    };
-
     const handleOk = async () => {
         try {
             if (!selectedAssistant) {
@@ -79,8 +73,8 @@ const TopBar = ({
                         Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify({
-                        interested_phrases: interestPrompt,
-                        guard_phrases: guardPrompt,
+                        interested_prompt: interestPrompt,
+                        guard_prompt: guardPrompt,
                     }),
                 }
             );
@@ -95,8 +89,8 @@ const TopBar = ({
                     if (setSelectedAssistant) {
                         setSelectedAssistant({
                             ...selectedAssistant,
-                            interested_phrases: interestPrompt,
-                            guard_phrases: guardPrompt,
+                            interested_prompt: interestPrompt,
+                            guard_prompt: guardPrompt,
                         });
                     }
                     setIsModalOpen(false);
@@ -162,26 +156,20 @@ const TopBar = ({
                                 "Type anything you want your bot to concentrate on and press Enter"
                             }
                         </label>
-                        <Select
-                            defaultValue={interestPrompt}
-                            mode="tags"
-                            style={{ width: "100%" }}
-                            placeholder="eg. definition"
-                            onChange={handleInterestPromptChange}
-                            showSearch={false}
+                        <TextArea
+                            rows={3}
+                            value={interestPrompt}
+                            onChange={(e) => setInterestPrompt(e.target.value)}
                         />
                         <label className="block text-sm font-medium text-gray-700 my-3">
                             {
                                 "Type anything you don't want your bot to talk about and press Enter"
                             }
                         </label>
-                        <Select
-                            defaultValue={guardPrompt}
-                            mode="tags"
-                            style={{ width: "100%" }}
-                            placeholder="eg. author"
-                            onChange={handleGuardPromptChange}
-                            showSearch={false}
+                        <TextArea
+                            rows={3}
+                            value={guardPrompt}
+                            onChange={(e) => setGuardPrompt(e.target.value)}
                         />
                     </Modal>
                 </div>

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Info } from "lucide-react";
 import { getCookie } from "cookies-next";
-import { message, Select } from "antd";
+import { message, Input } from "antd";
+
+const { TextArea } = Input;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -21,17 +23,19 @@ const CreateAssistantModal = ({
     onCreateSuccess: () => void;
 }) => {
     const router = useRouter();
-    const [assistantName, setAssistantName] = useState("");
-    const [description, setDescription] = useState("");
-    const [guardPrompt, setGuardPrompt] = useState<string[]>([]);
-    const [interestedPrompt, setInterestedPrompt] = useState<string[]>([]);
+    const [isVisible, setIsVisible] = useState<boolean>(false);
+    const [assistantName, setAssistantName] = useState<string>("");
+    const [description, setDescription] = useState<string>("");
+    const [guardPrompt, setGuardPrompt] = useState<string>("");
+    const [interestedPrompt, setInterestedPrompt] = useState<string>("");
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
-    const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState("");
-    const [model, setModel] = useState("gpt-4o-mini");
+    const [selectedKnowledgeBase, setSelectedKnowledgeBase] =
+        useState<string>("");
+    const [model, setModel] = useState<string>("gpt-4o-mini");
     const [messageApi, contextHolder] = message.useMessage();
+
     const token = getCookie("access_token");
     const redirectURL = encodeURIComponent("/chat");
-    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
         if (!token) {
@@ -61,9 +65,8 @@ const CreateAssistantModal = ({
     };
 
     const fetchKnowledgeBases = async () => {
-        const token = getCookie("access_token");
         if (!token) {
-            router.push("/login?redirect=/chat");
+            router.push(`/login?redirect=${redirectURL}`);
             return;
         }
         try {
@@ -92,7 +95,7 @@ const CreateAssistantModal = ({
 
     const handleSubmit = async () => {
         if (!token) {
-            router.push("/login?redirect=/chat");
+            router.push(`/login?redirect=${redirectURL}`);
             return;
         }
 
@@ -141,19 +144,11 @@ const CreateAssistantModal = ({
         }
     };
 
-    const handleChange = (value: string[]) => {
-        setInterestedPrompt(value);
-    };
-
-    const handleGuardPromptChange = (value: string[]) => {
-        setGuardPrompt(value);
-    };
-
     if (!isOpen) return null;
 
     return (
         <div
-            className={`fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start pt-16 z-50 transition-all duration-300 ease-in-out ${
+            className={`fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center pt-6 z-50 transition-all duration-300 ease-in-out ${
                 isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
         >
@@ -190,53 +185,51 @@ const CreateAssistantModal = ({
 
                 <div className="p-6 space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                             Assistant name{" "}
                             <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="text"
+                        <Input
+                            placeholder="e.g Math tutor"
                             value={assistantName}
                             onChange={(e) => setAssistantName(e.target.value)}
-                            placeholder="e.g. Resume Jarvis"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 my-2">
                             Description{" "}
                             <Info className="inline-block w-4 h-4 text-gray-400" />
                         </label>
-                        <textarea
+                        <TextArea
+                            rows={2}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="e.g. Personal math assistant."
-                            rows={3}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2"
+                            placeholder="e.g A helpful assistant for math problem"
                         />
-                        <label className="block text-sm font-medium text-gray-700 my-3">
-                            Type anything you want your bot to concentrate on
-                            and press Enter
-                        </label>
-                        <Select
-                            mode="tags"
-                            style={{ width: "100%" }}
-                            placeholder="Tags Mode"
-                            onChange={handleChange}
-                            showSearch={false}
-                        />
-                        <label className="block text-sm font-medium text-gray-700 my-3">
+                        <label className="block text-sm font-medium text-gray-700 my-2">
                             {
-                                "Type anything you don't want your bot to talk about and press Enter"
+                                "Type anything you want your bot to concentrate on:"
                             }
                         </label>
-                        <Select
-                            mode="tags"
-                            style={{ width: "100%" }}
-                            placeholder="Tags Mode"
-                            onChange={handleGuardPromptChange}
-                            showSearch={false}
+                        <TextArea
+                            rows={3}
+                            value={interestedPrompt}
+                            onChange={(e) =>
+                                setInterestedPrompt(e.target.value)
+                            }
+                            placeholder="e.g. I want you to help me with algebra problems"
+                        />
+                        <label className="block text-sm font-medium text-gray-700 my-2">
+                            {
+                                "Type anything you don't want your bot to talk about:"
+                            }
+                        </label>
+                        <TextArea
+                            rows={3}
+                            value={guardPrompt}
+                            onChange={(e) => setGuardPrompt(e.target.value)}
+                            placeholder="e.g. I don't want you to talk about my personal life"
                         />
                     </div>
 

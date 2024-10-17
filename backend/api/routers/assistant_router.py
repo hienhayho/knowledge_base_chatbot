@@ -77,8 +77,8 @@ async def create_assistant(
             knowledge_base_id=assistant.knowledge_base_id,
             configuration=assistant.configuration,
             user=session.merge(current_user),
-            guard_phrases=assistant.guard_prompt,
-            interested_phrases=assistant.interested_prompt,
+            guard_prompt=assistant.guard_prompt,
+            interested_prompt=assistant.interested_prompt,
         )
         session.add(new_assistant)
         session.commit()
@@ -150,8 +150,8 @@ async def update_assistant(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
-        assistant.guard_phrases = assistant_phrases.guard_phrases
-        assistant.interested_phrases = assistant_phrases.interested_phrases
+        assistant.guard_prompt = assistant_phrases.guard_prompt
+        assistant.interested_prompt = assistant_phrases.interested_prompt
 
         session.commit()
         session.refresh(assistant)

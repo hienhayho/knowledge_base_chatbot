@@ -17,8 +17,8 @@ export interface IAssistant {
     description: string;
     created_at: string;
     updated_at: string;
-    interested_phrases?: string[];
-    guard_phrases?: string[];
+    interested_prompt?: string;
+    guard_prompt?: string;
     knowledge_base_id?: string;
     configuration?: Record<string, string | number>;
 }

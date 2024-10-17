@@ -167,16 +167,6 @@ class AssistantService:
             session.flush()
 
             session_id = str(uuid.uuid4())
-            # assistant_config = {
-            #     "model": configuration["model"],
-            #     "service": configuration["service"],
-            #     "temperature": configuration["temperature"],
-            #     "embedding_service": "openai",
-            #     "embedding_model_name": "text-embedding-3-small",
-            #     "collection_name": f"{assistant.knowledge_base_id}",
-            #     "session_id": session_id,
-            #     "is_contextual_rag": is_contextual_rag,
-            # }
 
             assistant_config = ChatAssistantConfig(
                 model=configuration["model"],
@@ -187,8 +177,8 @@ class AssistantService:
                 collection_name=f"{assistant.knowledge_base_id}",
                 session_id=session_id,
                 is_contextual_rag=is_contextual_rag,
-                interested_phrases=assistant.interested_phrases,
-                guard_phrases=assistant.guard_phrases,
+                interested_prompt=assistant.interested_prompt,
+                guard_prompt=assistant.guard_prompt,
             )
 
             assistant_instance = ChatAssistant(configuration=assistant_config)

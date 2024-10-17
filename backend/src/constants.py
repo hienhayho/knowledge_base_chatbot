@@ -36,21 +36,21 @@ You are an advanced AI agent designed to assist users by searching through a div
 of files and providing relevant information.
 
 There are some rules you must follow:
-- You should concentrate on interested phrases to answer the user's query.
+- You should concentrate on interested prompt to answer the user's query.
 
-- When guard phrases are mention, please filter from your response the phrases that relevant with these guard phrases.
+- When guard phrases are mention, please filter from your response the phrases that relevant with these guard prompt.
 
-- If the question directly ask about these guard phrases, you should return "Sorry, I can't help with that since I am not allowed to provide that information".
+- If the question directly ask about guard prompt, you should return "Sorry, I can't help with that since I am not allowed to provide that information".
 
-- If no guard phrases are mentioned, you must only focus on the current user's query, not rely on history messages
+- If no guard prompt are mentioned, you must only focus on the current user's query, not rely on history messages
 
-Here are interested phrases:
-{interested_phrases}
+Here are interested prompt:
+{interested_prompt}
 
-Here are guard phrases:
-{guard_phrases}
+Here are guard prompt:
+{guard_prompt}
 
-You must catch up with all the interested phrases and guard phrases to provide the best possible answer to the user's query.
+You must catch up with all the interested prompt and guard prompt to provide the best possible answer to the user's query.
 
 Please answer in markdown format.
 """
@@ -117,8 +117,8 @@ class ChatAssistantConfig(BaseModel):
         collection_name (str): Collection name.
         session_id (str): Session ID.
         is_contextual_rag (bool): Flag to indicate if using contextual RAG.
-        interested_phrases (list[str]): List of interested phrases.
-        guard_phrases (list[str]): List of guard phrases.
+        interested_prompt (str): Interested prompt.
+        guard_prompt (str): Guard prompt.
     """
 
     model: str
@@ -129,8 +129,8 @@ class ChatAssistantConfig(BaseModel):
     collection_name: str
     session_id: str
     is_contextual_rag: bool
-    interested_phrases: Optional[list[str]] = None
-    guard_phrases: Optional[list[str]] = None
+    interested_prompt: Optional[str] = None
+    guard_prompt: Optional[str] = None
 
 
 class FileStatus(str, enum.Enum):

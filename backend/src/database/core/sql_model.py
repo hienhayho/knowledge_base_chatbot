@@ -17,7 +17,6 @@ from sqlmodel import (
     create_engine,
     Session,
     Relationship,
-    ARRAY,
 )
 
 
@@ -154,20 +153,15 @@ class Assistants(SQLModel, table=True):
         sa_column=Column(TEXT),
         description="Assistant Description",
     )
-    system_prompt: str = Field(
+    guard_prompt: str = Field(
         sa_column=Column(TEXT),
-        default="You are a helpful assistant",
-        description="System Prompt",
+        default="",
+        description="Guard Prompt that user not want to be included in asisistant's response",
     )
-    guard_phrases: list[str] = Field(
-        sa_column=Column(ARRAY(String())),
-        default=[],
-        description="List of guard phrases that the assistant should not respond to",
-    )
-    interested_phrases: list[str] = Field(
-        sa_column=Column(ARRAY(String())),
-        default=[],
-        description="List of interested phrases that the assistant should concentrate on",
+    interested_prompt: str = Field(
+        sa_column=Column(TEXT),
+        default="",
+        description="Interested Prompt that user want to focus on",
     )
     knowledge_base_id: uuid_pkg.UUID = Field(foreign_key="knowledge_bases.id")
     configuration: Optional[Dict] = Field(

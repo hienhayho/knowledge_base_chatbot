@@ -31,20 +31,9 @@ class ChatAssistant:
 
         self.llm = self._init_model(service, model_name)
 
-        interested_phrases = (
-            "\n".join(self.configuration.interested_phrases)
-            if self.configuration.interested_phrases
-            else ""
-        )
-        guard_phrases = (
-            "\n".join(self.configuration.guard_phrases)
-            if self.configuration.guard_phrases
-            else ""
-        )
-
         system_prompt = ASSISTANT_SYSTEM_PROMPT.format(
-            interested_phrases=interested_phrases,
-            guard_phrases=guard_phrases,
+            interested_prompt=self.configuration.interested_prompt,
+            guard_prompt=self.configuration.guard_prompt,
         ).strip("\n")
 
         print(system_prompt)
