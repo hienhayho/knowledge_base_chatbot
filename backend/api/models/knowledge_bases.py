@@ -162,6 +162,14 @@ class GetKnowledgeBase(BaseModel):
     )
 
 
+class DeleteDocumentRequestBody(BaseModel):
+    delete_to_retry: bool = Field(
+        default=False,
+        title="Delete file content in previous attempt",
+        description="Delete file content in previous attempt",
+    )
+
+
 class DocumentInKnowledgeBase(BaseModel):
     id: UUID
     file_name: str

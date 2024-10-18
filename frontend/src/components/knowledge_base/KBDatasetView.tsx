@@ -12,6 +12,7 @@ import {
     Download,
     Trash2,
     Play,
+    CircleStop,
 } from "lucide-react";
 import UploadFileModal from "@/components/knowledge_base/UploadFileModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -88,7 +89,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
             }
             try {
                 const response = await fetch(
-                    `${API_BASE_URL}/api/kb/${knowledgeBaseID}`,
+                    `${API_BASE_URL}/api/kb/get_kb/${knowledgeBaseID}`,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -304,8 +305,10 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                     {
                         method: "DELETE",
                         headers: {
+                            "Content-Type": "application/json",
                             Authorization: `Bearer ${token}`,
                         },
+                        body: JSON.stringify({ delete_to_retry: false }),
                     }
                 );
                 if (!response.ok) {
@@ -379,6 +382,51 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
         }
     };
 
+    const handleStopProcessingDocument = async (documentId: string) => {
+        if (!token) {
+            const redirectURL = encodeURIComponent(
+                `/knowledge/${knowledgeBaseID}`
+            );
+            router.push(`/login?redirect=${redirectURL}`);
+            return;
+        }
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/kb/stop_processing/${documentId}`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.detail || "Failed to stop processing document"
+                );
+            }
+
+            setDocuments((prevDocuments) =>
+                prevDocuments.map((doc) =>
+                    doc.id === documentId
+                        ? {
+                              ...doc,
+                              status: "failed",
+                          }
+                        : doc
+                )
+            );
+        } catch (error) {
+            console.error("Error stopping processing document:", error);
+            errorMessage({
+                content: (error as Error).message,
+            });
+            setError((error as Error).message);
+        }
+    };
+
     const getFileIcon = (fileName: string) => {
         if (fileName.endsWith(".pdf")) {
             return (
@@ -398,6 +446,75 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
             return (
                 <File className="inline-block mr-2 text-gray-500" size={16} />
             );
+        }
+    };
+
+    const handleRetryProcessingDocument = async (documentId: string) => {
+        if (!token) {
+            const redirectURL = encodeURIComponent(
+                `/knowledge/${knowledgeBaseID}`
+            );
+            router.push(`/login?redirect=${redirectURL}`);
+            return;
+        }
+        try {
+            const deleteResponse = await fetch(
+                `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ delete_to_retry: true }),
+                }
+            );
+
+            if (!deleteResponse.ok) {
+                const errorData = await deleteResponse.json();
+                errorMessage({
+                    content:
+                        errorData.detail || "Failed to clean up old document",
+                });
+                return;
+            }
+
+            const response = await fetch(
+                `${API_BASE_URL}/api/kb/process/${documentId}`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                errorMessage({
+                    content:
+                        errorData.detail ||
+                        "Failed to retry processing document",
+                });
+                return;
+            }
+
+            setDocuments((prevDocuments) =>
+                prevDocuments.map((doc) =>
+                    doc.id === documentId
+                        ? {
+                              ...doc,
+                              status: "processing",
+                          }
+                        : doc
+                )
+            );
+        } catch (error) {
+            console.error("Error retrying processing document:", error);
+            errorMessage({
+                content: (error as Error).message,
+            });
+            setError((error as Error).message);
         }
     };
 
@@ -598,8 +715,87 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                         </button>
                                                     </Tooltip>
                                                 </div>
+                                            ) : doc.status === "processing" ? (
+                                                <div className="flex space-x-2">
+                                                    <Tooltip title="Download the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDownloadDocument(
+                                                                    doc.id,
+                                                                    doc.file_name
+                                                                )
+                                                            }
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                            title="Download"
+                                                        >
+                                                            <Download
+                                                                size={16}
+                                                            />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="Stop processing...">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleStopProcessingDocument(
+                                                                    doc.id
+                                                                )
+                                                            }
+                                                            className="text-red-500 hover:text-red-700"
+                                                            title="Delete"
+                                                        >
+                                                            <CircleStop
+                                                                size={16}
+                                                            />
+                                                        </button>
+                                                    </Tooltip>
+                                                </div>
+                                            ) : doc.status == "processed" ? (
+                                                <div className="flex space-x-2">
+                                                    <Tooltip title="Download the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDownloadDocument(
+                                                                    doc.id,
+                                                                    doc.file_name
+                                                                )
+                                                            }
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                            title="Download"
+                                                        >
+                                                            <Download
+                                                                size={16}
+                                                            />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete the document">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDeleteDocument(
+                                                                    doc.id
+                                                                )
+                                                            }
+                                                            className="text-red-500 hover:text-red-700"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </Tooltip>
+                                                </div>
                                             ) : (
                                                 <div className="flex space-x-2">
+                                                    <Tooltip title="Retry processing...">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleRetryProcessingDocument(
+                                                                    doc.id
+                                                                )
+                                                            }
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                            title="Download"
+                                                        >
+                                                            <Play size={16} />
+                                                        </button>
+                                                    </Tooltip>
                                                     <Tooltip title="Download the document">
                                                         <button
                                                             onClick={() =>

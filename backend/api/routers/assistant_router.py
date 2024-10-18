@@ -9,6 +9,7 @@ from api.models import (
     ChatMessage,
     AssistantWithTotalCost,
     AsistantUpdatePhraseRequest,
+    ConversationRenameRequest,
 )
 from .user_router import decode_user_token
 from fastapi import (
@@ -293,6 +294,38 @@ async def get_conversation_history(
     assistant_service: AssistantService = Depends(),
 ):
     return assistant_service.get_conversation_history(conversation_id, current_user.id)
+
+
+@assistant_router.patch("/{assistant_id}/conversations/{conversation_id}/rename")
+async def rename_conversation_name(
+    assistant_id: UUID,
+    conversation_id: UUID,
+    conversation_rename_body: ConversationRenameRequest,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        query = select(Conversations).where(
+            Conversations.id == conversation_id,
+            Conversations.assistant_id == assistant_id,
+        )
+        conversation = session.exec(query).first()
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+            )
+        if conversation.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to rename this conversation",
+            )
+
+        conversation.name = conversation_rename_body.name
+        session.commit()
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK, content={"message": "Conversation renamed"}
+        )
 
 
 @assistant_router.delete("/{assistant_id}")

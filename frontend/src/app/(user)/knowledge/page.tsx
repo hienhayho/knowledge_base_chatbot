@@ -33,7 +33,6 @@ interface IApiResponseError {
 }
 
 const KnowledgeBasePage: React.FC = () => {
-    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [isModalMergeOpen, setIsModalMergeOpen] = useState<boolean>(false);
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -50,6 +49,7 @@ const KnowledgeBasePage: React.FC = () => {
         useState<string>("Merged KB");
     const [newKnowledgeBaseDescription, setNewKnowledgeBaseDescription] =
         useState<string>("Merged KB description");
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
     const router = useRouter();
     const token = getCookie("access_token");
@@ -298,7 +298,11 @@ const KnowledgeBasePage: React.FC = () => {
                     Merge knowledge bases
                 </Button>
                 <Modal
-                    title=""
+                    title={
+                        <div className="text-lg font-bold flex justify-center text-red-500">
+                            Merge knowledge bases
+                        </div>
+                    }
                     open={isModalMergeOpen}
                     onOk={handleOkMergeModal}
                     onCancel={handleCancelMergeModal}
@@ -320,7 +324,7 @@ const KnowledgeBasePage: React.FC = () => {
                     </Space>
                     <div
                         style={{
-                            marginTop: "2rem",
+                            marginTop: "1rem",
                         }}
                     >
                         <strong>Name:</strong>
@@ -334,7 +338,7 @@ const KnowledgeBasePage: React.FC = () => {
 
                     <div
                         style={{
-                            marginTop: "2rem",
+                            marginTop: "1rem",
                         }}
                     >
                         <strong>Description:</strong>
@@ -347,7 +351,7 @@ const KnowledgeBasePage: React.FC = () => {
                     </div>
                 </Modal>
                 <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => setIsCreateModalOpen(true)}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 sm:py-3 rounded-md flex items-center justify-center w-full sm:w-auto text-base sm:text-lg transition duration-300"
                 >
                     <Plus className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
@@ -372,8 +376,9 @@ const KnowledgeBasePage: React.FC = () => {
             </div>
 
             <KnowledgeBaseModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                isOpen={isCreateModalOpen}
+                setIsOpen={setIsCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
                 onCreate={handleCreateKnowledgeBase}
             />
         </div>

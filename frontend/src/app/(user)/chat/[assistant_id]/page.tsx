@@ -8,15 +8,9 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { IAssistant } from "@/app/(user)/chat/page";
+import { IConversation } from "@/app/(user)/chat/page";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-interface IConversation {
-    id: string;
-    assistant_id: string;
-    created_at: string;
-    updated_at: string;
-}
 
 const ChatAssistantPage = () => {
     const router = useRouter();

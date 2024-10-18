@@ -1,4 +1,4 @@
-from .users import UserRequest, UserResponse, UserLogin
+from .users import UserRequest, UserResponse, UserLogin, DeleteUserRequest
 from .knowledge_bases import (
     KnowledgeBaseRequest,
     KnowledgeBaseResponse,
@@ -7,11 +7,13 @@ from .knowledge_bases import (
     GetKnowledgeBase,
     GetKnowledgeBaseResponse,
     MergeKnowledgeBasesRequest,
+    DeleteDocumentRequestBody,
 )
 from .assistants import (
     AssistantCreate,
     AssistantResponse,
     ConversationResponse,
+    ConversationRenameRequest,
     ChatMessage,
     MessageResponse,
     ChatResponse,
@@ -23,6 +25,7 @@ __all__ = [
     "UserRequest",
     "UserResponse",
     "UserLogin",
+    "DeleteUserRequest",
     "KnowledgeBaseRequest",
     "KnowledgeBaseResponse",
     "UploadFileResponse",
@@ -32,10 +35,12 @@ __all__ = [
     "AssistantCreate",
     "AssistantResponse",
     "ConversationResponse",
+    "ConversationRenameRequest",
     "ChatMessage",
     "MessageResponse",
     "ChatResponse",
     "AssistantWithTotalCost",
     "MergeKnowledgeBasesRequest",
     "AsistantUpdatePhraseRequest",
+    "DeleteDocumentRequestBody",
 ]

@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from sqlmodel import Session, select, or_
 from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timedelta, timezone
-from api.models import UserResponse, UserRequest
+from api.models import UserResponse, UserRequest, DeleteUserRequest
 
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -266,14 +266,15 @@ async def current_user(current_user: Users = Depends(get_current_user)):
 
 @user_router.delete("/delete", response_class=JSONResponse)
 async def delete_user(
-    username: str,
-    admin_access_token: str,
+    delete_user_request: DeleteUserRequest,
     db_session: Annotated[Session, Depends(get_session)],
 ):
     """
     Endpoint to delete a user
     """
-    allow_to_delete = os.getenv("ADMIN_ACCESS_TOKEN") == admin_access_token
+    allow_to_delete = (
+        os.getenv("ADMIN_ACCESS_TOKEN") == delete_user_request.admin_access_token
+    )
 
     if not allow_to_delete:
         raise HTTPException(
@@ -281,7 +282,7 @@ async def delete_user(
         )
 
     with db_session as session:
-        user = get_user(session, username)
+        user = get_user(session, delete_user_request.username)
 
         if not user:
             raise HTTPException(
@@ -294,5 +295,5 @@ async def delete_user(
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"message": f"User: {username} deleted"},
+            content={"message": f"User: {delete_user_request.username} deleted"},
         )

@@ -351,6 +351,10 @@ class Conversations(SQLModel, table=True):
         index=True,
         nullable=False,
     )
+    name: str = Field(
+        default="",
+        description="Name of the Conversation (Optional)",
+    )
     user_id: uuid_pkg.UUID = Field(foreign_key="users.id")
     assistant_id: uuid_pkg.UUID = Field(foreign_key="assistants.id")
     started_at: datetime = Field(

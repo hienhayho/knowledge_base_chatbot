@@ -60,6 +60,10 @@ class ConversationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ConversationRenameRequest(BaseModel):
+    name: str
+
+
 class ChatMessage(BaseModel):
     content: str
 

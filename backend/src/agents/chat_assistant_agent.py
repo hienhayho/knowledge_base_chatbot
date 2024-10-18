@@ -36,8 +36,6 @@ class ChatAssistant:
             guard_prompt=self.configuration.guard_prompt,
         ).strip("\n")
 
-        print(system_prompt)
-
         self.tools = [
             load_kb_tool(
                 setting=default_settings,
@@ -101,7 +99,7 @@ class ChatAssistant:
         ]
         return self.agent.stream_chat(message, message_history).response_gen
 
-    @observe
+    @observe()
     async def astream_chat(self, message, message_history, session_id: str | uuid.UUID):
         langfuse_callback_handler.set_trace_params(
             name="astream_chat",

@@ -92,8 +92,6 @@ class ContextualRAG:
         self.llm = self.load_model(
             service=setting.llm_config.service,
             model_name=setting.llm_config.name,
-            # system_prompt=setting.llm_config.system_prompt,
-            system_prompt=ASSISTANT_SYSTEM_PROMPT,
         )
         Settings.llm = self.llm
 
@@ -573,11 +571,6 @@ class ContextualRAG:
         retrieved_nodes = self.reranker.postprocess_nodes(combined_nodes, query_bundle)
 
         contexts = [n.node.text for n in retrieved_nodes]
-
-        # langfuse_context.update_current_observation(
-        #     input=json.dumps(contexts),
-        #     session_id=str(session_id),
-        # )
 
         logger.debug("Generating response ...")
         messages = [

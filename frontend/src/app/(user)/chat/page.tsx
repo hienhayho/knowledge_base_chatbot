@@ -23,6 +23,14 @@ export interface IAssistant {
     configuration?: Record<string, string | number>;
 }
 
+export interface IConversation {
+    id: string;
+    name: string;
+    assistant_id: string;
+    created_at: string;
+    updated_at: string;
+}
+
 const ChatMainPage = () => {
     const router = useRouter();
     const [messageApi, contextHolder] = message.useMessage();

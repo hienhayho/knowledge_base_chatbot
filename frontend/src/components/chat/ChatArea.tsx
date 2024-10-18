@@ -229,7 +229,6 @@ const ChatArea = ({
     };
 
     const renderMessage = (message: IMessage) => {
-        console.log("Message:", message.content);
         switch (message.type) {
             case "text":
                 return (
