@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, User, Bot, Loader2, Link } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import Markdown from "react-markdown";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { Popover, message } from "antd";
+import remarkGfm from "remark-gfm";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -231,9 +232,12 @@ const ChatArea = ({
         switch (message.type) {
             case "text":
                 return (
-                    <ReactMarkdown className="prose prose-sm max-w-none">
+                    <Markdown
+                        remarkPlugins={[remarkGfm]}
+                        className="prose prose-sm max-w-none"
+                    >
                         {message.content}
-                    </ReactMarkdown>
+                    </Markdown>
                 );
             case "video":
                 const fullVideoUrl = `${API_BASE_URL}/getfile/${message.content}`;
@@ -253,22 +257,25 @@ const ChatArea = ({
                 );
             default:
                 return (
-                    <ReactMarkdown className="prose prose-sm max-w-none">
+                    <Markdown
+                        remarkPlugins={[remarkGfm]}
+                        className="prose prose-sm max-w-none"
+                    >
                         {message.content}
-                    </ReactMarkdown>
+                    </Markdown>
                 );
         }
     };
 
     return (
-        <div className="flex flex-col h-screen bg-white">
+        <div className="flex flex-col h-screen bg-white mt-12">
             {" "}
             {contextHolder}
             <div
                 className="flex-1 overflow-y-auto p-4"
                 style={{ maxHeight: "90vh" }}
             >
-                <div className="max-w-4xl mx-auto mt-20">
+                <div className="max-w-4xl mx-auto mt-36">
                     {messages.map((message, index) => (
                         <div
                             key={index}

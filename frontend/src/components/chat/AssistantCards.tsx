@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Cpu, Book, MoreVertical, Trash2, Loader } from "lucide-react";
+import { Cpu, Book, MoreVertical, Trash2, LoaderCircle } from "lucide-react";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { IAssistant } from "@/app/(user)/chat/page";
@@ -60,15 +60,14 @@ const AssistantCard = ({
     const badgeText = getBadgeText(assistant.created_at, assistant.updated_at);
 
     useEffect(() => {
-        const token = getCookie("access_token");
         if (!token) {
-            window.location.href = "/login?redirect=/chat";
+            router.push(`/login?redirect=${redirectUrl}`);
             return;
         }
         const fetchKnowledgeBase = async () => {
             try {
                 const response = await fetch(
-                    `${API_BASE_URL}/api/kb/${assistant.knowledge_base_id}`,
+                    `${API_BASE_URL}/api/kb/get_kb/${assistant.knowledge_base_id}`,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -180,7 +179,7 @@ const AssistantCard = ({
                         disabled={isLoading}
                     >
                         {isLoading ? (
-                            <Loader className="animate-spin" size={20} />
+                            <LoaderCircle className="animate-spin" size={20} />
                         ) : cost === null ? (
                             "Get Total Cost"
                         ) : (

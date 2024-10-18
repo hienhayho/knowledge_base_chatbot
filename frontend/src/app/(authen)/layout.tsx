@@ -1,8 +1,15 @@
+import { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export default function RootLayout({ children }: {
+export const metadata: Metadata = {
+    title: "Authentication",
+};
+
+export default function AuthenLayout({
+    children,
+}: {
     children: React.ReactNode;
 }) {
     return (

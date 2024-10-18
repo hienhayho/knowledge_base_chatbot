@@ -25,6 +25,7 @@ from api.models import (
     GetKnowledgeBase,
     GetKnowledgeBaseResponse,
     MergeKnowledgeBasesRequest,
+    DeleteDocumentRequestBody,
 )
 from src.database import (
     Users,
@@ -228,6 +229,59 @@ async def process_document(
         )
 
 
+@kb_router.post("/stop_processing/{document_id}")
+async def stop_processing_document(
+    document_id: str,
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+):
+    """
+    Stop processing document
+    """
+    with db_session as session:
+        query = select(Documents).where(Documents.id == document_id)
+
+        document = session.exec(query).first()
+
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
+            )
+
+        if document.knowledge_base.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to stop processing this document",
+            )
+
+        task_id = document.task_id
+
+        if not task_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Task ID not found !"
+            )
+
+        task = AsyncResult(task_id, app=celery_app)
+
+        if task.state == "PROGRESS":
+            task.revoke(terminate=True, signal="SIGKILL")
+
+            document.status = FileStatus.FAILED
+
+            session.add(document)
+            session.commit()
+
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={"message": "Processing stopped successfully"},
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"message": "Task is not in progress"},
+        )
+
+
 @kb_router.get("/document_status/{document_id}")
 async def get_document_status(
     document_id: str,
@@ -321,7 +375,7 @@ async def get_all_knowledge_bases(
         return result
 
 
-@kb_router.get("/{kb_id}", response_model=GetKnowledgeBaseResponse)
+@kb_router.get("/get_kb/{kb_id}", response_model=GetKnowledgeBaseResponse)
 async def get_knowledge_base(
     kb_id: str,
     db_session: Annotated[Session, Depends(get_session)],
@@ -350,6 +404,8 @@ async def get_knowledge_base(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to access this Knowledge Base",
             )
+
+        session.close()
 
         return kb
 
@@ -388,15 +444,9 @@ async def download_document(
             file_path=str(file_path),
         )
 
+        session.close()
+
         return FileResponse(path=file_path, filename=document.file_name)
-
-
-@kb_router.post("/test")
-async def test(
-    index_name: str,
-    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
-):
-    return db_manager.contextual_rag_client.es.get_all_data_in_index(index_name)
 
 
 @kb_router.patch("/merge", response_model=GetKnowledgeBase)
@@ -466,12 +516,15 @@ async def merge_knowledge_bases(
             session.delete(kb)
             session.commit()
 
+        session.close()
+
         return target_knowledge_base
 
 
 @kb_router.delete("/delete_document/{document_id}")
 async def delete_document(
     document_id: str,
+    delete_document_request_body: DeleteDocumentRequestBody,
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
     db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
@@ -499,13 +552,16 @@ async def delete_document(
 
         db_manager.delete_file(
             object_name=document.file_path_in_minio,
+            delete_to_retry=delete_document_request_body.delete_to_retry,
             document_id=document.id,
             knownledge_base_id=document.knowledge_base_id,
             is_contextual_rag=is_contextual_rag,
         )
 
-        session.delete(document)
-        session.commit()
+        if not delete_document_request_body.delete_to_retry:
+            session.delete(document)
+            session.commit()
+
         session.close()
 
         return JSONResponse(
@@ -551,6 +607,7 @@ async def delete_knowledge_base(
 
         session.delete(kb)
         session.commit()
+        session.close()
 
         return JSONResponse(
             content={"message": "Knowledge Base deleted successfully"},

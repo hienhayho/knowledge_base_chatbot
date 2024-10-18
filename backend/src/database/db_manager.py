@@ -176,6 +176,7 @@ class DatabaseManager:
         document_id: UUID,
         knownledge_base_id: UUID,
         is_contextual_rag: bool,
+        delete_to_retry: bool = False,
     ):
         """
         Delete file from Minio
@@ -183,13 +184,16 @@ class DatabaseManager:
         Args:
             object_name (str): Object name in Minio
             document_id (UUID): Document ID
+            knownledge_base_id (UUID): Knowledge base ID
             is_contextual_rag (bool): Is contextual RAG
+            delete_to_retry (bool, optional): Delete file to retry processing. Defaults to `False`.
         """
 
-        self.minio_client.remove_file(
-            bucket_name=self.setting.upload_bucket_name,
-            object_name=object_name,
-        )
+        if not delete_to_retry:
+            self.minio_client.remove_file(
+                bucket_name=self.setting.upload_bucket_name,
+                object_name=object_name,
+            )
 
         self.contextual_rag_client.qdrant_client.delete_vector(
             collection_name=knownledge_base_id,

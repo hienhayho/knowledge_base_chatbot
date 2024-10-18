@@ -14,6 +14,7 @@ def load_kb_tool(
     collection_name: str,
     session_id: str | UUID,
     is_contextual_rag: bool = False,
+    system_prompt: str = "",
 ) -> FunctionTool:
     contextual_rag = ContextualRAG.from_setting(setting=setting)
 
@@ -35,6 +36,7 @@ def load_kb_tool(
             top_k=setting.contextual_rag_config.top_k,
             top_n=setting.contextual_rag_config.top_n,
             debug=True,
+            system_prompt=system_prompt,
         )
 
     return FunctionTool.from_defaults(

@@ -8,15 +8,9 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { IAssistant } from "@/app/(user)/chat/page";
+import { IConversation } from "@/app/(user)/chat/page";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-interface IConversation {
-    id: string;
-    assistant_id: string;
-    created_at: string;
-    updated_at: string;
-}
 
 const ChatAssistantPage = () => {
     const router = useRouter();
@@ -34,7 +28,6 @@ const ChatAssistantPage = () => {
         useState<IConversation | null>(null);
     const [sidebarWidth, setSidebarWidth] = useState(256);
     const [conversations, setConversations] = useState<IConversation[]>([]);
-    const [assistants, setAssistants] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const token = getCookie("access_token");
@@ -54,28 +47,9 @@ const ChatAssistantPage = () => {
     }, [conversation_id, conversations]);
 
     useEffect(() => {
-        fetchAssistants();
         fetchAssistant();
         fetchConversations();
     }, [assistant_id]);
-
-    const fetchAssistants = async () => {
-        const token = getCookie("access_token");
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            if (!response.ok) {
-                throw new Error("Failed to fetch assistants");
-            }
-            const data = await response.json();
-            setAssistants(data);
-        } catch (err) {
-            setError((err as Error).message);
-        }
-    };
 
     const fetchAssistant = async () => {
         try {
@@ -119,9 +93,13 @@ const ChatAssistantPage = () => {
         }
     };
 
-    const handleConversationSelect = (conversation: IConversation) => {
+    const handleConversationSelect = (conversation: IConversation | null) => {
         setSelectedConversation(conversation);
-        router.push(`/chat/${assistant_id}?conversation=${conversation.id}`);
+        if (conversation)
+            router.push(
+                `/chat/${assistant_id}?conversation=${conversation.id}`
+            );
+        else router.push(`/chat/${assistant_id}`);
     };
 
     const handleCreateConversation = async () => {
@@ -153,10 +131,6 @@ const ChatAssistantPage = () => {
         }
     };
 
-    const handleCreateAssistant = () => {
-        // Implement the logic to open the create assistant modal
-    };
-
     if (isLoading) return <LoadingSpinner />;
     if (error) return <ErrorComponent message={error} />;
 
@@ -167,10 +141,12 @@ const ChatAssistantPage = () => {
                 width={sidebarWidth}
                 setWidth={setSidebarWidth}
                 conversations={conversations}
+                setConversations={setConversations}
                 selectedConversation={selectedConversation}
                 onConversationSelect={handleConversationSelect}
                 onCreateConversation={handleCreateConversation}
                 selectedAssistant={selectedAssistant}
+                setSelectedAssistant={setSelectedAssistant}
             />
             <main className="flex-1 flex flex-col overflow-hidden">
                 <div>
@@ -178,11 +154,10 @@ const ChatAssistantPage = () => {
                         isSideView={isSideView}
                         setIsSideView={setIsSideView}
                         selectedAssistant={selectedAssistant}
-                        setSelectedAssistant={setSelectedAssistant}
-                        assistants={assistants}
-                        onCreateAssistant={handleCreateAssistant}
+                        onCreateAssistant={() => {}}
                         showSidebarButton={true}
-                        showAssistantSelect={true}
+                        showCreateAssistantButton={false}
+                        showUpdateAssistantButton={true}
                     />
                     {selectedConversation && selectedAssistant ? (
                         <ChatArea

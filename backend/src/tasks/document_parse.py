@@ -3,7 +3,7 @@ import math
 import celery
 import tempfile
 from pathlib import Path
-
+from llama_index.core import Document
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -102,7 +102,7 @@ def parse_document(
 
     self.update_state(state="PROGRESS", meta={"progress": 60})
 
-    new_chunks = []
+    new_chunks: list[Document] = []
     for chunk in chunks:
         new_chunks.extend(chunk)
 
@@ -117,9 +117,10 @@ def parse_document(
     indexed_document = contextual_documents if is_contextual_rag else new_chunks
 
     session = get_instance_session()
-    for idx, chunk in enumerate(indexed_document):
+    for idx, (chunk, original_chunk) in enumerate(zip(indexed_document, new_chunks)):
         document_chunk = DocumentChunks(
             chunk_index=idx,
+            original_content=original_chunk.text,
             content=chunk.text,
             document_id=document_id,
             vector_id=chunk.metadata["vector_id"],

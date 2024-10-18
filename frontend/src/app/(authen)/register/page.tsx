@@ -123,7 +123,7 @@ const SignUp: React.FC = () => {
                             },
                         ]}
                     >
-                        <Input />
+                        <Input autoFocus />
                     </Form.Item>
 
                     <Form.Item
@@ -148,6 +148,18 @@ const SignUp: React.FC = () => {
                                 required: true,
                                 message: "Please input your password!",
                             },
+                            () => ({
+                                validator(_, value) {
+                                    if (!value || value.length >= 6) {
+                                        return Promise.resolve();
+                                    }
+                                    return Promise.reject(
+                                        new Error(
+                                            "Password must be at least 6 characters!"
+                                        )
+                                    );
+                                },
+                            }),
                         ]}
                     >
                         <Input.Password />

@@ -175,7 +175,7 @@ const SignInContent: React.FC = () => {
                             },
                         ]}
                     >
-                        <Input />
+                        <Input autoFocus />
                     </Form.Item>
 
                     <Form.Item

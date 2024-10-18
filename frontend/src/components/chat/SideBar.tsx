@@ -1,24 +1,18 @@
+import { getCookie } from "cookies-next";
+import { message } from "antd";
+import { Plus, HelpCircle } from "lucide-react";
 import React, { useCallback, useRef, useState, useEffect } from "react";
-import { Plus, MessageSquare, HelpCircle } from "lucide-react";
 
-interface IConversation {
-    id: string;
-    assistant_id: string;
-    created_at: string;
-    updated_at: string;
-}
-
-interface IAssistant {
-    id: string;
-    name: string;
-    created_at: string;
-}
+import { IAssistant } from "@/app/(user)/chat/page";
+import { IConversation } from "@/app/(user)/chat/page";
+import ConversationCard from "./ConversationCard";
 
 const Sidebar = ({
     isVisible,
     width,
     setWidth,
     conversations,
+    setConversations,
     selectedConversation,
     onConversationSelect,
     onCreateConversation,
@@ -28,13 +22,17 @@ const Sidebar = ({
     width: number;
     setWidth: (width: number) => void;
     conversations: IConversation[];
+    setConversations: (conversations: IConversation[]) => void;
     selectedConversation: IConversation | null;
-    onConversationSelect: (conversation: IConversation) => void;
+    onConversationSelect: (conversation: IConversation | null) => void;
     onCreateConversation: () => void;
     selectedAssistant: IAssistant | null;
+    setSelectedAssistant: (assistant: IAssistant) => void;
 }) => {
+    const token = getCookie("access_token");
     const sidebarRef = useRef<HTMLDivElement>(null);
-    const [isResizing, setIsResizing] = useState(false);
+    const [isResizing, setIsResizing] = useState<boolean>(false);
+    const [messageApi, contextHolder] = message.useMessage();
 
     const startResizing = useCallback(
         (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
@@ -62,7 +60,19 @@ const Sidebar = ({
         [isResizing, setWidth]
     );
 
+    const errorMessage = (content: string, duration: number = 1) => {
+        messageApi.open({
+            type: "error",
+            content: content,
+            duration: duration,
+        });
+    };
+
     useEffect(() => {
+        if (!token) {
+            errorMessage("Session expired. Please login again.");
+            return;
+        }
         window.addEventListener("mousemove", resize);
         window.addEventListener("mouseup", stopResizing);
         return () => {
@@ -75,13 +85,16 @@ const Sidebar = ({
 
     return (
         <>
+            {contextHolder}
             <aside
                 ref={sidebarRef}
-                className="bg-white shadow-md overflow-y-auto relative flex flex-col p-4"
-                style={{ width: `${width}px` }}
+                className="bg-white shadow-md relative flex flex-col"
+                style={{ width: `${width}px`, height: "100vh" }}
             >
-                <h2 className="text-lg font-semibold p-4">Conversations</h2>
-                <div className="flex-grow">
+                <h2 className="flex justify-center text-lg font-semibold px-4 py-2 flex-shrink-0">
+                    Conversations
+                </h2>
+                <div className="flex-grow overflow-y-auto px-4">
                     {!selectedAssistant ? (
                         <div className="flex flex-col items-center justify-center h-full text-gray-500">
                             <HelpCircle size={48} className="mb-2" />
@@ -91,47 +104,36 @@ const Sidebar = ({
                         </div>
                     ) : conversations.length > 0 ? (
                         conversations.map((conversation) => (
-                            <div
+                            <ConversationCard
                                 key={conversation.id}
-                                className={`m-2 p-3 rounded-lg cursor-pointer transition-colors duration-200 ${
-                                    selectedConversation &&
-                                    selectedConversation.id === conversation.id
-                                        ? "bg-blue-100"
-                                        : "bg-gray-50 hover:bg-gray-100"
-                                }`}
-                                onClick={() =>
-                                    onConversationSelect(conversation)
-                                }
-                            >
-                                <div className="flex items-center">
-                                    <MessageSquare
-                                        size={18}
-                                        className="mr-2 text-gray-600"
-                                    />
-                                    <p className="text-sm text-gray-800">
-                                        Conversation {conversation.id}
-                                    </p>
-                                </div>
-                            </div>
+                                conversation={conversation}
+                                conversations={conversations}
+                                selectedAssistant={selectedAssistant}
+                                selectedConversation={selectedConversation}
+                                onConversationSelect={onConversationSelect}
+                                setConversations={setConversations}
+                            />
                         ))
                     ) : (
-                        <p className="text-sm text-gray-500 p-4">
+                        <p className="text-sm text-gray-500">
                             No conversations yet.
                         </p>
                     )}
                 </div>
-                <button
-                    onClick={onCreateConversation}
-                    className={`m-2 p-3 rounded-lg flex items-center justify-center transition-colors duration-200 ${
-                        selectedAssistant
-                            ? "bg-blue-500 text-white hover:bg-blue-600"
-                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    }`}
-                    disabled={!selectedAssistant}
-                >
-                    <Plus size={16} className="mr-2" />
-                    New Conversation
-                </button>
+                <div className="flex-shrink-0 sticky bottom-0 z-10 p-4 bg-white">
+                    <button
+                        onClick={onCreateConversation}
+                        className={`w-full p-3 rounded-lg flex items-center justify-center transition-colors duration-200 ${
+                            selectedAssistant
+                                ? "bg-blue-500 text-white hover:bg-blue-600"
+                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
+                        disabled={!selectedAssistant}
+                    >
+                        <Plus size={16} className="mr-2" />
+                        New Conversation
+                    </button>
+                </div>
             </aside>
             <div
                 className="w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400 transition-colors duration-200"

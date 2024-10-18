@@ -2,3 +2,4 @@
 minio_storage/
 postgres-data/
 .env
+.DS_Store

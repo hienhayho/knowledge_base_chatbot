@@ -6,6 +6,7 @@ from uuid import UUID
 from tqdm import tqdm
 from pathlib import Path
 from dotenv import load_dotenv
+from qdrant_client import QdrantClient
 from llama_index.core import (
     Settings,
     Document,
@@ -14,15 +15,15 @@ from llama_index.core import (
     VectorStoreIndex,
 )
 from langfuse import Langfuse
-from qdrant_client import QdrantClient
+from langfuse.decorators import langfuse_context, observe
+from langfuse.llama_index import LlamaIndexCallbackHandler
+
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.schema import NodeWithScore, Node
-from langfuse.decorators import langfuse_context, observe
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.base.response.schema import Response
-from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.vector_stores.qdrant import QdrantVectorStore
@@ -43,6 +44,7 @@ from .core import ElasticSearch, QdrantVectorDatabase
 from src.settings import GlobalSettings, default_settings
 from src.constants import (
     QA_PROMPT,
+    ASSISTANT_SYSTEM_PROMPT,
     LLMService,
     QdrantPayload,
     RerankerService,
@@ -90,7 +92,6 @@ class ContextualRAG:
         self.llm = self.load_model(
             service=setting.llm_config.service,
             model_name=setting.llm_config.name,
-            system_prompt=setting.llm_config.system_prompt,
         )
         Settings.llm = self.llm
 
@@ -462,6 +463,7 @@ class ContextualRAG:
         top_k: int = 150,
         top_n: int = 3,
         debug: bool = False,
+        system_prompt: str = ASSISTANT_SYSTEM_PROMPT,
     ) -> str:
         """
         Search the query with the Contextual RAG.
@@ -486,6 +488,10 @@ class ContextualRAG:
 
         index = self.get_qdrant_vector_store_index(
             self.qdrant_client.client, collection_name=collection_name
+        )
+
+        langfuse_callback_handler.set_trace_params(
+            session_id=str(session_id),
         )
 
         retriever = VectorIndexRetriever(
@@ -546,9 +552,7 @@ class ContextualRAG:
 
             combined_nodes.append(
                 NodeWithScore(
-                    node=Node(
-                        text=content,
-                    ),
+                    node=Node(text=content, metada={}),
                     score=score,
                 )
             )
@@ -561,10 +565,6 @@ class ContextualRAG:
                 both_count,
             )
 
-        langfuse_callback_handler.set_trace_params(
-            session_id=str(session_id),
-        )
-
         query_bundle = QueryBundle(query_str=query)
 
         logger.debug("Reranking ...")
@@ -572,16 +572,11 @@ class ContextualRAG:
 
         contexts = [n.node.text for n in retrieved_nodes]
 
-        langfuse_context.update_current_observation(
-            input=json.dumps(contexts),
-            session_id=str(session_id),
-        )
-
         logger.debug("Generating response ...")
         messages = [
             ChatMessage(
                 role="system",
-                content="You should answer in markdown format.",
+                content=system_prompt,
             ),
             ChatMessage(
                 role="user",
@@ -598,6 +593,7 @@ class ContextualRAG:
 
         return response
 
+    @observe()
     def search(
         self,
         session_id: str | uuid.UUID,
@@ -607,6 +603,7 @@ class ContextualRAG:
         top_k: int = 150,
         top_n: int = 3,
         debug: bool = False,
+        system_prompt: str = ASSISTANT_SYSTEM_PROMPT,
     ):
         """
         Search the query with the RAG.
@@ -620,10 +617,13 @@ class ContextualRAG:
             top_n (int): The top N documents to return after reranking. Default to `3`.
             debug (bool): debug mode.
         """
+        langfuse_callback_handler.set_trace_params(
+            session_id=str(session_id),
+        )
 
         if is_contextual_rag:
             response = self.contextual_rag_search(
-                collection_name, query, session_id, top_k, top_n, debug
+                collection_name, query, session_id, top_k, top_n, debug, system_prompt
             )
         else:
             response = self.rag_search(collection_name, query, session_id)

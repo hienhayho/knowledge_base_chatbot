@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from sqlmodel import Session, select, or_
 from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timedelta, timezone
-from api.models import UserResponse, UserRequest
+from api.models import UserResponse, UserRequest, DeleteUserRequest
 
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -96,6 +96,8 @@ def get_user(
             or_(Users.username == username, Users.email == email)
         )
         user = session_db.exec(query).first()
+
+        session_db.close()
         return user
 
 
@@ -225,6 +227,7 @@ def create_new_user(
         session.add(new_user)
         session.commit()
         session.refresh(new_user)
+        session.close()
 
         return new_user
 
@@ -263,14 +266,15 @@ async def current_user(current_user: Users = Depends(get_current_user)):
 
 @user_router.delete("/delete", response_class=JSONResponse)
 async def delete_user(
-    username: str,
-    admin_access_token: str,
+    delete_user_request: DeleteUserRequest,
     db_session: Annotated[Session, Depends(get_session)],
 ):
     """
     Endpoint to delete a user
     """
-    allow_to_delete = os.getenv("ADMIN_ACCESS_TOKEN") == admin_access_token
+    allow_to_delete = (
+        os.getenv("ADMIN_ACCESS_TOKEN") == delete_user_request.admin_access_token
+    )
 
     if not allow_to_delete:
         raise HTTPException(
@@ -278,7 +282,7 @@ async def delete_user(
         )
 
     with db_session as session:
-        user = get_user(session, username)
+        user = get_user(session, delete_user_request.username)
 
         if not user:
             raise HTTPException(
@@ -287,7 +291,9 @@ async def delete_user(
 
         session.delete(user)
         session.commit()
+        session.close()
 
         return JSONResponse(
-            status_code=204, content={"message": f"User: {username} deleted"}
+            status_code=status.HTTP_200_OK,
+            content={"message": f"User: {delete_user_request.username} deleted"},
         )

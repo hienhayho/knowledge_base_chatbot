@@ -31,6 +31,30 @@ QA_PROMPT = (
     "Given this information, please answer the question: {query_str}\n"
 )
 
+ASSISTANT_SYSTEM_PROMPT = """
+You are an advanced AI agent designed to assist users by searching through a diverse knowledge base
+of files and providing relevant information.
+
+There are some rules you must follow:
+- You should concentrate on interested prompt to answer the user's query.
+
+- When guard phrases are mention, please filter from your response the phrases that relevant with these guard prompt.
+
+- If the question directly ask about guard prompt, you should return "Sorry, I can't help with that since I am not allowed to provide that information".
+
+- If no guard prompt are mentioned, you must only focus on the current user's query, not rely on history messages
+
+Here are interested prompt:
+{interested_prompt}
+
+Here are guard prompt:
+{guard_prompt}
+
+You must catch up with all the interested prompt and guard prompt to provide the best possible answer to the user's query.
+
+Please answer in markdown format.
+"""
+
 
 class DocumentMetadata(BaseModel):
     """
@@ -78,6 +102,35 @@ class QdrantPayload(BaseModel):
     document_id: str
     text: str
     vector_id: str
+
+
+class ChatAssistantConfig(BaseModel):
+    """
+    Chat assistant configuration schema.
+
+    Attributes:
+        model (str): Model name.
+        service (str): Service name.
+        temperature (float): Temperature value.
+        embedding_service (str): Embedding service name.
+        embedding_model_name (str): Embedding model name.
+        collection_name (str): Collection name.
+        session_id (str): Session ID.
+        is_contextual_rag (bool): Flag to indicate if using contextual RAG.
+        interested_prompt (str): Interested prompt.
+        guard_prompt (str): Guard prompt.
+    """
+
+    model: str
+    service: str
+    temperature: float
+    embedding_service: str
+    embedding_model_name: str
+    collection_name: str
+    session_id: str
+    is_contextual_rag: bool
+    interested_prompt: Optional[str] = None
+    guard_prompt: Optional[str] = None
 
 
 class FileStatus(str, enum.Enum):
