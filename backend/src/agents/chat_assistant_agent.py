@@ -11,7 +11,7 @@ from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessag
 from src.tools import load_kb_tool
 from src.settings import default_settings
 from src.utils import get_formatted_logger
-from src.constants import ASSISTANT_SYSTEM_PROMPT, ChatAssistantConfig
+from src.constants import ASSISTANT_SYSTEM_PROMPT, ChatAssistantConfig, MesssageHistory
 
 logger = get_formatted_logger(__file__)
 load_dotenv()
@@ -79,7 +79,12 @@ class ChatAssistant:
                 "The implementation for other types of LLMs are not ready yet!"
             )
 
-    def on_message(self, message, message_history, session_id: str | uuid.UUID) -> str:
+    def on_message(
+        self,
+        message: str,
+        message_history: list[MesssageHistory],
+        session_id: str | uuid.UUID,
+    ) -> str:
         langfuse_callback_handler.set_trace_params(
             session_id=str(session_id),
         )
@@ -92,7 +97,7 @@ class ChatAssistant:
 
         return response
 
-    def stream_chat(self, message, message_history):
+    def stream_chat(self, message: str, message_history: list[MesssageHistory]):
         message_history = [
             LLamaIndexChatMessage(content=msg["content"], role=msg["role"])
             for msg in message_history
@@ -100,14 +105,19 @@ class ChatAssistant:
         return self.agent.stream_chat(message, message_history).response_gen
 
     @observe()
-    async def astream_chat(self, message, message_history, session_id: str | uuid.UUID):
+    async def astream_chat(
+        self,
+        message: str,
+        message_history: list[MesssageHistory],
+        session_id: str | uuid.UUID,
+    ):
         langfuse_callback_handler.set_trace_params(
             name="astream_chat",
             session_id=str(session_id),
         )
 
         message_history = [
-            LLamaIndexChatMessage(content=msg["content"], role=msg["role"])
+            LLamaIndexChatMessage(content=msg.content, role=msg.role)
             for msg in message_history
         ]
         response = await self.agent.astream_chat(message, message_history)

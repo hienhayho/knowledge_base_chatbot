@@ -84,7 +84,7 @@ const TopBar = ({
                     setIsModalOpen(false);
                     return;
                 }
-                successMessage("Assistant updated successfully");
+                successMessage("Updated assistant successfully");
                 setTimeout(() => {
                     if (setSelectedAssistant) {
                         setSelectedAssistant({

@@ -1,6 +1,6 @@
 from src.database import DatabaseManager
 from src.utils import get_formatted_logger
-from src.database.sql_model import Users, KnowledgeBases
+from src.database import Users, KnowledgeBases
 
 logger = get_formatted_logger(__file__)
 

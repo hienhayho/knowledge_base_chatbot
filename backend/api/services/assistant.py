@@ -1,9 +1,9 @@
 import uuid
 from uuid import UUID
+from typing import List, Generator
 from sqlmodel import Session, select
-from typing import List, Dict, Generator
-from fastapi import Depends, HTTPException
 from langfuse.decorators import langfuse_context
+from fastapi import Depends, HTTPException, status
 
 from src.agents import ChatAssistant
 from src.utils import get_cost_from_session_id
@@ -13,7 +13,7 @@ from api.models import (
     ChatResponse,
     MessageResponse,
 )
-from src.constants import SenderType, ChatAssistantConfig
+from src.constants import SenderType, ChatAssistantConfig, MesssageHistory
 
 
 class AssistantService:
@@ -33,7 +33,8 @@ class AssistantService:
 
                 if not conversation:
                     raise HTTPException(
-                        status_code=404, detail="Conversation not found"
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Conversation not found",
                     )
 
                 # Fetch message history
@@ -83,7 +84,8 @@ class AssistantService:
 
         except Exception as e:
             raise HTTPException(
-                status_code=500, detail=f"An error occurred during the chat: {str(e)}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"An error occurred during the chat: {str(e)}",
             )
 
     def stream_chat_with_assistant(
@@ -96,7 +98,10 @@ class AssistantService:
                 .first()
             )
             if not conversation:
-                raise HTTPException(status_code=404, detail="Conversation not found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Conversation not found",
+                )
 
             message_history = self._get_message_history(session, conversation_id)
 
@@ -111,15 +116,14 @@ class AssistantService:
             assistant = conversation.assistant
             configuration = assistant.configuration
 
-            assistant_config: ChatAssistantConfig = {
-                "model": configuration["model"],
-                "service": configuration["service"],
-                "temperature": configuration["temperature"],
-                "embedding_service": "openai",
-                "embedding_model_name": "text-embedding-3-small",
-                "collection_name": f"kb_{assistant.knowledge_base_id}",
-                "conversation_id": conversation_id,
-            }
+            assistant_config = ChatAssistantConfig(
+                model=configuration["model"],
+                service=configuration["service"],
+                temperature=configuration["temperature"],
+                embedding_service="openai",
+                embedding_model_name="text-embedding-3-small",
+                collection_name=f"{assistant.knowledge_base_id}",
+            )
 
             assistant_instance = ChatAssistant(assistant_config)
 
@@ -205,7 +209,7 @@ class AssistantService:
             session.add(assistant_message)
             session.commit()
 
-    def _get_message_history(self, conversation_id: UUID) -> List[Dict[str, str]]:
+    def _get_message_history(self, conversation_id: UUID) -> List[MesssageHistory]:
         with self.db_session as session:
             query = (
                 select(Messages)
@@ -216,11 +220,12 @@ class AssistantService:
             messages = session.exec(query).all()
 
             return [
-                {"content": msg.content, "role": msg.sender_type} for msg in messages
+                MesssageHistory(content=msg.content, role=msg.sender_type)
+                for msg in messages
             ]
 
     def get_conversation_history(
-        self, conversation_id: int, user_id: int
+        self, conversation_id: UUID, user_id: UUID
     ) -> List[MessageResponse]:
         try:
             with self.db_session as session:

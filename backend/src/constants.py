@@ -117,8 +117,8 @@ class ChatAssistantConfig(BaseModel):
         collection_name (str): Collection name.
         session_id (str): Session ID.
         is_contextual_rag (bool): Flag to indicate if using contextual RAG.
-        interested_prompt (str): Interested prompt.
-        guard_prompt (str): Guard prompt.
+        interested_prompt (str): Interested prompt that assistant should focus on.
+        guard_prompt (str): Guard prompt that user don't want to see in the response.
     """
 
     model: str
@@ -131,6 +131,19 @@ class ChatAssistantConfig(BaseModel):
     is_contextual_rag: bool
     interested_prompt: Optional[str] = None
     guard_prompt: Optional[str] = None
+
+
+class MesssageHistory(BaseModel):
+    """
+    Message history schema.
+
+    Attributes:
+        content (str): Content of the message.
+        role (str): Role of the sender.
+    """
+
+    content: str
+    role: str
 
 
 class FileStatus(str, enum.Enum):
