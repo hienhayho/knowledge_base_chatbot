@@ -114,6 +114,13 @@ class QdrantVectorDatabase(BaseVectorDatabase):
                 vectors_config=models.VectorParams(
                     size=vector_size, distance=self.distance
                 ),
+                optimizers_config=models.OptimizersConfigDiff(
+                    default_segment_number=5,
+                    indexing_threshold=0,
+                ),
+                quantization_config=models.BinaryQuantization(
+                    binary=models.BinaryQuantizationConfig(always_ram=True),
+                ),
             )
 
     def add_vector(

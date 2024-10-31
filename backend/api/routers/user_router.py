@@ -1,5 +1,6 @@
 import os
 import jwt
+import uuid
 from typing import Annotated
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -7,24 +8,37 @@ from passlib.context import CryptContext
 from sqlmodel import Session, select, or_
 from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timedelta, timezone
-from api.models import UserResponse, UserRequest, DeleteUserRequest
+from api.models import (
+    UserResponse,
+    UserRequest,
+    DeleteUserRequest,
+    AdminRegisterRequest,
+)
 
 from fastapi.responses import JSONResponse
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
+from src.constants import UserRole
 from src.database import get_session, Users
+from src.utils import get_formatted_logger
+
+logger = get_formatted_logger(__file__)
 
 load_dotenv()
 
 ALGORITHM = "HS256"
 SECRET_KEY = os.getenv("SECRET_KEY")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+ADMIN_ACCESS_TOKEN = str(uuid.uuid4())
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/login")
 
 user_router = APIRouter()
+
+
+logger.critical("ADMIN_ACCESS_TOKEN: %s", ADMIN_ACCESS_TOKEN)
 
 
 class Token(BaseModel):
@@ -272,9 +286,7 @@ async def delete_user(
     """
     Endpoint to delete a user
     """
-    allow_to_delete = (
-        os.getenv("ADMIN_ACCESS_TOKEN") == delete_user_request.admin_access_token
-    )
+    allow_to_delete = ADMIN_ACCESS_TOKEN == delete_user_request.admin_access_token
 
     if not allow_to_delete:
         raise HTTPException(
@@ -297,3 +309,51 @@ async def delete_user(
             status_code=status.HTTP_200_OK,
             content={"message": f"User: {delete_user_request.username} deleted"},
         )
+
+
+@user_router.post(
+    "/admin-register", response_model=Token, status_code=status.HTTP_201_CREATED
+)
+async def admin_register(
+    admin_register_request: Annotated[AdminRegisterRequest, Body(...)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    """
+    Endpoint to register admin user
+    """
+    username = admin_register_request.username
+    email = admin_register_request.username
+    password = admin_register_request.password
+    admin_access_token = admin_register_request.admin_access_token
+
+    if admin_access_token != ADMIN_ACCESS_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to register an admin account",
+        )
+
+    with db_session as session:
+        user = get_user(session, username, email)
+        if user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username or email already registered",
+            )
+
+        new_user = Users(
+            username=username,
+            email=email,
+            hashed_password=get_password_hash(password),
+            role=UserRole.ADMIN,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+        session.close()
+
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": new_user.username}, expires_delta=access_token_expires
+        )
+
+        return {"access_token": access_token, "token_type": "bearer"}

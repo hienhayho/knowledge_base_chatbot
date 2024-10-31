@@ -48,6 +48,7 @@ interface Document {
     file_name: string;
     created_at: string;
     file_type: string;
+    file_size_in_mb: number;
     status: string;
     progress?: number;
 }
@@ -61,6 +62,7 @@ interface IUploadFile {
     doc_id: string;
     file_name: string;
     file_type: string;
+    file_size_in_mb: number;
     created_at: string;
     status: string;
 }
@@ -222,9 +224,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(
-                        errorData.detail || "Failed to upload document"
-                    );
+                    errorMessage({
+                        content:
+                            errorData.detail || "Failed to upload document",
+                        duration: 3,
+                    });
+                    continue;
                 }
 
                 const result: IUploadFile = await response.json();
@@ -236,6 +241,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         created_at: result.created_at,
                         file_type: result.file_type,
                         status: "uploaded",
+                        file_size_in_mb: result.file_size_in_mb,
                     },
                 ]);
 
@@ -618,7 +624,8 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                     </div>
                     <table className="w-full">
                         <colgroup>
-                            <col style={{ width: "40%" }} />
+                            <col style={{ width: "25%" }} />
+                            <col style={{ width: "15%" }} />
                             <col style={{ width: "15%" }} />
                             <col style={{ width: "20%" }} />
                             <col style={{ width: "15%" }} />
@@ -627,6 +634,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         <thead>
                             <tr className="text-left text-gray-600 bg-gray-100">
                                 <th className="p-2">Name</th>
+                                <th className="p-2">File Size (MB)</th>
                                 <th className="p-2">File Type</th>
                                 <th className="p-2">Upload Date</th>
                                 <th className="p-2">Status</th>
@@ -649,6 +657,11 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                     )}
                                                 </span>
                                             </div>
+                                        </td>
+                                        <td className="p-2">
+                                            {Math.round(
+                                                doc.file_size_in_mb * 100
+                                            ) / 100}
                                         </td>
                                         <td className="p-2">{doc.file_type}</td>
                                         <td className="p-2">

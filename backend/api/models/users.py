@@ -8,6 +8,13 @@ class UserLogin(BaseModel):
     password: str = Field(..., min_length=6, description="Password")
 
 
+class AdminRegisterRequest(BaseModel):
+    username: str = Field(..., min_length=4, max_length=20, description="Username")
+    email: EmailStr = Field(..., description="Email")
+    password: str = Field(..., min_length=6, description="Password")
+    admin_access_token: str = Field(..., description="Admin access token")
+
+
 class UserRequest(BaseModel):
     username: str = Field(..., min_length=4, max_length=20, description="Username")
     email: EmailStr = Field(..., description="Email")

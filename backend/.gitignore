@@ -6,3 +6,4 @@ minio_storage/
 logs/
 uploads/
 downloads/
+qdrant_data/

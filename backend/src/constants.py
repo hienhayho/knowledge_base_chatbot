@@ -248,3 +248,15 @@ class RAGType(str, enum.Enum):
     CONTEXTUAL = "contextual"
     ORIGIN = "origin"
     BOTH = "both"
+
+
+class UserRole(str, enum.Enum):
+    """
+    Enum class for user role
+    """
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    ADMIN = "admin"
+    USER = "user"

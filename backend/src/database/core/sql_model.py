@@ -22,7 +22,7 @@ from sqlmodel import (
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
-from src.constants import FileStatus, SenderType
+from src.constants import FileStatus, SenderType, UserRole
 from src.settings import get_default_setting, GlobalSettings
 
 load_dotenv()
@@ -114,6 +114,19 @@ class Users(SQLModel, table=True):
     )
     hashed_password: str = Field(nullable=False, description="Hashed Password")
 
+    role: UserRole = Field(
+        default=UserRole.USER,
+        description="Role of the User",
+    )
+    organization: str = Field(
+        nullable=True,
+        description="Organization of the User",
+    )
+    is_owner: bool = Field(
+        default=False,
+        description="Is the user owner of the organization",
+    )
+
     created_at: datetime = Field(
         default_factory=datetime.now,
         nullable=False,
@@ -126,10 +139,38 @@ class Users(SQLModel, table=True):
         description="Updated At time",
         sa_column_kwargs={"onupdate": datetime.now()},
     )
+    max_size_mb: float = Field(
+        default=5.0,
+        description="Max Size of files user can upload to the knowledge bases",
+    )
 
     assistants: List["Assistants"] = Relationship(back_populates="user")
     conversations: List["Conversations"] = Relationship(back_populates="user")
-    knowledge_bases: List["KnowledgeBases"] = Relationship(back_populates="user")
+    knowledge_bases: List["KnowledgeBases"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+
+    @property
+    def total_upload_size(self) -> float:
+        """
+        Total size of the files uploaded by the user in MB
+        """
+        # In MB
+        return sum([kb.files_size for kb in self.knowledge_bases])
+
+    def allow_upload(self, current_file_size: float) -> bool:
+        """
+        Check if the user can upload the file of given size
+
+        Args:
+            current_file_size (float): Size of the file in BYTES
+
+        Returns:
+            bool: True if user can upload the file, False otherwise
+        """
+        return (
+            self.total_upload_size + current_file_size / 1024 / 1024 < self.max_size_mb
+        )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -244,6 +285,10 @@ class KnowledgeBases(SQLModel, table=True):
     )
 
     @property
+    def files_size(self) -> float:
+        return sum([document.file_size for document in self.documents]) / 1024 / 1024
+
+    @property
     def last_updated(self):
         return self.updated_at
 
@@ -292,11 +337,19 @@ class Documents(SQLModel, table=True):
         nullable=True,
         description="Task ID from celery task queue",
     )
+    file_size: float = Field(
+        nullable=False,
+        description="Size of the file in bytes",
+    )
 
     knowledge_base: KnowledgeBases = Relationship(back_populates="documents")
     document_chunks: List["DocumentChunks"] = Relationship(
         back_populates="document", cascade_delete=True
     )
+
+    @property
+    def file_size_in_mb(self):
+        return self.file_size / 1024 / 1024
 
     @property
     def file_path(self):

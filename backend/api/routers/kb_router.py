@@ -1,3 +1,4 @@
+import os
 import uuid
 from pathlib import Path
 from typing import Annotated
@@ -132,6 +133,10 @@ async def upload_file(
     with file_path.open("wb") as buffer:
         buffer.write(file.file.read())
 
+    with open(file_path, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        file_size = f.tell()
+
     with db_session as session:
         query = select(KnowledgeBases).where(KnowledgeBases.id == knowledge_base_id)
 
@@ -140,6 +145,16 @@ async def upload_file(
         if not kb:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base not found"
+            )
+
+        if not current_user.allow_upload(file_size):
+            logger.debug(
+                "Deleting the file from local as user has no space left for uploading files"
+            )
+            Path(file_path).unlink()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No space left for uploading files, used: {round(current_user.total_upload_size, 2)} MB. Allowed space: {current_user.max_size_mb} MB. This file size: {round(file_size / (1024 * 1024), 2)} MB",
             )
 
         if kb.user_id != current_user.id:
@@ -153,6 +168,7 @@ async def upload_file(
             file_path_in_minio=f"{uuid.uuid4()}_{file.filename}",
             file_type=Path(file.filename).suffix,
             status=FileStatus.UPLOADED,
+            file_size=file_size,
             knowledge_base=kb,
         )
 
@@ -170,7 +186,6 @@ async def upload_file(
 
         # Remove the file in local after uploading to Minio
         Path(file_path).unlink()
-
         return UploadFileResponse(
             doc_id=document.id,
             file_name=document.file_name,
@@ -178,6 +193,7 @@ async def upload_file(
             status=document.status,
             knowledge_base=knowledge_base,
             created_at=document.created_at,
+            file_size_in_mb=document.file_size_in_mb,
         )
 
 

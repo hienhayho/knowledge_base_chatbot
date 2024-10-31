@@ -107,6 +107,11 @@ class UploadFileResponse(BaseModel):
         title="Knowledge Base",
         description="Knowledge Base",
     )
+    file_size_in_mb: float = Field(
+        ...,
+        title="File Size in MB",
+        description="File Size in MB",
+    )
 
 
 class GetDocumentStatusReponse(BaseModel):
@@ -176,6 +181,7 @@ class DocumentInKnowledgeBase(BaseModel):
     file_type: str
     created_at: datetime
     status: str
+    file_size_in_mb: float
 
     model_config = ConfigDict(from_attributes=True)
 

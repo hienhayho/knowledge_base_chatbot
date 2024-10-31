@@ -1,4 +1,10 @@
-from .users import UserRequest, UserResponse, UserLogin, DeleteUserRequest
+from .users import (
+    UserRequest,
+    UserResponse,
+    UserLogin,
+    DeleteUserRequest,
+    AdminRegisterRequest,
+)
 from .knowledge_bases import (
     KnowledgeBaseRequest,
     KnowledgeBaseResponse,
@@ -25,6 +31,7 @@ __all__ = [
     "UserRequest",
     "UserResponse",
     "UserLogin",
+    "AdminRegisterRequest",
     "DeleteUserRequest",
     "KnowledgeBaseRequest",
     "KnowledgeBaseResponse",
