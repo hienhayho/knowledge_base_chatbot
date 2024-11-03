@@ -257,6 +257,10 @@ class GlobalSettings(BaseModel):
         ),
         description="Agent configuration",
     )
+    global_vector_db_collection_name: str = Field(
+        default=config.global_vector_db_collection_name,
+        description="Global vector database collection name",
+    )
 
 
 default_settings = GlobalSettings()

@@ -11,8 +11,10 @@ from .knowledge_bases import (
     UploadFileResponse,
     GetDocumentStatusReponse,
     GetKnowledgeBase,
+    DocumentInKnowledgeBase,
     GetKnowledgeBaseResponse,
-    MergeKnowledgeBasesRequest,
+    MergeKnowledgeBaseResponse,
+    InheritKnowledgeBaseRequest,
     DeleteDocumentRequestBody,
 )
 from .assistants import (
@@ -37,6 +39,8 @@ __all__ = [
     "KnowledgeBaseResponse",
     "UploadFileResponse",
     "GetDocumentStatusReponse",
+    "DocumentInKnowledgeBase",
+    "MergeKnowledgeBaseResponse",
     "GetKnowledgeBase",
     "GetKnowledgeBaseResponse",
     "AssistantCreate",
@@ -47,7 +51,7 @@ __all__ = [
     "MessageResponse",
     "ChatResponse",
     "AssistantWithTotalCost",
-    "MergeKnowledgeBasesRequest",
+    "InheritKnowledgeBaseRequest",
     "AsistantUpdatePhraseRequest",
     "DeleteDocumentRequestBody",
 ]

@@ -6,8 +6,10 @@ minio_config = dict(
 temp_folder = "uploads"
 
 embeddings_config = dict(
-    service="openai", model="text-embedding-3-small", chunk_size=2048
+    service="openai", model="text-embedding-ada-002", chunk_size=1024
 )
+
+global_vector_db_collection_name = "qdrant_collection"
 
 llm_config = dict(service="openai", model="gpt-4o-mini")
 

@@ -11,7 +11,7 @@ from src.settings import GlobalSettings
 
 def load_kb_tool(
     setting: GlobalSettings,
-    collection_name: str,
+    kb_ids: list[str | UUID],
     session_id: str | UUID,
     is_contextual_rag: bool = False,
     system_prompt: str = "",
@@ -31,7 +31,7 @@ def load_kb_tool(
         return contextual_rag.search(
             session_id=session_id,
             is_contextual_rag=is_contextual_rag,
-            collection_name=collection_name,
+            kb_ids=[str(kb_id) for kb_id in kb_ids],
             query=query,
             top_k=setting.contextual_rag_config.top_k,
             top_n=setting.contextual_rag_config.top_n,

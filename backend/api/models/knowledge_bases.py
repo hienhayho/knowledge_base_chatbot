@@ -25,21 +25,16 @@ class KnowledgeBaseRequest(BaseModel):
     )
 
 
-class MergeKnowledgeBasesRequest(BaseModel):
-    knowledge_base_ids: list[UUID] = Field(
+class InheritKnowledgeBaseRequest(BaseModel):
+    source_knowledge_base_id: UUID = Field(
         ...,
-        title="List of Knowledge Base IDs",
-        description="List of Knowledge Base IDs to be merged",
+        title="Source Knowledge Base ID",
+        description="Source Knowledge Base ID",
     )
-    name: str = Field(
-        default="Merged Knowledge Base",
-        title="Name of the merged Knowledge Base",
-        description="Name of the merged Knowledge Base",
-    )
-    description: str = Field(
-        default="No description",
-        title="Description of the merged Knowledge Base",
-        description="Description of the merged Knowledge Base",
+    target_knowledge_base_id: UUID | None = Field(
+        None,
+        title="Target Knowledge Base ID",
+        description="Target Knowledge Base ID",
     )
 
 
@@ -186,6 +181,11 @@ class DocumentInKnowledgeBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MergeKnowledgeBaseResponse(BaseModel):
+    id: UUID
+    name: str
+
+
 class GetKnowledgeBaseResponse(BaseModel):
     id: UUID
     name: str
@@ -195,6 +195,9 @@ class GetKnowledgeBaseResponse(BaseModel):
     updated_at: datetime
     document_count: int
     last_updated: datetime
+    parents: list[UUID]
+    children: list[UUID]
     documents: list[DocumentInKnowledgeBase]
+    mergeable_knowledge_bases: list[MergeKnowledgeBaseResponse]
 
     model_config = ConfigDict(from_attributes=True)

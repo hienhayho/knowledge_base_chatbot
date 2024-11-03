@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Modal, Input } from "antd";
 const { TextArea } = Input;
 
@@ -21,6 +21,7 @@ const KnowledgeBaseModal = ({
 }) => {
     const [name, setName] = useState<string>("");
     const [description, setDescription] = useState<string>("");
+    const inputRef = useRef<any>(null);
 
     if (!isOpen) return null;
 
@@ -51,12 +52,20 @@ const KnowledgeBaseModal = ({
             open={isOpen}
             onCancel={handleCancel}
             onOk={handleOk}
+            afterOpenChange={(open) => {
+                if (open && inputRef.current) {
+                    setTimeout(() => {
+                        inputRef.current?.focus();
+                    }, 100);
+                }
+            }}
         >
             <div className="mt-3">
                 <label className="block mb-1">
                     <strong>Name:</strong>
                 </label>
                 <Input
+                    ref={inputRef}
                     placeholder="e.g Math kb"
                     value={name}
                     onChange={(e) => setName(e.target.value)}

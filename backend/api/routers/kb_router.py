@@ -1,10 +1,10 @@
 import os
+import copy
 import uuid
 from pathlib import Path
 from typing import Annotated
-from sqlmodel import Session, select
-from sqlalchemy.orm import joinedload
 from celery.result import AsyncResult
+from sqlmodel import Session, select, not_, col, or_, and_
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi import (
     Body,
@@ -19,25 +19,30 @@ from fastapi import (
 from .user_router import get_current_user
 from src.settings import default_settings
 from api.models import (
+    UserResponse,
     KnowledgeBaseRequest,
     KnowledgeBaseResponse,
     UploadFileResponse,
     GetDocumentStatusReponse,
     GetKnowledgeBase,
     GetKnowledgeBaseResponse,
-    MergeKnowledgeBasesRequest,
     DeleteDocumentRequestBody,
+    DocumentInKnowledgeBase,
+    InheritKnowledgeBaseRequest,
+    MergeKnowledgeBaseResponse,
 )
 from src.database import (
     Users,
+    Documents,
+    Assistants,
+    DocumentChunks,
     get_session,
     MinioClient,
+    is_valid_uuid,
+    get_db_manager,
     KnowledgeBases,
     DatabaseManager,
-    Documents,
-    get_db_manager,
     get_minio_client,
-    is_valid_uuid,
 )
 from src.celery import celery_app
 from src.tasks import parse_document
@@ -70,7 +75,7 @@ async def create_new_knowledge_base(
         kb = KnowledgeBases(
             name=kb_info.name,
             description=kb_info.description,
-            user=session.merge(current_user),
+            user_id=current_user.id,
             is_contextual_rag=True,
         )
 
@@ -78,7 +83,19 @@ async def create_new_knowledge_base(
         session.commit()
         session.refresh(kb)
 
-        return kb
+        return KnowledgeBaseResponse(
+            id=kb.id,
+            name=kb.name,
+            description=kb.description,
+            created_at=kb.created_at,
+            updated_at=kb.updated_at,
+            user=UserResponse(
+                id=current_user.id,
+                username=current_user.username,
+                created_at=current_user.created_at,
+                updated_at=current_user.updated_at,
+            ),
+        )
 
 
 @kb_router.post(
@@ -142,12 +159,24 @@ async def upload_file(
 
         kb = session.exec(query).first()
 
+        query_user_kbs = select(KnowledgeBases).where(
+            KnowledgeBases.user_id == current_user.id
+        )
+
+        user_kbs = session.exec(query_user_kbs).all()
+
+        query_documents = select(Documents).where(
+            Documents.user_id == current_user.id,
+        )
+
+        documents = session.exec(query_documents).all()
+
         if not kb:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base not found"
             )
 
-        if not current_user.allow_upload(file_size):
+        if not current_user.allow_upload(file_size, user_kbs, documents):
             logger.debug(
                 "Deleting the file from local as user has no space left for uploading files"
             )
@@ -169,14 +198,13 @@ async def upload_file(
             file_type=Path(file.filename).suffix,
             status=FileStatus.UPLOADED,
             file_size=file_size,
-            knowledge_base=kb,
+            knowledge_base_id=knowledge_base_id,
+            user_id=current_user.id,
         )
 
         session.add(document)
         session.commit()
         session.refresh(document)
-
-        knowledge_base = document.knowledge_base
 
         minio_client.upload_file(
             bucket_name=default_settings.upload_bucket_name,
@@ -191,7 +219,7 @@ async def upload_file(
             file_name=document.file_name,
             file_type=document.file_type,
             status=document.status,
-            knowledge_base=knowledge_base,
+            knowledge_base=kb,
             created_at=document.created_at,
             file_size_in_mb=document.file_size_in_mb,
         )
@@ -211,18 +239,24 @@ async def process_document(
 
         document = session.exec(query).first()
 
+        query_kb = select(KnowledgeBases).where(
+            KnowledgeBases.id == document.knowledge_base_id
+        )
+
+        kb = session.exec(query_kb).first()
+
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
             )
 
-        if document.knowledge_base.user_id != current_user.id:
+        if document.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to process this document",
             )
 
-        is_contextual_rag = document.knowledge_base.is_contextual_rag
+        is_contextual_rag = kb.is_contextual_rag
 
         isContextualRAG = is_contextual_rag
 
@@ -264,7 +298,7 @@ async def stop_processing_document(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
             )
 
-        if document.knowledge_base.user_id != current_user.id:
+        if document.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to stop processing this document",
@@ -314,7 +348,7 @@ async def get_document_status(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
             )
 
-        if document.knowledge_base.user_id != current_user.id:
+        if document.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to access this document",
@@ -375,15 +409,22 @@ async def get_all_knowledge_bases(
 
         knowledge_bases = session.exec(query).all()
 
+        documents = [
+            session.exec(
+                select(Documents).where(Documents.knowledge_base_id == kb.id)
+            ).all()
+            for kb in knowledge_bases
+        ]
+
         result = [
             GetKnowledgeBase(
                 id=kb.id,
                 name=kb.name,
                 description=kb.description,
-                document_count=len(kb.documents),
+                document_count=len(document),
                 last_updated=kb.last_updated,
             )
-            for kb in knowledge_bases
+            for kb, document in zip(knowledge_bases, documents)
         ]
 
         session.close()
@@ -401,13 +442,13 @@ async def get_knowledge_base(
     Get knowledge base by ID
     """
     with db_session as session:
-        query = (
-            select(KnowledgeBases)
-            .options(joinedload(KnowledgeBases.documents))
-            .filter_by(id=kb_id, user_id=current_user.id)
-        )
+        query = select(KnowledgeBases).filter_by(id=kb_id, user_id=current_user.id)
 
         kb = session.exec(query).first()
+
+        query_documents = select(Documents).where(Documents.knowledge_base_id == kb_id)
+
+        documents = session.exec(query_documents).all()
 
         if not kb:
             raise HTTPException(
@@ -421,9 +462,56 @@ async def get_knowledge_base(
                 detail="You are not allowed to access this Knowledge Base",
             )
 
+        if kb.parents:
+            mergeable_kb = []
+        else:
+            mergeable_kb = session.exec(
+                select(KnowledgeBases.id, KnowledgeBases.name)
+                .join(Users, KnowledgeBases.user_id == Users.id)
+                .where(
+                    Users.organization == current_user.organization,
+                    not_(
+                        or_(
+                            col(KnowledgeBases.parents).contains([kb.id]),
+                            col(KnowledgeBases.children).contains([kb.id]),
+                        ),
+                    ),
+                    not_(KnowledgeBases.id == kb.id),
+                    and_(kb.children == []),
+                )
+            ).all()
+
         session.close()
 
-        return kb
+        return GetKnowledgeBaseResponse(
+            id=kb.id,
+            name=kb.name,
+            description=kb.description,
+            user_id=kb.user_id,
+            created_at=kb.created_at,
+            updated_at=kb.updated_at,
+            document_count=len(documents),
+            last_updated=kb.last_updated,
+            parents=kb.parents,
+            children=kb.children,
+            documents=[
+                DocumentInKnowledgeBase(
+                    id=doc.id,
+                    file_name=doc.file_name,
+                    file_type=doc.file_type,
+                    status=doc.status,
+                    created_at=doc.created_at,
+                    file_size_in_mb=doc.file_size_in_mb,
+                )
+                for doc in documents
+            ],
+            mergeable_knowledge_bases=(
+                [
+                    MergeKnowledgeBaseResponse(id=kb.id, name=kb.name)
+                    for kb in mergeable_kb
+                ]
+            ),
+        )
 
 
 @kb_router.get("/download/{document_id}")
@@ -446,7 +534,7 @@ async def download_document(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
             )
 
-        if document.knowledge_base.user_id != current_user.id:
+        if document.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to download this document",
@@ -465,78 +553,6 @@ async def download_document(
         return FileResponse(path=file_path, filename=document.file_name)
 
 
-@kb_router.patch("/merge", response_model=GetKnowledgeBase)
-async def merge_knowledge_bases(
-    merge_request: Annotated[MergeKnowledgeBasesRequest, Body(...)],
-    db_session: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[Users, Depends(get_current_user)],
-    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
-):
-    """
-    Merge knowledge bases
-    """
-
-    with db_session as session:
-        query = select(KnowledgeBases).where(
-            KnowledgeBases.id.in_(merge_request.knowledge_base_ids)
-        )
-
-        knowledge_bases = session.exec(query).all()
-
-        if not knowledge_bases:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Knowledge Bases not found !",
-            )
-
-        if any(kb.user_id != current_user.id for kb in knowledge_bases):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to merge these Knowledge Bases",
-            )
-
-        target_knowledge_base = knowledge_bases[0]
-        target_knowledge_base_id = target_knowledge_base.id
-
-        source_knowledge_bases = knowledge_bases[1:]
-        source_knowledge_base_ids = [kb.id for kb in source_knowledge_bases]
-
-        # Add all the documents from source knowledge bases to target knowledge base
-        logger.debug(
-            "Moving documents from source knowledge bases to target knowledge base in SQL database ..."
-        )
-        for kb in source_knowledge_bases:
-            source_docs = kb.documents
-            for doc in source_docs:
-                doc.knowledge_base_id = target_knowledge_base_id
-                session.add(doc)
-                session.commit()
-
-                session.refresh(doc)
-                session.refresh(target_knowledge_base)
-                session.refresh(kb)
-
-        db_manager.merge_knowledge_bases(
-            target_knowledge_base_id=target_knowledge_base_id,
-            source_knowledge_base_ids=source_knowledge_base_ids,
-        )
-
-        target_knowledge_base.name = merge_request.name
-        target_knowledge_base.description = merge_request.description
-
-        session.add(target_knowledge_base)
-        session.commit()
-        session.refresh(target_knowledge_base)
-
-        for kb in source_knowledge_bases:
-            session.delete(kb)
-            session.commit()
-
-        session.close()
-
-        return target_knowledge_base
-
-
 @kb_router.delete("/delete_document/{document_id}")
 async def delete_document(
     document_id: str,
@@ -553,14 +569,20 @@ async def delete_document(
 
         document = session.exec(query).first()
 
-        is_contextual_rag = document.knowledge_base.is_contextual_rag
+        kb = session.exec(
+            select(KnowledgeBases).where(
+                KnowledgeBases.id == document.knowledge_base_id
+            )
+        ).first()
+
+        is_contextual_rag = kb.is_contextual_rag
 
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
             )
 
-        if document.knowledge_base.user_id != current_user.id:
+        if document.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to delete this document",
@@ -574,6 +596,14 @@ async def delete_document(
             is_contextual_rag=is_contextual_rag,
         )
 
+        document_chunks = session.exec(
+            select(DocumentChunks).where(DocumentChunks.document_id == document_id)
+        ).all()
+
+        for chunk in document_chunks:
+            session.delete(chunk)
+            session.commit()
+
         if not delete_document_request_body.delete_to_retry:
             session.delete(document)
             session.commit()
@@ -582,6 +612,88 @@ async def delete_document(
 
         return JSONResponse(
             content={"message": "Document deleted successfully"},
+            status_code=status.HTTP_200_OK,
+        )
+
+
+@kb_router.post("/inherit_kb")
+async def inherit_knowledge_base(
+    inherit_kb_request: InheritKnowledgeBaseRequest,
+    db_session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+):
+    """
+    Inherit knowledge base
+    """
+    with db_session as session:
+        target_kb_id = inherit_kb_request.target_knowledge_base_id
+        source_kb_id = inherit_kb_request.source_knowledge_base_id
+        if not target_kb_id:
+            target_kb = KnowledgeBases(
+                name=f"{current_user.username}'s inherited KB",
+                description="Inherited from another KB",
+                user_id=current_user.id,
+                is_contextual_rag=True,
+            )
+
+            session.add(target_kb)
+            session.commit()
+            session.refresh(target_kb)
+            target_kb_id = target_kb.id
+
+        else:
+            target_kb = session.exec(
+                select(KnowledgeBases).where(
+                    KnowledgeBases.id == target_kb_id,
+                    KnowledgeBases.user_id == current_user.id,
+                )
+            ).first()
+
+            if not target_kb:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Target Knowledge Base not found !",
+                )
+
+        if len(target_kb.children) >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Target Knowledge Base is already inheriting another Knowledge Base",
+            )
+
+        source_kb = session.exec(
+            select(KnowledgeBases).where(KnowledgeBases.id == source_kb_id)
+        ).first()
+
+        if not source_kb:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Source Knowledge Base not found !",
+            )
+
+        if target_kb_id in source_kb.parents:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Target Knowledge Base is already inheriting the Source Knowledge Base",
+            )
+
+        target_kb_parent = copy.deepcopy(source_kb.parents)
+        target_kb_parent.append(source_kb_id)
+        target_kb.parents = list(set(target_kb_parent))
+
+        source_kb_children = copy.deepcopy(source_kb.children)
+        source_kb_children.append(target_kb_id)
+        source_kb.children = list(set(source_kb_children))
+
+        session.add(target_kb)
+        session.commit()
+        session.add(source_kb)
+        session.commit()
+
+        session.close()
+
+        return JSONResponse(
+            content={"message": "Knowledge Base inherited successfully"},
             status_code=status.HTTP_200_OK,
         )
 
@@ -613,7 +725,11 @@ async def delete_knowledge_base(
                 detail="You are not allowed to delete this Knowledge Base",
             )
 
-        for doc in kb.documents:
+        # Delete all the documents in its original knowledge base
+        documents = session.exec(
+            select(Documents).where(Documents.knowledge_base_id == knowledge_base_id)
+        ).all()
+        for doc in documents:
             db_manager.delete_file(
                 object_name=doc.file_path_in_minio,
                 document_id=doc.id,
@@ -621,6 +737,44 @@ async def delete_knowledge_base(
                 is_contextual_rag=kb.is_contextual_rag,
             )
 
+        # Delete the assistants associated with the knowledge base
+        assistants_ids = session.exec(
+            select(Assistants.id).where(
+                Assistants.knowledge_base_id == knowledge_base_id
+            )
+        ).all()
+
+        for assistant_id in assistants_ids:
+            db_manager.delete_assistant(assistant_id=assistant_id)
+
+        # Delete the relationships of the knowledge base with other knowledge bases
+        # Delete the knowledge base from the parents of its children. Mean that the knowledge base is no longer inherited by its children
+        for child_id in kb.children:
+            child_kb = session.exec(
+                select(KnowledgeBases).where(KnowledgeBases.id == child_id)
+            ).first()
+
+            child_kb_parents = copy.deepcopy(child_kb.parents)
+            child_kb_parents.remove(uuid.UUID(knowledge_base_id))
+            child_kb.parents = list(set(child_kb_parents))
+
+            session.add(child_kb)
+            session.commit()
+
+        # Delete the knowledge base from the children of its parents. Mean that the knowledge base is no longer inheriting its parents
+        for parent_id in kb.parents:
+            parent_kb = session.exec(
+                select(KnowledgeBases).where(KnowledgeBases.id == parent_id)
+            ).first()
+
+            parent_kb_children = copy.deepcopy(parent_kb.children)
+            parent_kb_children.remove(uuid.UUID(knowledge_base_id))
+            parent_kb.children = list(set(parent_kb_children))
+
+            session.add(parent_kb)
+            session.commit()
+
+        # Finally, delete the knowledge base itself
         session.delete(kb)
         session.commit()
         session.close()

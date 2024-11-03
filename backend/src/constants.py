@@ -99,9 +99,10 @@ class QdrantPayload(BaseModel):
         vector_id (str): Vector ID
     """
 
-    document_id: str
+    document_id: str | UUID
     text: str
     vector_id: str
+    kb_id: str | UUID
 
 
 class ChatAssistantConfig(BaseModel):
@@ -127,6 +128,7 @@ class ChatAssistantConfig(BaseModel):
     embedding_service: str
     embedding_model_name: str
     collection_name: str
+    kb_ids: list[str | UUID]
     session_id: str
     is_contextual_rag: bool
     interested_prompt: Optional[str] = None

@@ -1,4 +1,5 @@
 import uuid
+import copy
 from uuid import UUID
 from typing import List, Generator
 from sqlmodel import Session, select
@@ -7,13 +8,20 @@ from fastapi import Depends, HTTPException, status
 
 from src.agents import ChatAssistant
 from src.utils import get_cost_from_session_id
-from src.database import get_session, Messages, Conversations
+from src.database import (
+    get_session,
+    Messages,
+    Conversations,
+    Assistants,
+    KnowledgeBases,
+)
 from api.models import (
     ChatMessage,
     ChatResponse,
     MessageResponse,
 )
 from src.constants import SenderType, ChatAssistantConfig, MesssageHistory
+from src.settings import default_settings
 
 
 class AssistantService:
@@ -153,12 +161,23 @@ class AssistantService:
 
             conversation = session.exec(query).first()
 
-            is_contextual_rag = conversation.assistant.knowledge_base.is_contextual_rag
-            assistant = conversation.assistant
+            is_contextual_rag = True
+            assistant = session.exec(
+                select(Assistants).where(Assistants.id == conversation.assistant_id)
+            ).first()
             configuration = assistant.configuration
 
             if not conversation:
                 raise HTTPException(status_code=404, detail="Conversation not found")
+
+            kb = session.exec(
+                select(KnowledgeBases).where(
+                    KnowledgeBases.id == assistant.knowledge_base_id
+                )
+            ).first()
+
+            kb_ids = copy.deepcopy(kb.parents)
+            kb_ids.append(kb.id)
 
             message_history = self._get_message_history(conversation_id)
 
@@ -178,7 +197,8 @@ class AssistantService:
                 temperature=configuration["temperature"],
                 embedding_service="openai",
                 embedding_model_name="text-embedding-3-small",
-                collection_name=f"{assistant.knowledge_base_id}",
+                collection_name=default_settings.global_vector_db_collection_name,
+                kb_ids=kb_ids,
                 session_id=session_id,
                 is_contextual_rag=is_contextual_rag,
                 interested_prompt=assistant.interested_prompt,

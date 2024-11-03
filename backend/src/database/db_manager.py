@@ -1,14 +1,15 @@
 import sys
-import threading
 from uuid import UUID
 from pathlib import Path
-from fastapi import Depends
+from typing import Optional
+from fastapi import Depends, HTTPException, status
+from sqlmodel import Session, select
 from llama_index.core import Document
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from .contextual_rag_manager import ContextualRAG
-from .core import MinioClient
+from .core import MinioClient, get_instance_session, Messages, Conversations, Assistants
 
 from src.utils import get_formatted_logger
 from src.constants import DocumentMetadata
@@ -22,7 +23,7 @@ class DatabaseManager:
     Database manager to handle all the database operations
     """
 
-    def __init__(self, setting: GlobalSettings):
+    def __init__(self, setting: GlobalSettings, db_session: Optional[Session] = None):
         """
         Initialize the database manager
 
@@ -30,6 +31,10 @@ class DatabaseManager:
             setting (GlobalSettings): Global settings
         """
         self.setting = setting
+        if db_session is None:
+            self.db_session = get_instance_session()
+        else:
+            self.db_session = db_session
 
         self.minio_client = MinioClient.from_setting(setting)
         self.contextual_rag_client = ContextualRAG.from_setting(setting)
@@ -37,7 +42,7 @@ class DatabaseManager:
         logger.info("DatabaseManager initialized successfully !!!")
 
     @classmethod
-    def from_setting(cls, setting: GlobalSettings) -> "DatabaseManager":
+    def from_setting(cls, setting: GlobalSettings, db_session: Session = None):
         """
         Initialize the database manager from setting
 
@@ -47,7 +52,7 @@ class DatabaseManager:
         Returns:
             DatabaseManager: Database manager instance
         """
-        return cls(setting)
+        return cls(setting, db_session)
 
     def upload_file(self, object_name: str, file_path: str | Path):
         """
@@ -154,18 +159,18 @@ class DatabaseManager:
         )
 
     def index_to_vector_db(
-        self, collection_name: str, chunks_documents: list[Document], document_id: UUID
+        self, kb_id: str, chunks_documents: list[Document], document_id: UUID
     ):
         """
         Index to vector database
 
         Args:
-            collection_name (str): Collection name
+            kb_id (str): Knowledge base ID
             documents (list[Document]): List of documents
             document_id (UUID): Document ID
         """
         self.contextual_rag_client.qdrant_insert_data(
-            collection_name=collection_name,
+            kb_id=kb_id,
             chunks=chunks_documents,
             document_id=document_id,
         )
@@ -196,7 +201,7 @@ class DatabaseManager:
             )
 
         self.contextual_rag_client.qdrant_client.delete_vector(
-            collection_name=knownledge_base_id,
+            collection_name=self.setting.global_vector_db_collection_name,
             document_id=document_id,
         )
 
@@ -250,36 +255,73 @@ class DatabaseManager:
                 target_collection=target_knowledge_base_id,
             )
 
-    def merge_knowledge_bases(
-        self,
-        target_knowledge_base_id: str,
-        source_knowledge_base_ids: list[str],
-    ):
+    def delete_conversation(self, conversation_id: str | UUID):
         """
-        Merge knowledge bases
+        Delete conversation
 
         Args:
-            target_knowledge_base_id (str): Target knowledge base ID
-            source_knowledge_base_ids (list[str]): Source knowledge base IDs to be merged into target knowledge base
+            conversation_id (str | UUID): Conversation ID
+            assistant_id (str | UUID): Assistant ID
         """
-        ts = [
-            threading.Thread(
-                target=self.es_migrate,
-                args=(target_knowledge_base_id, source_knowledge_base_ids),
-            ),
-            threading.Thread(
-                target=self.vector_db_migrate,
-                args=(target_knowledge_base_id, source_knowledge_base_ids),
-            ),
-        ]
+        with self.db_session as session:
+            conversation = session.exec(
+                select(Conversations).where(
+                    Conversations.id == conversation_id,
+                )
+            ).first()
 
-        for t in ts:
-            t.start()
+            if not conversation:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Conversation not found",
+                )
 
-        for t in ts:
-            t.join()
+            messages = session.exec(
+                select(Messages).where(Messages.conversation_id == conversation_id)
+            ).all()
 
-        logger.debug("Merged knowledge bases successfully !!!")
+            for message in messages:
+                session.delete(message)
+                session.commit()
+
+            session.delete(conversation)
+            session.commit()
+
+            session.close()
+        logger.info(f"Deleted conversation: {conversation_id}")
+
+    def delete_assistant(self, assistant_id: str | UUID):
+        """
+        Delete assistant
+
+        Args:
+            assistant_id (str | UUID): Assistant ID
+        """
+        with self.db_session as session:
+            assistant = session.exec(
+                select(Assistants).where(Assistants.id == assistant_id)
+            ).first()
+
+            if not assistant:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Assistant not found",
+                )
+
+            conversations_ids = session.exec(
+                select(Conversations.id).where(
+                    Conversations.assistant_id == assistant_id
+                )
+            ).all()
+
+            for conversation_id in conversations_ids:
+                self.delete_conversation(conversation_id)
+
+            session.delete(assistant)
+            session.commit()
+
+            session.close()
+        logger.info(f"Deleted assistant: {assistant_id}")
 
 
 def get_db_manager(

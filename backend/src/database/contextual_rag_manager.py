@@ -1,4 +1,5 @@
 import sys
+import time
 import json
 import uuid
 import torch
@@ -30,6 +31,11 @@ from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.llms.function_calling import FunctionCallingLLM
+from llama_index.core.vector_stores.types import (
+    MetadataFilter,
+    MetadataFilters,
+    FilterOperator,
+)
 
 from llama_index.core.postprocessor import LLMRerank
 from llama_index.postprocessor.cohere_rerank import CohereRerank
@@ -368,7 +374,7 @@ class ContextualRAG:
 
     def qdrant_insert_data(
         self,
-        collection_name: str,
+        kb_id: str | UUID,
         chunks: list[Document],
         document_id: uuid.UUID,
         show_progress: bool = True,
@@ -376,19 +382,16 @@ class ContextualRAG:
         """
         Insert data to the QdrantVectorStore.
         """
-        chunks = (
-            tqdm(chunks, desc=f"Inserting data to: {collection_name} ...")
-            if show_progress
-            else chunks
-        )
+        chunks = tqdm(chunks, desc="Inserting data ...") if show_progress else chunks
         for doc in chunks:
             self.qdrant_client.add_vector(
-                collection_name=collection_name,
+                collection_name=self.setting.global_vector_db_collection_name,
                 vector=get_embedding(doc.text),
                 vector_id=doc.metadata["vector_id"],
                 payload=QdrantPayload(
                     document_id=str(document_id),
                     text=doc.text,
+                    kb_id=kb_id,
                     vector_id=doc.metadata["vector_id"],
                 ),
             )
@@ -457,7 +460,7 @@ class ContextualRAG:
     @observe(capture_input=False)
     def contextual_rag_search(
         self,
-        collection_name: str,
+        kb_ids: list[str],
         query: str,
         session_id: str | uuid.UUID,
         top_k: int = 150,
@@ -479,15 +482,13 @@ class ContextualRAG:
         Returns:
             str: The search results.
         """
-        logger.info(
-            "collection_name: %s - top_k: %s - query: %s", collection_name, top_k, query
-        )
-
+        start_time = time.time()
         bm25_weight = self.setting.contextual_rag_config.bm25_weight
         semantic_weight = self.setting.contextual_rag_config.semantic_weight
 
         index = self.get_qdrant_vector_store_index(
-            self.qdrant_client.client, collection_name=collection_name
+            self.qdrant_client.client,
+            collection_name=self.setting.global_vector_db_collection_name,
         )
 
         langfuse_callback_handler.set_trace_params(
@@ -497,12 +498,20 @@ class ContextualRAG:
         retriever = VectorIndexRetriever(
             index=index,
             similarity_top_k=top_k,
+            filters=MetadataFilters(
+                filters=[
+                    MetadataFilter(
+                        key="kb_id", value=kb_ids, operator=FilterOperator.IN
+                    )
+                ]
+            ),
         )
 
         query_engine = RetrieverQueryEngine(retriever=retriever)
 
         logger.debug("Running semantic search ...")
         semantic_results: Response = query_engine.query(query)
+
         semantic_doc_id = [
             node.metadata["vector_id"] for node in semantic_results.source_nodes
         ]
@@ -514,9 +523,7 @@ class ContextualRAG:
             return ""
 
         logger.debug("Running BM25 search ...")
-        bm25_results = self.es.search(
-            index_name=collection_name, query=query, top_k=top_k
-        )
+        bm25_results = self.es.search(kb_ids=kb_ids, query=query, top_k=top_k)
         bm25_doc_id = [result.vector_id for result in bm25_results]
 
         logger.debug("Rank Fusion ...")
@@ -589,6 +596,8 @@ class ContextualRAG:
 
         response = self.llm.chat(messages).message.content
 
+        logger.info("Time taken: %s", time.time() - start_time)
+
         langfuse.flush()
 
         return response
@@ -598,7 +607,7 @@ class ContextualRAG:
         self,
         session_id: str | uuid.UUID,
         is_contextual_rag: bool,
-        collection_name: str,
+        kb_ids: list[str | UUID],
         query: str,
         top_k: int = 150,
         top_n: int = 3,
@@ -623,9 +632,16 @@ class ContextualRAG:
 
         if is_contextual_rag:
             response = self.contextual_rag_search(
-                collection_name, query, session_id, top_k, top_n, debug, system_prompt
+                kb_ids,
+                query,
+                session_id,
+                top_k,
+                top_n,
+                debug,
+                system_prompt,
             )
         else:
-            response = self.rag_search(collection_name, query, session_id)
+            logger.warning("Original RAG search is deprecated.")
+            response = ""
 
         return response

@@ -39,7 +39,7 @@ class ChatAssistant:
         self.tools = [
             load_kb_tool(
                 setting=default_settings,
-                collection_name=self.configuration.collection_name,
+                kb_ids=self.configuration.kb_ids,
                 session_id=self.configuration.session_id,
                 is_contextual_rag=self.configuration.is_contextual_rag,
                 system_prompt=system_prompt,

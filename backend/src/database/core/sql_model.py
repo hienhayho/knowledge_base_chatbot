@@ -10,15 +10,8 @@ from contextlib import contextmanager
 from typing import List, Dict, Optional
 from pydantic import EmailStr, ConfigDict
 from sqlalchemy.dialects.postgresql import TEXT, JSON
-from sqlmodel import (
-    SQLModel,
-    Field,
-    String,
-    create_engine,
-    Session,
-    Relationship,
-)
-
+from sqlmodel import SQLModel, Field, String, create_engine, Session, UUID
+from sqlalchemy.dialects.postgresql import ARRAY
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
@@ -144,32 +137,41 @@ class Users(SQLModel, table=True):
         description="Max Size of files user can upload to the knowledge bases",
     )
 
-    assistants: List["Assistants"] = Relationship(back_populates="user")
-    conversations: List["Conversations"] = Relationship(back_populates="user")
-    knowledge_bases: List["KnowledgeBases"] = Relationship(
-        back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}
-    )
-
-    @property
-    def total_upload_size(self) -> float:
+    def total_upload_size(
+        self, user_kbs: List["KnowledgeBases"], documents: List["Documents"]
+    ) -> float:
         """
         Total size of the files uploaded by the user in MB
+
+        Args:
+            user_kbs (List[KnowledgeBases]): List of Knowledge Bases of the user
+
+        Returns:
+            float: Total size of the files uploaded by the user in MB
         """
         # In MB
-        return sum([kb.files_size for kb in self.knowledge_bases])
+        return sum([kb.files_size(documents=documents) for kb in user_kbs])
 
-    def allow_upload(self, current_file_size: float) -> bool:
+    def allow_upload(
+        self,
+        current_file_size: float,
+        user_kbs: List["KnowledgeBases"],
+        documents: List["Documents"],
+    ) -> bool:
         """
         Check if the user can upload the file of given size
 
         Args:
             current_file_size (float): Size of the file in BYTES
+            user_kbs (List[KnowledgeBases]): List of Knowledge Bases of the user
 
         Returns:
             bool: True if user can upload the file, False otherwise
         """
         return (
-            self.total_upload_size + current_file_size / 1024 / 1024 < self.max_size_mb
+            self.total_upload_size(user_kbs, documents)
+            + current_file_size / 1024 / 1024
+            < self.max_size_mb
         )
 
     model_config = ConfigDict(from_attributes=True)
@@ -185,7 +187,7 @@ class Assistants(SQLModel, table=True):
         nullable=False,
     )
 
-    user_id: uuid_pkg.UUID = Field(foreign_key="users.id")
+    user_id: uuid_pkg.UUID = Field(nullable=False)
     name: str = Field(
         sa_column=Column(TEXT),
         description="Assistant Name",
@@ -204,7 +206,7 @@ class Assistants(SQLModel, table=True):
         default="",
         description="Interested Prompt that user want to focus on",
     )
-    knowledge_base_id: uuid_pkg.UUID = Field(foreign_key="knowledge_bases.id")
+    knowledge_base_id: uuid_pkg.UUID = Field(nullable=False)
     configuration: Optional[Dict] = Field(
         default_factory=dict,
         sa_column=Column(JSON),
@@ -222,19 +224,15 @@ class Assistants(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now()},
     )
 
-    user: Users = Relationship(back_populates="assistants")
-    knowledge_base: "KnowledgeBases" = Relationship(
-        back_populates="assistants", sa_relationship_kwargs={"lazy": "selectin"}
-    )
-    conversations: List["Conversations"] = Relationship(
-        back_populates="assistant",
-        sa_relationship_kwargs={"lazy": "selectin"},
-        cascade_delete=True,
-    )
-
-    @property
-    def total_cost(self) -> float:
-        return sum([conversation.total_cost for conversation in self.conversations])
+    def total_cost(
+        self, conversations: list["Conversations"], messages: list[list["Messages"]]
+    ) -> float:
+        return sum(
+            [
+                conversation.total_cost(messages)
+                for conversation, messages in zip(conversations, messages)
+            ]
+        )
 
 
 class KnowledgeBases(SQLModel, table=True):
@@ -245,7 +243,7 @@ class KnowledgeBases(SQLModel, table=True):
         index=True,
         nullable=False,
     )
-    user_id: uuid_pkg.UUID = Field(foreign_key="users.id")
+    user_id: uuid_pkg.UUID = Field(nullable=False)
     name: str = Field(
         nullable=False,
         description="Name of the Knowledge Base",
@@ -257,6 +255,16 @@ class KnowledgeBases(SQLModel, table=True):
     is_contextual_rag: bool = Field(
         default=False,
         description="Use Contextual RAG for the Knowledge Base or not",
+    )
+    parents: List[uuid_pkg.UUID] = Field(
+        default=[],
+        sa_column=Column(ARRAY(UUID)),
+        description="List of KBs from which this KB is derived",
+    )
+    children: List[uuid_pkg.UUID] = Field(
+        default=[],
+        sa_column=Column(ARRAY(UUID)),
+        description="List of KBs which are derived from this KB",
     )
     created_at: datetime = Field(
         default_factory=datetime.now,
@@ -270,23 +278,9 @@ class KnowledgeBases(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now()},
     )
 
-    documents: List["Documents"] = Relationship(
-        back_populates="knowledge_base",
-        sa_relationship_kwargs={"lazy": "selectin"},
-        cascade_delete=True,
-    )
-    assistants: list["Assistants"] = Relationship(
-        back_populates="knowledge_base",
-        sa_relationship_kwargs={"lazy": "selectin"},
-        cascade_delete=True,
-    )
-    user: "Users" = Relationship(
-        back_populates="knowledge_bases", sa_relationship_kwargs={"lazy": "selectin"}
-    )
-
-    @property
-    def files_size(self) -> float:
-        return sum([document.file_size for document in self.documents]) / 1024 / 1024
+    # @property
+    def files_size(self, documents: List["Documents"]) -> float:
+        return sum([document.file_size for document in documents]) / 1024 / 1024
 
     @property
     def last_updated(self):
@@ -305,7 +299,8 @@ class Documents(SQLModel, table=True):
         index=True,
         nullable=False,
     )
-    knowledge_base_id: uuid_pkg.UUID = Field(foreign_key="knowledge_bases.id")
+    knowledge_base_id: uuid_pkg.UUID = Field(nullable=False)
+    user_id: uuid_pkg.UUID = Field(nullable=False)
     file_name: str = Field(
         nullable=False,
         description="File Name of the Document",
@@ -342,11 +337,6 @@ class Documents(SQLModel, table=True):
         description="Size of the file in bytes",
     )
 
-    knowledge_base: KnowledgeBases = Relationship(back_populates="documents")
-    document_chunks: List["DocumentChunks"] = Relationship(
-        back_populates="document", cascade_delete=True
-    )
-
     @property
     def file_size_in_mb(self):
         return self.file_size / 1024 / 1024
@@ -364,7 +354,7 @@ class DocumentChunks(SQLModel, table=True):
         index=True,
         nullable=False,
     )
-    document_id: uuid_pkg.UUID = Field(foreign_key="documents.id")
+    document_id: uuid_pkg.UUID = Field(nullable=False)
     chunk_index: int = Field(
         nullable=False,
         description="Index of the Chunk in the origin document",
@@ -393,8 +383,6 @@ class DocumentChunks(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now()},
     )
 
-    document: Documents = Relationship(back_populates="document_chunks")
-
 
 class Conversations(SQLModel, table=True):
     __tablename__ = "conversations"
@@ -408,8 +396,8 @@ class Conversations(SQLModel, table=True):
         default="",
         description="Name of the Conversation (Optional)",
     )
-    user_id: uuid_pkg.UUID = Field(foreign_key="users.id")
-    assistant_id: uuid_pkg.UUID = Field(foreign_key="assistants.id")
+    user_id: uuid_pkg.UUID = Field(nullable=False)
+    assistant_id: uuid_pkg.UUID = Field(nullable=False)
     started_at: datetime = Field(
         default_factory=datetime.now,
         nullable=False,
@@ -432,19 +420,8 @@ class Conversations(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now()},
     )
 
-    user: Users = Relationship(back_populates="conversations")
-    assistant: Assistants = Relationship(
-        back_populates="conversations", sa_relationship_kwargs={"lazy": "selectin"}
-    )
-    messages: List["Messages"] = Relationship(
-        back_populates="conversation",
-        sa_relationship_kwargs={"lazy": "selectin"},
-        cascade_delete=True,
-    )
-
-    @property
-    def total_cost(self) -> float:
-        return sum([message.cost for message in self.messages])
+    def total_cost(self, messages: list["Messages"]) -> float:
+        return sum([message.cost for message in messages])
 
 
 class Messages(SQLModel, table=True):
@@ -455,7 +432,7 @@ class Messages(SQLModel, table=True):
         index=True,
         nullable=False,
     )
-    conversation_id: uuid_pkg.UUID = Field(foreign_key="conversations.id")
+    conversation_id: uuid_pkg.UUID = Field(nullable=False)
     sender_type: SenderType = Field(
         nullable=False,
         description="Sender Type",
@@ -483,10 +460,6 @@ class Messages(SQLModel, table=True):
     is_chat_false: bool = Field(
         nullable=True,
         description="If the assistant response message is correct with the query and context. If the message is from user then it is None",
-    )
-
-    conversation: Conversations = Relationship(
-        back_populates="messages", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
 

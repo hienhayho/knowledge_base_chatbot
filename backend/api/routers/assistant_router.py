@@ -22,6 +22,7 @@ from fastapi import (
 )
 from src.database import (
     Assistants,
+    Messages,
     get_session,
     Users,
     KnowledgeBases,
@@ -30,6 +31,8 @@ from src.database import (
     MediaType,
     EndStatus,
     get_ws_manager,
+    DatabaseManager,
+    get_db_manager,
 )
 from fastapi.responses import JSONResponse
 from src.utils import get_formatted_logger
@@ -77,7 +80,7 @@ async def create_assistant(
             description=assistant.description,
             knowledge_base_id=assistant.knowledge_base_id,
             configuration=assistant.configuration,
-            user=session.merge(current_user),
+            user_id=current_user.id,
             guard_prompt=assistant.guard_prompt,
             interested_prompt=assistant.interested_prompt,
         )
@@ -178,6 +181,19 @@ async def get_assistant_with_total_cost(
             Assistants.id == assistant_id, Assistants.user_id == current_user.id
         )
         assistant = session.exec(query).first()
+
+        conversation_ids = session.exec(
+            select(Conversations.id).where(Conversations.assistant_id == assistant_id)
+        ).all()
+
+        conversations = [
+            session.exec(select(Conversations).where(Conversations.id == c)).first()
+            for c in conversation_ids
+        ]
+        messages = [
+            session.exec(select(Messages).where(Messages.conversation_id == c)).all()
+            for c in conversation_ids
+        ]
         if not assistant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
@@ -185,7 +201,19 @@ async def get_assistant_with_total_cost(
 
         session.close()
 
-        return assistant
+        return AssistantWithTotalCost(
+            id=assistant.id,
+            user_id=assistant.user_id,
+            name=assistant.name,
+            description=assistant.description,
+            knowledge_base_id=assistant.knowledge_base_id,
+            configuration=assistant.configuration,
+            created_at=assistant.created_at,
+            updated_at=assistant.updated_at,
+            total_cost=assistant.total_cost(
+                conversations=conversations, messages=messages
+            ),
+        )
 
 
 @assistant_router.post("/{assistant_id}/conversations")
@@ -210,7 +238,7 @@ async def create_conversation(
             )
 
         new_conversation = Conversations(
-            assistant=assistant, user=session.merge(current_user)
+            assistant_id=assistant_id, user_id=current_user.id
         )
         session.add(new_conversation)
         session.commit()
@@ -250,6 +278,7 @@ async def delete_conversation(
     conversation_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
     db_session: Annotated[Session, Depends(get_session)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
     with db_session as session:
         if not is_valid_uuid(assistant_id) or not is_valid_uuid(conversation_id):
@@ -258,27 +287,20 @@ async def delete_conversation(
                 detail="Invalid assistant or conversation id",
             )
 
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
-        )
-        assistant = session.exec(query).first()
+        assistant = session.exec(
+            select(Assistants).where(
+                Assistants.id == assistant_id, Assistants.user_id == current_user.id
+            )
+        ).first()
+
         if not assistant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
-        query = select(Conversations).where(
-            Conversations.id == conversation_id,
-            Conversations.assistant_id == assistant.id,
+        db_manager.delete_conversation(
+            conversation_id=conversation_id,
         )
-        conversation = session.exec(query).first()
-        if not conversation:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
-            )
-
-        session.delete(conversation)
-        session.commit()
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
@@ -333,6 +355,7 @@ async def delete_assistant(
     assistant_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
     db_session: Annotated[Session, Depends(get_session)],
+    db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
     with db_session as session:
         if not is_valid_uuid(assistant_id):
@@ -340,17 +363,18 @@ async def delete_assistant(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
             )
 
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
-        )
-        assistant = session.exec(query).first()
+        assistant = session.exec(
+            select(Assistants).where(
+                Assistants.id == assistant_id, Assistants.user_id == current_user.id
+            )
+        ).first()
+
         if not assistant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
-        session.delete(assistant)
-        session.commit()
+        db_manager.delete_assistant(assistant_id)
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,

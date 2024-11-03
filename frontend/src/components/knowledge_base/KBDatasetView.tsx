@@ -119,7 +119,13 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     useEffect(() => {
         const checkProcessingDocuments = async () => {
             if (!token) {
-                router.push(`/login?redirect=${redirectURL}`);
+                errorMessage({
+                    content: "Session expired. Please login again.",
+                    duration: 3,
+                });
+                setTimeout(() => {
+                    router.push(`/login?redirect=${redirectURL}`);
+                }, 3000);
                 return;
             }
             const processingDocs = documents.filter(

@@ -107,7 +107,7 @@ def parse_document(
         new_chunks.extend(chunk)
 
     db_manager.index_to_vector_db(
-        collection_name=str(knowledge_base_id),
+        kb_id=knowledge_base_id,
         chunks_documents=contextual_documents if is_contextual_rag else new_chunks,
         document_id=document_id,
     )
