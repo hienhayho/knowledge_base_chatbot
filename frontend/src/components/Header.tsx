@@ -8,8 +8,6 @@ import { message } from "antd";
 import { Button } from "antd";
 import { useRouter } from "next/navigation";
 
-const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
 const Header = () => {
     const [messageApi, contextHolder] = message.useMessage();
     const router = useRouter();

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Modal, Input } from "antd";
+import { Modal, Input, InputRef } from "antd";
 const { TextArea } = Input;
 
 const KnowledgeBaseModal = ({
@@ -21,7 +21,7 @@ const KnowledgeBaseModal = ({
 }) => {
     const [name, setName] = useState<string>("");
     const [description, setDescription] = useState<string>("");
-    const inputRef = useRef<any>(null);
+    const inputRef = useRef<InputRef>(null);
 
     if (!isOpen) return null;
 

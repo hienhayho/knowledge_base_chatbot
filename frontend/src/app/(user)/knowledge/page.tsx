@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Combine } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import KnowledgeBaseCard from "@/components/knowledge_base/KnowledgeBaseCard";
 import KnowledgeBaseModal from "@/components/knowledge_base/KnowledgeBaseModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -28,12 +28,7 @@ interface ICreateKnowledgeBase {
     useContextualRag: boolean;
 }
 
-interface IApiResponseError {
-    detail: string;
-}
-
 const KnowledgeBasePage: React.FC = () => {
-    const [isModalMergeOpen, setIsModalMergeOpen] = useState<boolean>(false);
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [messageApi, contextHolder] = message.useMessage();
