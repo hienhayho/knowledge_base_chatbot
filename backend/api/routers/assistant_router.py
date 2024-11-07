@@ -1,3 +1,4 @@
+import time
 from uuid import UUID
 from src.database import is_valid_uuid
 from typing import Annotated
@@ -399,9 +400,17 @@ async def websocket_endpoint(
 
     await ws_manager.connect(conversation_id, websocket)
     current_user = await decode_user_token(token, db_session)
+
+    session_start_time = time.time()
+    user_has_chat = False
+    session_message_count = 0
     try:
         while True:
+            start_time = time.time()
             data = await websocket.receive_json()
+
+            user_has_chat = True
+            session_message_count += 1
 
             # Send acknowledgement of received message
             await ws_manager.send_status(conversation_id, "message_received")
@@ -411,7 +420,7 @@ async def websocket_endpoint(
 
             try:
                 async for chunk in assistant_service.astream_chat_with_assistant(
-                    conversation_id, current_user.id, message
+                    conversation_id, current_user.id, message, start_time
                 ):
                     # Assume chunk is a string. If it's a different structure, adjust accordingly.
                     await ws_manager.send_text_message(
@@ -441,6 +450,28 @@ async def websocket_endpoint(
                 )
 
     except WebSocketDisconnect:
+        if user_has_chat:
+            with db_session as session:
+                conversation = session.exec(
+                    select(Conversations).where(Conversations.id == conversation_id)
+                ).first()
+                if conversation:
+                    conversation.session_chat_time = conversation.session_chat_time + (
+                        time.time() - session_start_time
+                    )
+
+                    conversation.user_messages += session_message_count
+
+                    conversation.number_of_sessions += 1
+
+                    session.add(conversation)
+                    session.commit()
+
+                else:
+                    logger.error(
+                        f"Conversation {conversation_id} not found while updating average chat time"
+                    )
+
         # Handle WebSocket disconnect
         ws_manager.disconnect(conversation_id)
         # You might want to log this disconnect or perform any cleanup

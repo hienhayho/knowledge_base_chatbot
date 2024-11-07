@@ -392,20 +392,40 @@ class Conversations(SQLModel, table=True):
         index=True,
         nullable=False,
     )
+
     name: str = Field(
         default="",
         description="Name of the Conversation (Optional)",
     )
+
     user_id: uuid_pkg.UUID = Field(nullable=False)
+
     assistant_id: uuid_pkg.UUID = Field(nullable=False)
+
     started_at: datetime = Field(
         default_factory=datetime.now,
         nullable=False,
         description="Conversation Start Time",
     )
+
     ended_at: datetime = Field(
         nullable=True,
         description="Conversation End Time",
+    )
+
+    number_of_sessions: int = Field(
+        default=0,
+        description="Number of Sessions in the Conversation",
+    )
+
+    session_chat_time: float = Field(
+        default=0.0,
+        description="Chat Time of the Conversation in seconds.",
+    )
+
+    user_messages: int = Field(
+        default=0,
+        description="Number of user's messages in all sessions chat.",
     )
 
     created_at: datetime = Field(
@@ -422,6 +442,22 @@ class Conversations(SQLModel, table=True):
 
     def total_cost(self, messages: list["Messages"]) -> float:
         return sum([message.cost for message in messages])
+
+    @property
+    def average_session_chat_time(self) -> float:
+        return (
+            0
+            if self.number_of_sessions == 0
+            else round(self.session_chat_time / self.number_of_sessions, 2)
+        )
+
+    @property
+    def average_user_messages(self) -> float:
+        return (
+            0
+            if self.number_of_sessions == 0
+            else int(self.user_messages / self.number_of_sessions)
+        )
 
 
 class Messages(SQLModel, table=True):
@@ -460,6 +496,11 @@ class Messages(SQLModel, table=True):
     is_chat_false: bool = Field(
         nullable=True,
         description="If the assistant response message is correct with the query and context. If the message is from user then it is None",
+    )
+
+    response_time: float = Field(
+        nullable=True,
+        description="Response time of the assistant in seconds",
     )
 
 

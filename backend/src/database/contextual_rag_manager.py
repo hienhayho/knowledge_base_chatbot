@@ -505,6 +505,7 @@ class ContextualRAG:
                     )
                 ]
             ),
+            params={"quantization": {"rescore": True, "oversampling": 2}},
         )
 
         query_engine = RetrieverQueryEngine(retriever=retriever)

@@ -8,7 +8,13 @@ from dotenv import load_dotenv
 from src.utils import get_formatted_logger
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import user_router, kb_router, assistant_router, DOWNLOAD_FOLDER
+from api.routers import (
+    user_router,
+    kb_router,
+    assistant_router,
+    dashboard_router,
+    DOWNLOAD_FOLDER,
+)
 from contextlib import asynccontextmanager
 
 logger = get_formatted_logger(__file__)
@@ -77,6 +83,7 @@ def health_check():
 app.include_router(user_router, tags=["user"], prefix="/api/users")
 app.include_router(kb_router, tags=["knowledge_base"], prefix="/api/kb")
 app.include_router(assistant_router, tags=["assistant"], prefix="/api/assistant")
+app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 
 if __name__ == "__main__":
     import uvicorn

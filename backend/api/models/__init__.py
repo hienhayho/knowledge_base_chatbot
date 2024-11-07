@@ -29,6 +29,13 @@ from .assistants import (
     AsistantUpdatePhraseRequest,
 )
 
+from .dashboard import (
+    ConversationStaticsResponse,
+    KnowledgeBaseStaticsResponse,
+    DashboardStaticsResponse,
+    AssistantStaticsResponse,
+)
+
 __all__ = [
     "UserRequest",
     "UserResponse",
@@ -54,4 +61,8 @@ __all__ = [
     "InheritKnowledgeBaseRequest",
     "AsistantUpdatePhraseRequest",
     "DeleteDocumentRequestBody",
+    "ConversationStaticsResponse",
+    "KnowledgeBaseStaticsResponse",
+    "DashboardStaticsResponse",
+    "AssistantStaticsResponse",
 ]

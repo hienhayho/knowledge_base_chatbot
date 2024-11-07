@@ -184,7 +184,7 @@ class DatabaseManager:
         delete_to_retry: bool = False,
     ):
         """
-        Delete file from Minio
+        Delete file
 
         Args:
             object_name (str): Object name in Minio

@@ -726,7 +726,7 @@ async def delete_knowledge_base(
                 detail="You are not allowed to delete this Knowledge Base",
             )
 
-        # Delete all the documents in its original knowledge base
+        # Delete all the documents and its chunks in its old knowledge base
         documents = session.exec(
             select(Documents).where(Documents.knowledge_base_id == knowledge_base_id)
         ).all()
@@ -736,7 +736,19 @@ async def delete_knowledge_base(
                 document_id=doc.id,
                 knownledge_base_id=kb.id,
                 is_contextual_rag=kb.is_contextual_rag,
+                delete_to_retry=False,
             )
+
+            document_chunks = session.exec(
+                select(DocumentChunks).where(DocumentChunks.document_id == doc.id)
+            ).all()
+
+            for chunk in document_chunks:
+                session.delete(chunk)
+                session.commit()
+
+            session.delete(doc)
+            session.commit()
 
         # Delete the assistants associated with the knowledge base
         assistants_ids = session.exec(

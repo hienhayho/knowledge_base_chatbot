@@ -1,3 +1,4 @@
+import time
 import uuid
 import copy
 from uuid import UUID
@@ -151,7 +152,11 @@ class AssistantService:
             session.commit()
 
     async def astream_chat_with_assistant(
-        self, conversation_id: UUID, user_id: UUID, message: ChatMessage
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+        message: ChatMessage,
+        start_time: float,
     ):
         with self.db_session as session:
             query = select(Conversations).where(
@@ -224,6 +229,7 @@ class AssistantService:
                 conversation_id=conversation_id,
                 sender_type=SenderType.ASSISTANT,
                 content=full_response,
+                response_time=(time.time() - start_time),
                 cost=get_cost_from_session_id(session_id),
             )
             session.add(assistant_message)

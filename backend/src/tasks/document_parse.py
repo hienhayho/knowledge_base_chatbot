@@ -14,15 +14,12 @@ from src.readers import parse_multiple_files, get_extractor
 from src.database import (
     DatabaseManager,
     DocumentChunks,
-    MinioClient,
     get_instance_session,
 )
 
 logger = get_formatted_logger(__file__)
 
 db_manager: DatabaseManager = DatabaseManager.from_setting(setting=default_settings)
-
-minio_client: MinioClient = MinioClient.from_setting(setting=default_settings)
 
 
 class FileExtractor:
@@ -64,7 +61,7 @@ def parse_document(
 
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
-    minio_client.download_file(
+    db_manager.minio_client.download_file(
         bucket_name=default_settings.upload_bucket_name,
         object_name=file_path_in_minio,
         file_path=file_path,
