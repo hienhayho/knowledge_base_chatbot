@@ -7,8 +7,8 @@ import TopBar from "@/components/chat/TopBar";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
-import { IAssistant } from "@/app/(user)/chat/page";
-import { IConversation } from "@/app/(user)/chat/page";
+import { IAssistant } from "@/app/(user)/(main)/chat/page";
+import { IConversation } from "@/app/(user)/(main)/chat/page";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 

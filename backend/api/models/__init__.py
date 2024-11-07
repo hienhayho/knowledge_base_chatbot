@@ -34,6 +34,7 @@ from .dashboard import (
     KnowledgeBaseStaticsResponse,
     DashboardStaticsResponse,
     AssistantStaticsResponse,
+    GetSourceReponse,
 )
 
 __all__ = [
@@ -65,4 +66,5 @@ __all__ = [
     "KnowledgeBaseStaticsResponse",
     "DashboardStaticsResponse",
     "AssistantStaticsResponse",
+    "GetSourceReponse",
 ]

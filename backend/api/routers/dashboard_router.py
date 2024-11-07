@@ -1,4 +1,6 @@
 import sys
+import uuid
+import string
 
 from uuid import UUID
 from pathlib import Path
@@ -26,6 +28,7 @@ from api.models import (
     KnowledgeBaseStaticsResponse,
     AssistantStaticsResponse,
     ConversationStaticsResponse,
+    GetSourceReponse,
 )
 
 
@@ -116,7 +119,21 @@ async def get_wordcloud_by_kb(
     db_session: Annotated[Session, Depends(get_session)],
 ) -> JSONResponse:
     sender_type = SenderType.USER if is_user else SenderType.ASSISTANT
+
     with db_session as session:
+        knowledge_base = session.exec(
+            select(KnowledgeBases).where(
+                KnowledgeBases.id == knowledge_base_id,
+                KnowledgeBases.user_id == current_user.id,
+            )
+        )
+
+        if not knowledge_base:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge Base not found",
+            )
+
         text = session.exec(
             select(Messages.content)
             .join(Conversations, Conversations.id == Messages.conversation_id)
@@ -137,7 +154,9 @@ async def get_wordcloud_by_kb(
         )
         wordcloud.to_file(str(image_path))
 
-        return FileResponse(path=image_path, filename=image_path.name)
+        return FileResponse(
+            path=image_path, filename=image_path.name, media_type="image/jpeg"
+        )
 
 
 @dashboard_router.get("/wordcloud/assistant/{assistant_id}")
@@ -148,7 +167,21 @@ async def get_wordcloud_by_assistant(
     db_session: Annotated[Session, Depends(get_session)],
 ) -> JSONResponse:
     sender_type = SenderType.USER if is_user else SenderType.ASSISTANT
+
     with db_session as session:
+        assistant = session.exec(
+            select(Assistants).where(
+                Assistants.id == assistant_id,
+                Assistants.user_id == current_user.id,
+            )
+        )
+
+        if not assistant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assistant not found",
+            )
+
         text = session.exec(
             select(Messages.content)
             .join(Conversations, Conversations.id == Messages.conversation_id)
@@ -168,7 +201,9 @@ async def get_wordcloud_by_assistant(
         )
         wordcloud.to_file(str(image_path))
 
-        return FileResponse(path=image_path, filename=image_path.name)
+        return FileResponse(
+            path=image_path, filename=image_path.name, media_type="image/jpeg"
+        )
 
 
 @dashboard_router.get("/wordcloud/conversation/{conversation_id}")
@@ -179,6 +214,7 @@ async def get_wordcloud_by_conversation(
     db_session: Annotated[Session, Depends(get_session)],
 ) -> JSONResponse:
     sender_type = SenderType.USER if is_user else SenderType.ASSISTANT
+    print(sender_type)
     with db_session as session:
         conversation = session.exec(
             select(Conversations).where(
@@ -203,11 +239,57 @@ async def get_wordcloud_by_conversation(
         ).all()
 
         content = " ".join(text)
+        content = [c for c in content if c not in string.punctuation]
+        content = "".join(content)
+        print(content)
         wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
         image_path = (
             Path(DOWNLOAD_FOLDER)
-            / f"{str(conversation_id).replace('-', '_')}_{sender_type}.png"
+            / f"{str(conversation_id).replace('-', '_')}_{str(uuid.uuid4())}.png"
         )
         wordcloud.to_file(str(image_path))
 
-        return FileResponse(path=image_path, filename=image_path.name)
+        print(image_path)
+
+        return FileResponse(
+            path=image_path, filename=image_path.name, media_type="image/jpeg"
+        )
+
+
+@dashboard_router.get("/kbs", response_model=list[GetSourceReponse])
+async def get_all_knowledge_bases(
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        knowledge_bases = session.exec(
+            select(KnowledgeBases).where(KnowledgeBases.user_id == current_user.id)
+        ).all()
+
+        return knowledge_bases
+
+
+@dashboard_router.get("/assistants", response_model=list[GetSourceReponse])
+async def get_all_assistants(
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        assistants = session.exec(
+            select(Assistants).where(Assistants.user_id == current_user.id)
+        ).all()
+
+        return assistants
+
+
+@dashboard_router.get("/conversations", response_model=list[GetSourceReponse])
+async def get_all_conversations(
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        conversations = session.exec(
+            select(Conversations).where(Conversations.user_id == current_user.id)
+        ).all()
+
+        return conversations

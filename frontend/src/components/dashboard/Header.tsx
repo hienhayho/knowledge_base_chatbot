@@ -14,9 +14,9 @@ const Header = () => {
     const pathname = usePathname();
 
     const navItems = [
+        { name: "Thống kê", path: "/dashboard" },
+        { name: "Wordcloud", path: "/dashboard/wordcloud" },
         { name: "Knowledge Base", path: "/knowledge" },
-        { name: "Chat", path: "/chat" },
-        { name: "Dashboard", path: "/dashboard" },
     ];
 
     const successMessage = ({
@@ -49,7 +49,7 @@ const Header = () => {
 
     const isActive = (path: string) => {
         if (pathname === "/") return false;
-        return pathname.startsWith(path);
+        return pathname == path;
     };
 
     const handleLogout = async () => {
@@ -105,10 +105,10 @@ const Header = () => {
                             <Link
                                 key={item.path}
                                 href={item.path}
-                                className={`px-3 py-2 rounded-md ${
+                                className={`px-3 py-2 relative ${
                                     isActive(item.path)
-                                        ? "bg-blue-500 text-white"
-                                        : "text-gray-600 hover:bg-gray-100"
+                                        ? "text-blue-500 font-bold after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-blue-500"
+                                        : "text-gray-600 hover:bg-blue-500 hover:text-white hover:after:content-[''] hover:after:absolute hover:after:bottom-0 hover:after:left-0 hover:after:w-full hover:after:h-[2px] hover:after:bg-white hover:rounded-lg"
                                 }`}
                             >
                                 {item.name}
@@ -116,9 +116,6 @@ const Header = () => {
                         ))}
                     </nav>
                     <div className="flex items-center space-x-10">
-                        <select className="block bg-gray-100 rounded-md px-2 py-1">
-                            <option>English</option>
-                        </select>
                         <Button
                             type="primary"
                             className="bg-red-500 ml-auto"

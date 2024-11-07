@@ -39,3 +39,8 @@ class DashboardStaticsResponse(BaseModel):
     knowledge_base_statistics: list[KnowledgeBaseStaticsResponse] = Field(
         ..., description="List of knowledge base statistics for each user"
     )
+
+
+class GetSourceReponse(BaseModel):
+    id: UUID
+    name: str

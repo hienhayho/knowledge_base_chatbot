@@ -4,7 +4,7 @@ import { Cpu, Book, MoreVertical, Trash2, LoaderCircle } from "lucide-react";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { IAssistant } from "@/app/(user)/chat/page";
-import { IKnowledgeBase } from "@/app/(user)/knowledge/page";
+import { IKnowledgeBase } from "@/app/(user)/(main)/knowledge/page";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
