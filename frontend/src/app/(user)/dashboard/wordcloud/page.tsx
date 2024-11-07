@@ -201,7 +201,7 @@ const WordcloudPage = () => {
             </div>
             <div className="w-[35%] p-4">
                 <span className="flex justify-center text-red-500 font-bold">
-                    User's Wordcloud
+                    User&apos;s Wordcloud
                 </span>
                 {userUrl && (
                     <div>
@@ -212,7 +212,6 @@ const WordcloudPage = () => {
                             height={400}
                         />
                         <div className="flex justify-center mt-2">
-                            {" "}
                             <Button icon={<Download size={16} />}>
                                 <a href={userUrl} download>
                                     Download
@@ -224,7 +223,7 @@ const WordcloudPage = () => {
             </div>
             <div className="w-[35%] p-4">
                 <span className="text-red-500 font-bold flex justify-center">
-                    Assistant's Wordcloud
+                    Assistant&apos;s Wordcloud
                 </span>
                 {assistantUrl && (
                     <div>
@@ -235,7 +234,6 @@ const WordcloudPage = () => {
                             height={400}
                         />
                         <div className="flex justify-center mt-2">
-                            {" "}
                             <Button icon={<Download size={16} />}>
                                 <a href={assistantUrl} download>
                                     Download

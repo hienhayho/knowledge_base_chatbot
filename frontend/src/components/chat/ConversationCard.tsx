@@ -3,7 +3,7 @@ import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { FolderPen, Trash2, MessageSquare } from "lucide-react";
 import { Popover, Row, Col, message, Input, Button } from "antd";
-import { IAssistant, IConversation } from "@/app/(user)/chat/page";
+import { IAssistant, IConversation } from "@/app/(user)/(main)/chat/page";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 

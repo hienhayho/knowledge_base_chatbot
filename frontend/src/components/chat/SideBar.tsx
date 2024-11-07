@@ -3,8 +3,8 @@ import { message } from "antd";
 import { Plus, HelpCircle } from "lucide-react";
 import React, { useCallback, useRef, useState, useEffect } from "react";
 
-import { IAssistant } from "@/app/(user)/chat/page";
-import { IConversation } from "@/app/(user)/chat/page";
+import { IAssistant } from "@/app/(user)/(main)/chat/page";
+import { IConversation } from "@/app/(user)/(main)/chat/page";
 import ConversationCard from "./ConversationCard";
 
 const Sidebar = ({

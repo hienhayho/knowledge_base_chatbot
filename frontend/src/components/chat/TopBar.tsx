@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Plus } from "lucide-react";
-import { IAssistant } from "@/app/(user)/chat/page";
+import { IAssistant } from "@/app/(user)/(main)/chat/page";
 import { Button, message, Modal, Input } from "antd";
 import { getCookie } from "cookies-next";
 
