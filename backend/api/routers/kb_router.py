@@ -160,12 +160,6 @@ async def upload_file(
 
         kb = session.exec(query).first()
 
-        query_user_kbs = select(KnowledgeBases).where(
-            KnowledgeBases.user_id == current_user.id
-        )
-
-        user_kbs = session.exec(query_user_kbs).all()
-
         query_documents = select(Documents).where(
             Documents.user_id == current_user.id,
         )
@@ -177,14 +171,14 @@ async def upload_file(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base not found"
             )
 
-        if not current_user.allow_upload(file_size, user_kbs, documents):
+        if not current_user.allow_upload(file_size, documents):
             logger.debug(
                 "Deleting the file from local as user has no space left for uploading files"
             )
             Path(file_path).unlink()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"No space left for uploading files, used: {round(current_user.total_upload_size, 2)} MB. Allowed space: {current_user.max_size_mb} MB. This file size: {round(file_size / (1024 * 1024), 2)} MB",
+                detail=f"No space left for uploading files, used: {round(current_user.total_upload_size(documents=documents), 2)} MB. Allowed space: {current_user.max_size_mb} MB. This file size: {round(file_size / (1024 * 1024), 2)} MB",
             )
 
         if kb.user_id != current_user.id:

@@ -15,7 +15,7 @@ type WordCloudSource = "Knowledge Base" | "Assistant" | "Conversation" | "";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
-const WordcloudPage = () => {
+const Wordcloud = () => {
     const router = useRouter();
     const [messageApi, contextHolder] = message.useMessage();
 
@@ -118,9 +118,11 @@ const WordcloudPage = () => {
                 throw new Error("You are not authenticated");
             }
 
+            // Define URLs for the user and assistant word clouds
             const userWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=true`;
             const assistantWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=false`;
 
+            // Fetch the user word cloud as a blob
             const userResponse = await fetch(userWordCloudUrl, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -133,6 +135,7 @@ const WordcloudPage = () => {
 
             const userBlob = await userResponse.blob();
 
+            // Fetch the assistant word cloud as a blob
             const assistantResponse = await fetch(assistantWordCloudUrl, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -154,6 +157,7 @@ const WordcloudPage = () => {
         } catch (error) {
             errorMessage({ content: (error as Error).message });
             console.error(error);
+            throw error;
         }
     };
 
@@ -179,109 +183,105 @@ const WordcloudPage = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-[90%] mx-auto flex border-2 border-blue-400 rounded-lg shadow-lg p-2">
-                {contextHolder}
-                <div className="w-[30%] p-4 border-r-2 border-gray-300">
-                    <span className="text-red-500 font-bold">
-                        Bạn muốn tạo wordcloud từ nguồn nào ?
-                    </span>
-                    <div className="flex justify-around mt-2">
-                        {wordCloudSource.map((source) => (
-                            <button
-                                key={source}
-                                className={`p-2 rounded-lg text-sm ${
-                                    wordCloudSourceSelected === source
-                                        ? "bg-green-500 text-white"
-                                        : "bg-gray-200 text-gray-700"
-                                }`}
-                                onClick={() => {
-                                    setWordCloudSourceSelected(
-                                        source as WordCloudSource
-                                    );
-                                    handleFetchOption(
-                                        source as WordCloudSource
-                                    );
-                                }}
-                            >
-                                {source}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="mt-10">
-                        <span className="text-red-500 font-bold">
-                            Chọn nguồn dữ liệu
-                        </span>
-                        <Select
-                            showSearch
-                            value={selectedOption.value}
-                            placeholder="Please select ..."
-                            className="w-full"
-                            optionFilterProp="label"
-                            onChange={onChange}
-                            onSearch={onSearch}
-                            options={options}
-                        />
-                    </div>
-
-                    <div className="mt-10 flex justify-end">
-                        <Button
-                            icon={<Rocket size={16} />}
+        <div className="container mt-10 w-full mx-auto flex border-blue-400 border-2 rounded-lg shadow-xl">
+            {contextHolder}
+            <div className="w-[30%] p-4 border-r-2 border-gray-300">
+                <span className="text-red-500 font-bold">
+                    Bạn muốn tạo wordcloud từ nguồn nào ?
+                </span>
+                <div className="flex justify-around mt-2 flex-col lg:flex-row">
+                    {wordCloudSource.map((source) => (
+                        <button
+                            key={source}
+                            className={`p-2 rounded-lg mt-2 text-sm ${
+                                wordCloudSourceSelected === source
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-200 text-gray-700"
+                            }`}
                             onClick={() => {
-                                handleGetWordCloud(wordCloudSourceSelected);
+                                setWordCloudSourceSelected(
+                                    source as WordCloudSource
+                                );
+                                handleFetchOption(source as WordCloudSource);
                             }}
                         >
-                            Tạo Wordcloud
-                        </Button>
+                            {source}
+                        </button>
+                    ))}
+                </div>
+                <div className="mt-10">
+                    <span className="text-red-500 font-bold">
+                        Chọn nguồn dữ liệu
+                    </span>
+                    <Select
+                        showSearch
+                        value={selectedOption.value}
+                        placeholder="Please select ..."
+                        className="w-full"
+                        optionFilterProp="label"
+                        onChange={onChange}
+                        onSearch={onSearch}
+                        options={options}
+                    />
+                </div>
+
+                <div className="mt-10 flex justify-end">
+                    <Button
+                        icon={<Rocket size={16} />}
+                        onClick={() => {
+                            handleGetWordCloud(wordCloudSourceSelected);
+                        }}
+                    >
+                        Tạo Wordcloud
+                    </Button>
+                </div>
+            </div>
+            <div className="w-[35%] p-4">
+                <span className="flex justify-center text-red-500 font-bold">
+                    User&apos;s Wordcloud
+                </span>
+                {userUrl && (
+                    <div>
+                        <img
+                            src={userUrl}
+                            alt="User's Wordcloud"
+                            width={800}
+                            height={400}
+                        />
+                        <div className="flex justify-center mt-2">
+                            <Button icon={<Download size={16} />}>
+                                <a href={userUrl} download>
+                                    Download
+                                </a>
+                            </Button>
+                        </div>
                     </div>
-                </div>
-                <div className="w-[35%] p-4">
-                    <span className="flex justify-center text-red-500 font-bold">
-                        User&apos;s Wordcloud
-                    </span>
-                    {userUrl && (
-                        <div>
-                            <img
-                                src={userUrl}
-                                alt="User's Wordcloud"
-                                width={800}
-                                height={400}
-                            />
-                            <div className="flex justify-center mt-2">
-                                <Button icon={<Download size={16} />}>
-                                    <a href={userUrl} download>
-                                        Download
-                                    </a>
-                                </Button>
-                            </div>
+                )}
+            </div>
+            <div className="w-[35%] p-4">
+                <span className="text-red-500 font-bold flex justify-center">
+                    Assistant&apos;s Wordcloud
+                </span>
+                {assistantUrl && (
+                    <div>
+                        <img
+                            src={assistantUrl}
+                            alt="Assistant's Wordcloud"
+                            width={800}
+                            height={400}
+                        />
+                        <div className="flex justify-center mt-2">
+                            <Button icon={<Download size={16} />}>
+                                <a href={assistantUrl} download>
+                                    Download
+                                </a>
+                            </Button>
                         </div>
-                    )}
-                </div>
-                <div className="w-[35%] p-4">
-                    <span className="text-red-500 font-bold flex justify-center">
-                        Assistant&apos;s Wordcloud
-                    </span>
-                    {assistantUrl && (
-                        <div>
-                            <img
-                                src={assistantUrl}
-                                alt="Assistant's Wordcloud"
-                                width={800}
-                                height={400}
-                            />
-                            <div className="flex justify-center mt-2">
-                                <Button icon={<Download size={16} />}>
-                                    <a href={assistantUrl} download>
-                                        Download
-                                    </a>
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-export default WordcloudPage;
+export default Wordcloud;

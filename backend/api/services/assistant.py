@@ -212,6 +212,7 @@ class AssistantService:
 
             assistant_instance = ChatAssistant(configuration=assistant_config)
 
+            response_time = None
             full_response = ""
 
             response = await assistant_instance.astream_chat(
@@ -219,6 +220,9 @@ class AssistantService:
             )
 
             async for chunk in response.async_response_gen():
+                if response_time is None:
+                    response_time = time.time() - start_time
+
                 full_response += chunk
                 yield chunk
 
@@ -229,7 +233,7 @@ class AssistantService:
                 conversation_id=conversation_id,
                 sender_type=SenderType.ASSISTANT,
                 content=full_response,
-                response_time=(time.time() - start_time),
+                response_time=response_time,
                 cost=get_cost_from_session_id(session_id),
             )
             session.add(assistant_message)

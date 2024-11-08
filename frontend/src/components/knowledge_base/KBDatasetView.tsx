@@ -98,10 +98,10 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         },
                     }
                 );
+                const data: KnowledgeBase = await response.json();
                 if (!response.ok) {
                     throw new Error("Failed to fetch knowledge base data");
                 }
-                const data: KnowledgeBase = await response.json();
 
                 setKnowledgeBase(data);
                 setDocuments(data.documents);

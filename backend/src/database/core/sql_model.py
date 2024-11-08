@@ -137,25 +137,22 @@ class Users(SQLModel, table=True):
         description="Max Size of files user can upload to the knowledge bases",
     )
 
-    def total_upload_size(
-        self, user_kbs: List["KnowledgeBases"], documents: List["Documents"]
-    ) -> float:
+    def total_upload_size(self, documents: List["Documents"]) -> float:
         """
         Total size of the files uploaded by the user in MB
 
         Args:
-            user_kbs (List[KnowledgeBases]): List of Knowledge Bases of the user
+            documents (List[Documents]): List of Documents uploaded by the user
 
         Returns:
             float: Total size of the files uploaded by the user in MB
         """
         # In MB
-        return sum([kb.files_size(documents=documents) for kb in user_kbs])
+        return sum([doc.file_size_in_mb for doc in documents])
 
     def allow_upload(
         self,
         current_file_size: float,
-        user_kbs: List["KnowledgeBases"],
         documents: List["Documents"],
     ) -> bool:
         """
@@ -169,10 +166,8 @@ class Users(SQLModel, table=True):
             bool: True if user can upload the file, False otherwise
         """
         return (
-            self.total_upload_size(user_kbs, documents)
-            + current_file_size / 1024 / 1024
-            < self.max_size_mb
-        )
+            self.total_upload_size(documents) + (current_file_size / 1024 / 1024)
+        ) < self.max_size_mb
 
     model_config = ConfigDict(from_attributes=True)
 

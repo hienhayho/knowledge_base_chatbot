@@ -61,6 +61,7 @@ async def get_dashboard(
         knowledge_base_statistics = session.exec(
             select(
                 KnowledgeBases.id,
+                KnowledgeBases.name,
                 func.count(Messages.id).label("total_user_messages"),
             )
             .join(Assistants, Assistants.knowledge_base_id == KnowledgeBases.id)
@@ -76,6 +77,7 @@ async def get_dashboard(
         assistant_statistics = session.exec(
             select(
                 Assistants.id,
+                Assistants.name,
                 func.count(Conversations.id).label("number_of_conversations"),
             )
             .join(Conversations, Conversations.assistant_id == Assistants.id)
@@ -96,7 +98,8 @@ async def get_dashboard(
             assistant_statistics=[
                 AssistantStaticsResponse(
                     id=assistant[0],
-                    number_of_conversations=assistant[1],
+                    name=assistant[1],
+                    number_of_conversations=assistant[2],
                 )
                 for assistant in assistant_statistics
             ],
@@ -104,7 +107,8 @@ async def get_dashboard(
             knowledge_base_statistics=[
                 KnowledgeBaseStaticsResponse(
                     id=knowledge_base[0],
-                    total_user_messages=knowledge_base[1],
+                    name=knowledge_base[1],
+                    total_user_messages=knowledge_base[2],
                 )
                 for knowledge_base in knowledge_base_statistics
             ],
@@ -214,7 +218,6 @@ async def get_wordcloud_by_conversation(
     db_session: Annotated[Session, Depends(get_session)],
 ) -> JSONResponse:
     sender_type = SenderType.USER if is_user else SenderType.ASSISTANT
-    print(sender_type)
     with db_session as session:
         conversation = session.exec(
             select(Conversations).where(
@@ -241,15 +244,12 @@ async def get_wordcloud_by_conversation(
         content = " ".join(text)
         content = [c for c in content if c not in string.punctuation]
         content = "".join(content)
-        print(content)
         wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
         image_path = (
             Path(DOWNLOAD_FOLDER)
             / f"{str(conversation_id).replace('-', '_')}_{str(uuid.uuid4())}.png"
         )
         wordcloud.to_file(str(image_path))
-
-        print(image_path)
 
         return FileResponse(
             path=image_path, filename=image_path.name, media_type="image/jpeg"
@@ -292,4 +292,9 @@ async def get_all_conversations(
             select(Conversations).where(Conversations.user_id == current_user.id)
         ).all()
 
-        return conversations
+        return [
+            GetSourceReponse(
+                id=conversation.id, name=conversation.name or conversation.id
+            )
+            for conversation in conversations
+        ]

@@ -10,11 +10,13 @@ class ConversationStaticsResponse(BaseModel):
 
 class KnowledgeBaseStaticsResponse(BaseModel):
     id: UUID
+    name: str
     total_user_messages: int
 
 
 class AssistantStaticsResponse(BaseModel):
     id: UUID
+    name: str
     number_of_conversations: int
 
 
@@ -43,4 +45,4 @@ class DashboardStaticsResponse(BaseModel):
 
 class GetSourceReponse(BaseModel):
     id: UUID
-    name: str
+    name: str | UUID
