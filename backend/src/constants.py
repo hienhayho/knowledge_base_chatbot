@@ -23,13 +23,18 @@ Here is the chunk we want to situate within the whole document
 </chunk>
 Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
 
-QA_PROMPT = (
-    "We have provided context information below. \n"
-    "---------------------\n"
-    "{context_str}"
-    "\n---------------------\n"
-    "Given this information, please answer the question: {query_str}\n"
-)
+QA_PROMPT = """We have provided context information below.
+---------------------
+{context_str}"
+---------------------
+Given this information, please answer the question: {query_str}
+
+Please ONLY return in json format like this:
+{{
+    "result": ### Your answer here, MUST BE IN MARKDOWN FORMAT
+    "is_chat_false": ### You must decide if the answer is true with the context and question provided
+}}
+"""
 
 ASSISTANT_SYSTEM_PROMPT = """
 You are an advanced AI agent designed to assist users by searching through a diverse knowledge base

@@ -1,6 +1,13 @@
 "use client";
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Cpu, Book, MoreVertical, Trash2, LoaderCircle } from "lucide-react";
+import {
+    Cpu,
+    Book,
+    MoreVertical,
+    Trash2,
+    LoaderCircle,
+    Download,
+} from "lucide-react";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { IAssistant } from "@/app/(user)/(main)/chat/page";
@@ -146,6 +153,33 @@ const AssistantCard = ({
         }
     };
 
+    const handleExportConversations = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsMenuOpen(false);
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/assistant/${assistant.id}/export_conversations`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+            if (!response.ok) {
+                throw new Error("Failed to export conversations");
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `assistant_${assistant.id}.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Error exporting conversations:", error);
+        }
+    };
+
     return (
         <div
             className="bg-white shadow-lg rounded-2xl overflow-hidden cursor-pointer hover:shadow-xl transition-shadow relative"
@@ -210,14 +244,25 @@ const AssistantCard = ({
                     <MoreVertical size={20} />
                 </button>
                 {isMenuOpen && (
-                    <div className="absolute bottom-8 right-0 bg-white shadow-lg rounded-lg py-2 w-32">
-                        <button
-                            onClick={handleDelete}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-red-600"
-                        >
-                            <Trash2 size={16} className="mr-2" />
-                            Delete
-                        </button>
+                    <div className="flex flex-col justify-center">
+                        <div className="absolute bottom-20 right-0 bg-white shadow-lg rounded-lg py-2 w-32">
+                            <button
+                                onClick={handleExportConversations}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-green-600"
+                            >
+                                <Download size={16} className="mr-2" />
+                                Export
+                            </button>
+                        </div>
+                        <div className="absolute bottom-8 right-0 bg-white shadow-lg rounded-lg py-2 w-32">
+                            <button
+                                onClick={handleDelete}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-red-600"
+                            >
+                                <Trash2 size={16} className="mr-2" />
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

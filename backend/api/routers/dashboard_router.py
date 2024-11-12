@@ -1,6 +1,8 @@
 import sys
+import json
 import uuid
 import string
+import pandas as pd
 
 from uuid import UUID
 from pathlib import Path
@@ -45,6 +47,15 @@ async def get_dashboard(
             select(Conversations).where(Conversations.user_id == current_user.id)
         ).all()
 
+        messages = [
+            session.exec(
+                select(Messages)
+                .where(Messages.conversation_id == conversation.id)
+                .order_by(Messages.created_at)
+            ).all()
+            for conversation in conversations
+        ]
+
         total_conversations = len(conversations)
 
         average_assistant_response_time = session.exec(
@@ -85,6 +96,80 @@ async def get_dashboard(
             .group_by(Assistants.id)
         ).all()
 
+        # Save all data to excel
+        df = pd.DataFrame(
+            [
+                {
+                    "total_conversations": total_conversations,
+                    "average_assistant_response_time": average_assistant_response_time,
+                    "knowledge_base_statistics": json.dumps(
+                        [
+                            {
+                                "id": str(knowledge_base[0]),
+                                "name": knowledge_base[1],
+                                "total_user_messages": knowledge_base[2],
+                            }
+                            for knowledge_base in knowledge_base_statistics
+                        ]
+                    ),
+                    "assistant_statistics": json.dumps(
+                        [
+                            {
+                                "id": str(assistant[0]),
+                                "name": assistant[1],
+                                "number_of_conversations": assistant[2],
+                            }
+                            for assistant in assistant_statistics
+                        ]
+                    ),
+                    "conversations_statistics": json.dumps(
+                        [
+                            {
+                                "id": str(conversation.id),
+                                "average_session_chat_time": conversation.average_session_chat_time,
+                                "average_user_messages": conversation.average_user_messages,
+                            }
+                            for conversation in conversations
+                        ]
+                    ),
+                }
+            ]
+        )
+
+        conversation_names = [
+            conversation.name or conversation.id for conversation in conversations
+        ]
+
+        conversation_contents = [
+            json.dumps(
+                [
+                    {
+                        "sender_type": m.sender_type,
+                        "content": m.content,
+                    }
+                    for m in message
+                ]
+            )
+            for message in messages
+        ]
+
+        conversation_df = pd.DataFrame(
+            {
+                "conversation_name": conversation_names,
+                "conversation_content": conversation_contents,
+            }
+        )
+
+        file_conversation_name = (
+            Path(DOWNLOAD_FOLDER) / f"conversation_{current_user.id}.xlsx"
+        )
+
+        conversation_df.to_excel(file_conversation_name, index=False)
+
+        file_name = Path(DOWNLOAD_FOLDER) / f"dashboard_{current_user.id}.xlsx"
+
+        df.to_excel(file_name, index=False)
+
         return DashboardStaticsResponse(
             total_conversations=total_conversations,
             conversations_statistics=[
@@ -112,6 +197,35 @@ async def get_dashboard(
                 )
                 for knowledge_base in knowledge_base_statistics
             ],
+            file_name=file_name.stem,
+            file_conversation_name=file_conversation_name.stem,
+        )
+
+
+@dashboard_router.get(
+    "/export/{file_name}", tags=["download"], status_code=status.HTTP_200_OK
+)
+def download_file(
+    file_name: str,
+    current_user: Annotated[Users, Depends(get_current_user)],
+):
+    # Check if user has permission to download file
+    user_id = file_name.split("_")[-1]
+
+    if str(current_user.id) != user_id:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"error": "You do not have permission to download this file"},
+        )
+
+    file_path = Path(DOWNLOAD_FOLDER) / (file_name + ".xlsx")
+    if file_path.exists():
+        return FileResponse(
+            file_path, filename=file_name, status_code=status.HTTP_200_OK
+        )
+    else:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content={"error": "File not found"}
         )
 
 

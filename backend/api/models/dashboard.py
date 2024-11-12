@@ -41,6 +41,8 @@ class DashboardStaticsResponse(BaseModel):
     knowledge_base_statistics: list[KnowledgeBaseStaticsResponse] = Field(
         ..., description="List of knowledge base statistics for each user"
     )
+    file_name: str
+    file_conversation_name: str
 
 
 class GetSourceReponse(BaseModel):

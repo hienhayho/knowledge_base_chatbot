@@ -1,4 +1,7 @@
 import time
+import json
+import pandas as pd
+
 from uuid import UUID
 from src.database import is_valid_uuid
 from typing import Annotated
@@ -13,6 +16,7 @@ from api.models import (
     ConversationRenameRequest,
 )
 from .user_router import decode_user_token
+from .kb_router import DOWNLOAD_FOLDER
 from fastapi import (
     APIRouter,
     Depends,
@@ -35,9 +39,9 @@ from src.database import (
     DatabaseManager,
     get_db_manager,
 )
-from fastapi.responses import JSONResponse
 from src.utils import get_formatted_logger
 from api.services import AssistantService
+from fastapi.responses import JSONResponse, FileResponse
 
 logger = get_formatted_logger(__file__)
 
@@ -309,6 +313,90 @@ async def delete_conversation(
         )
 
 
+@assistant_router.get("/{assistant_id}/export_conversations")
+async def export_conversations(
+    assistant_id: UUID,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        conversations = session.exec(
+            select(Conversations).where(
+                Conversations.assistant_id == assistant_id,
+                Conversations.user_id == current_user.id,
+            )
+        ).all()
+
+        conversations_name = [
+            conversation.name or conversation.id for conversation in conversations
+        ]
+
+        conversations_content = [
+            session.exec(
+                select(Messages)
+                .where(Messages.conversation_id == conversation.id)
+                .order_by(Messages.created_at)
+            ).all()
+            for conversation in conversations
+        ]
+
+        conversations_string = [
+            json.dumps(
+                [
+                    {
+                        "sender": message.sender_type,
+                        "content": message.content,
+                    }
+                    for message in conversation
+                ]
+            )
+            for conversation in conversations_content
+        ]
+
+        df = pd.DataFrame(
+            {
+                "conversation_name": conversations_name,
+                "conversation_content": conversations_string,
+            }
+        )
+
+        # Save to excel
+        df.to_excel(DOWNLOAD_FOLDER / f"{assistant_id}.xlsx", index=False)
+
+        return FileResponse(
+            DOWNLOAD_FOLDER / f"{assistant_id}.xlsx",
+            filename=f"{assistant_id}.xlsx",
+            status_code=200,
+        )
+
+
+@assistant_router.get("/{assistant_id}/export/{conversation_id}")
+async def export_conversation(
+    assistant_id: UUID,
+    conversation_id: UUID,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    assistant_service: AssistantService = Depends(),
+):
+    conversation = [
+        {
+            "sender": conv.sender_type,
+            "content": conv.content,
+        }
+        for conv in assistant_service.get_conversation_history(
+            assistant_id, conversation_id, current_user.id
+        )
+    ]
+
+    with open(DOWNLOAD_FOLDER / f"{conversation_id}.json", "w") as f:
+        json.dump(conversation, f, indent=4)
+
+    return FileResponse(
+        DOWNLOAD_FOLDER / f"{conversation_id}.json",
+        filename=f"{conversation_id}.json",
+        status_code=200,
+    )
+
+
 @assistant_router.get("/{assistant_id}/conversations/{conversation_id}/history")
 async def get_conversation_history(
     assistant_id: UUID,
@@ -316,7 +404,9 @@ async def get_conversation_history(
     current_user: Annotated[Users, Depends(get_current_user)],
     assistant_service: AssistantService = Depends(),
 ):
-    return assistant_service.get_conversation_history(conversation_id, current_user.id)
+    return assistant_service.get_conversation_history(
+        assistant_id, conversation_id, current_user.id
+    )
 
 
 @assistant_router.patch("/{assistant_id}/conversations/{conversation_id}/rename")
@@ -478,6 +568,7 @@ async def websocket_endpoint(
         logger.info(f"WebSocket disconnected for conversation {conversation_id}")
 
     except Exception as e:
+        print(e)
         # Handle any other unexpected errors
         error_message = f"Unexpected error in WebSocket connection: {str(e)}"
         await ws_manager.send_error(conversation_id, error_message)

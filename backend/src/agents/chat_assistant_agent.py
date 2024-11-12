@@ -79,6 +79,7 @@ class ChatAssistant:
                 "The implementation for other types of LLMs are not ready yet!"
             )
 
+    @observe()
     def on_message(
         self,
         message: str,
@@ -90,7 +91,7 @@ class ChatAssistant:
         )
 
         message_history = [
-            LLamaIndexChatMessage(content=msg["content"], role=msg["role"])
+            LLamaIndexChatMessage(content=msg.content, role=msg.role)
             for msg in message_history
         ]
         response = self.agent.chat(message, message_history).response

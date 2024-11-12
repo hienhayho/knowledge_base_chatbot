@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
-import { FolderPen, Trash2, MessageSquare } from "lucide-react";
+import { FolderPen, Trash2, MessageSquare, Download } from "lucide-react";
 import { Popover, Row, Col, message, Input, Button } from "antd";
 import { IAssistant, IConversation } from "@/app/(user)/(main)/chat/page";
 
@@ -129,6 +129,34 @@ const ConversationCard = ({
         }
     };
 
+    const handleExportConversation = (conversationId: string) => async () => {
+        try {
+            const response = await fetch(
+                `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/export/${conversationId}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${conversationId}.json`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+
+                successMessage("Conversation exported successfully");
+            }
+        } catch (error) {
+            console.error(error);
+            errorMessage(`Export failed. Error: ${(error as Error).message}`);
+        }
+    };
+
     return (
         <>
             {contextHolder}
@@ -142,7 +170,7 @@ const ConversationCard = ({
                 }`}
             >
                 <Row>
-                    <Col span={18}>
+                    <Col span={15}>
                         <div
                             className="flex items-center"
                             onClick={() => onConversationSelect(conversation)}
@@ -156,13 +184,45 @@ const ConversationCard = ({
                             </p>
                         </div>
                     </Col>
-                    <Col span={6}>
-                        <div className="flex items-center">
+                    <Col span={9}>
+                        <div className="flex items-center justify-center">
+                            <Popover
+                                placement="rightTop"
+                                title={
+                                    <span className="text-green-600">
+                                        Export this conversation?
+                                    </span>
+                                }
+                                content={
+                                    <Button
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            marginLeft: "auto",
+                                        }}
+                                        type="primary"
+                                        onClick={handleExportConversation(
+                                            conversation.id
+                                        )}
+                                    >
+                                        Yes
+                                    </Button>
+                                }
+                            >
+                                <Download
+                                    size={16}
+                                    className="ml-auto"
+                                    style={{
+                                        marginRight: "0.5rem",
+                                    }}
+                                />
+                            </Popover>
                             <Popover
                                 open={openRenamePopover}
                                 placement="rightTop"
                                 title={
-                                    <span className="text-red-600">
+                                    <span className="text-blue-300">
                                         Rename this conversation?
                                     </span>
                                 }

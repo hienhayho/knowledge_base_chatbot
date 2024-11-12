@@ -18,10 +18,10 @@ jobs:
                   cp .env.production frontend/.env.local
                   docker compose up -d --build
 
-            - name: Sleep for 120 seconds
+            - name: Sleep for 30 seconds
               uses: jakejarvis/wait-action@master
               with:
-                  time: "120"
+                  time: "30"
 
             - name: List all docker images
               run: |

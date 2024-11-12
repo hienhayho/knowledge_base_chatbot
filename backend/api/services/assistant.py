@@ -1,8 +1,10 @@
 import time
 import uuid
 import copy
+
 from uuid import UUID
 from typing import List, Generator
+from json_repair import repair_json
 from sqlmodel import Session, select
 from langfuse.decorators import langfuse_context
 from fastapi import Depends, HTTPException, status
@@ -21,8 +23,8 @@ from api.models import (
     ChatResponse,
     MessageResponse,
 )
-from src.constants import SenderType, ChatAssistantConfig, MesssageHistory
 from src.settings import default_settings
+from src.constants import SenderType, ChatAssistantConfig, MesssageHistory
 
 
 class AssistantService:
@@ -100,7 +102,7 @@ class AssistantService:
     def stream_chat_with_assistant(
         self, conversation_id: int, user_id: int, message: ChatMessage
     ) -> Generator[str, None, None]:
-        with self.db_manager.Session() as session:
+        with self.db_session as session:
             conversation = (
                 session.query(Conversations)
                 .filter_by(id=conversation_id, user_id=user_id)
@@ -215,16 +217,22 @@ class AssistantService:
             response_time = None
             full_response = ""
 
-            response = await assistant_instance.astream_chat(
+            response = assistant_instance.on_message(
                 message.content, message_history, session_id=session_id
             )
 
-            async for chunk in response.async_response_gen():
+            response = repair_json(response, return_objects=True)
+
+            if not response:
+                response["result"] = "Something went wrong. Please try again."
+                response["is_chat_false"] = False
+
+            for chunk in response["result"].strip().split(" "):
                 if response_time is None:
                     response_time = time.time() - start_time
 
-                full_response += chunk
-                yield chunk
+                full_response += chunk + " "
+                yield chunk + " "
 
             langfuse_context.flush()
 
@@ -234,6 +242,7 @@ class AssistantService:
                 sender_type=SenderType.ASSISTANT,
                 content=full_response,
                 response_time=response_time,
+                is_chat_false=response["is_chat_false"],
                 cost=get_cost_from_session_id(session_id),
             )
             session.add(assistant_message)
@@ -255,11 +264,12 @@ class AssistantService:
             ]
 
     def get_conversation_history(
-        self, conversation_id: UUID, user_id: UUID
+        self, assistant_id: UUID, conversation_id: UUID, user_id: UUID
     ) -> List[MessageResponse]:
         try:
             with self.db_session as session:
                 query = select(Conversations).where(
+                    Conversations.assistant_id == assistant_id,
                     Conversations.id == conversation_id,
                     Conversations.user_id == user_id,
                 )
