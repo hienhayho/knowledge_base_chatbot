@@ -8,6 +8,7 @@ from tqdm import tqdm
 from pathlib import Path
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
+from qdrant_client.http import models
 from llama_index.core import (
     Settings,
     Document,
@@ -24,18 +25,10 @@ from llama_index.core.llms import ChatMessage
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.schema import NodeWithScore, Node
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.core.base.response.schema import Response
-from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.llms.function_calling import FunctionCallingLLM
-from llama_index.core.vector_stores.types import (
-    MetadataFilter,
-    MetadataFilters,
-    FilterOperator,
-)
 
 from llama_index.core.postprocessor import LLMRerank
 from llama_index.postprocessor.cohere_rerank import CohereRerank
@@ -486,42 +479,30 @@ class ContextualRAG:
         bm25_weight = self.setting.contextual_rag_config.bm25_weight
         semantic_weight = self.setting.contextual_rag_config.semantic_weight
 
-        index = self.get_qdrant_vector_store_index(
-            self.qdrant_client.client,
-            collection_name=self.setting.global_vector_db_collection_name,
-        )
-
         langfuse_callback_handler.set_trace_params(
             session_id=str(session_id),
         )
 
-        retriever = VectorIndexRetriever(
-            index=index,
-            similarity_top_k=top_k,
-            filters=MetadataFilters(
-                filters=[
-                    MetadataFilter(
-                        key="kb_id", value=kb_ids, operator=FilterOperator.IN
-                    )
-                ]
+        semantic_results = self.qdrant_client.search_vector(
+            collection_name=self.setting.global_vector_db_collection_name,
+            vector=get_embedding(query),
+            search_params=models.SearchParams(
+                quantization=models.QuantizationSearchParams(
+                    ignore=False,
+                    rescore=True,
+                    oversampling=2.0,
+                )
             ),
-            params={"quantization": {"rescore": True, "oversampling": 2}},
         )
 
-        query_engine = RetrieverQueryEngine(retriever=retriever)
-
-        logger.debug("Running semantic search ...")
-        semantic_results: Response = query_engine.query(query)
-
         semantic_doc_id = [
-            node.metadata["vector_id"] for node in semantic_results.source_nodes
+            point.payload["vector_id"] for point in semantic_results.points
         ]
 
         def get_content_by_doc_id(doc_id: str):
-            for node in semantic_results.source_nodes:
-                if node.metadata["vector_id"] == doc_id:
-                    return node.text
-            return ""
+            for point in semantic_results.points:
+                if point.payload["vector_id"] == doc_id:
+                    return point.payload["text"]
 
         logger.debug("Running BM25 search ...")
         bm25_results = self.es.search(kb_ids=kb_ids, query=query, top_k=top_k)

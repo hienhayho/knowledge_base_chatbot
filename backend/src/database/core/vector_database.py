@@ -7,6 +7,7 @@ from qdrant_client.http import models
 from qdrant_client import QdrantClient
 from typing import List, Dict, Any, Optional
 from qdrant_client.http.exceptions import ResponseHandlingException
+from qdrant_client.models import ScoredPoint
 from tenacity import (
     retry,
     wait_fixed,
@@ -307,4 +308,28 @@ class QdrantVectorDatabase(BaseVectorDatabase):
 
         logger.info(
             f"Migration from {source_collection} to {target_collection} completed successfully!"
+        )
+
+    def search_vector(
+        self,
+        collection_name: str,
+        vector: list[float],
+        search_params: models.SearchParams,
+    ) -> List[ScoredPoint]:
+        """
+        Search for a vector in the collection
+
+        Args:
+            collection_name (str): Collection name to search
+            vector (list[float]): Vector embedding
+            search_params (models.SearchParams): Search parameters
+
+        Returns:
+            List[models.PointStruct]: List of points
+        """
+        return self.client.query_points(
+            collection_name=collection_name,
+            query=vector,
+            search_params=search_params,
+            with_payload=True,
         )
