@@ -485,13 +485,19 @@ class ContextualRAG:
 
         semantic_results = self.qdrant_client.search_vector(
             collection_name=self.setting.global_vector_db_collection_name,
-            vector=get_embedding(query),
+            vector=get_embedding(query, session_id=session_id),
             search_params=models.SearchParams(
                 quantization=models.QuantizationSearchParams(
                     ignore=False,
                     rescore=True,
                     oversampling=2.0,
                 )
+            ),
+            query_filter=models.Filter(
+                should=[
+                    models.FieldCondition(key="kb_id", match=models.MatchValue(value=k))
+                    for k in kb_ids
+                ]
             ),
         )
 
