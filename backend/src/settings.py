@@ -10,10 +10,16 @@ from src.constants import (
     VectorDatabaseService,
     ASSISTANT_SYSTEM_PROMPT,
 )
+from src.utils import get_formatted_logger
 
 load_dotenv()
 
 config = Config.fromfile("config.py")
+
+logger = get_formatted_logger(__file__)
+
+logger.info("App configuration: \n")
+print(config.pretty_text)
 
 
 class APIKeys(BaseModel):

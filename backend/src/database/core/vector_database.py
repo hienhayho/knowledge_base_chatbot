@@ -324,7 +324,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             collection_name (str): Collection name to search
             vector (list[float]): Vector embedding
             search_params (models.SearchParams): Search parameters
-            query_filter (models.Filter): Filter
+            query_filter (models.Filter): Filter conditions (list of kb_ids)
         Returns:
             List[models.PointStruct]: List of points
         """

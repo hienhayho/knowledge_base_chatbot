@@ -485,7 +485,7 @@ class ContextualRAG:
 
         semantic_results = self.qdrant_client.search_vector(
             collection_name=self.setting.global_vector_db_collection_name,
-            vector=get_embedding(query, session_id=session_id),
+            vector=get_embedding(query),
             search_params=models.SearchParams(
                 quantization=models.QuantizationSearchParams(
                     ignore=False,
@@ -495,11 +495,19 @@ class ContextualRAG:
             ),
             query_filter=models.Filter(
                 should=[
-                    models.FieldCondition(key="kb_id", match=models.MatchValue(value=k))
-                    for k in kb_ids
+                    models.FieldCondition(
+                        key="kb_id", match=models.MatchAny(any=kb_ids)
+                    )
                 ]
             ),
         )
+
+        results_kb_ids = [point.payload["kb_id"] for point in semantic_results.points]
+
+        print(results_kb_ids)
+
+        for idx in results_kb_ids:
+            assert idx in kb_ids
 
         semantic_doc_id = [
             point.payload["vector_id"] for point in semantic_results.points
