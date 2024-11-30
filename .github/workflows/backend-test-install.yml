@@ -2,9 +2,8 @@ name: Backend (install)
 
 on:
     push:
-        branches: ["main", "hien_dev"]
     pull_request:
-        branches: ["main", "hien_dev"]
+        branches: ["main"]
 
 permissions:
     contents: read
