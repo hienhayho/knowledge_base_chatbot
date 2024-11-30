@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useDropzone, FileRejection, DropzoneOptions } from "react-dropzone";
 import { X, Upload, FileIcon, Trash2 } from "lucide-react";
+import { Button } from "antd";
 
 interface UploadFileModalProps {
     isOpen: boolean;
@@ -82,9 +83,6 @@ const UploadFileModal: React.FC<UploadFileModalProps> = ({
                         <button className="px-4 py-2 bg-blue-100 text-blue-700 rounded">
                             File
                         </button>
-                        <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
-                            Directory
-                        </button>
                     </div>
                     <div
                         {...getRootProps()}
@@ -140,13 +138,14 @@ const UploadFileModal: React.FC<UploadFileModalProps> = ({
                     >
                         Cancel
                     </button>
-                    <button
+                    <Button
+                        loading={uploading}
                         onClick={handleUpload}
                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                         disabled={files.length === 0 || uploading}
                     >
                         {uploading ? "Uploading..." : "Upload"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

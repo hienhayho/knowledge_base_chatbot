@@ -7,6 +7,7 @@ import { setCookie } from "cookies-next";
 import { message } from "antd";
 import { Button } from "antd";
 import { useRouter } from "next/navigation";
+import { Settings } from "lucide-react";
 
 const Header = () => {
     const [messageApi, contextHolder] = message.useMessage();
@@ -14,7 +15,7 @@ const Header = () => {
     const pathname = usePathname();
 
     const navItems = [
-        { name: "Thống kê", path: "/dashboard" },
+        { name: "Statistic", path: "/dashboard" },
         { name: "Wordcloud", path: "/dashboard/wordcloud" },
         { name: "Knowledge Base", path: "/knowledge" },
     ];
@@ -71,34 +72,8 @@ const Header = () => {
             <header className="bg-white shadow-sm h-16">
                 <div className="container mx-auto px-4 h-full flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                        <svg
-                            className="w-8 h-8 text-blue-500"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                d="M12 2L2 7L12 12L22 7L12 2Z"
-                                fill="currentColor"
-                            />
-                            <path
-                                d="M2 17L12 22L22 17"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                            <path
-                                d="M2 12L12 17L22 12"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
-                        <span className="font-bold text-xl">
-                            Knowledge Base
-                        </span>
+                        <Settings size={32} />
+                        <span className="font-bold text-2xl">User</span>
                     </div>
                     <nav className="flex space-x-4">
                         {navItems.map((item) => (

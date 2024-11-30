@@ -1,24 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Button, Form, Input, FormProps, message } from "antd";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-
-interface SignUpFormValues {
-    username: string;
-    email: string;
-    password: string;
-    retypePassword: string;
-}
-
-interface SignUpResponse {
-    username: string;
-    detail?: string;
-}
+import { Mail } from "lucide-react";
+import { SignUpFormValues } from "@/types";
+import { authApi } from "@/api";
 
 const SignUp: React.FC = () => {
     const router = useRouter();
     const [messageApi, contextHolder] = message.useMessage();
+    const [loading, setLoading] = useState<boolean>(false);
 
     const successMessage = ({
         content,
@@ -61,37 +54,36 @@ const SignUp: React.FC = () => {
         }
 
         try {
-            const result = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/users/create`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ username, email, password }),
-                }
-            );
+            setLoading(true);
+            const result = await authApi.register({
+                username: username,
+                email: email,
+                password: password,
+                retypePassword: retypePassword,
+            });
 
-            const data: SignUpResponse = await result.json();
-            if (result.ok) {
-                successMessage({
-                    content: `Account created successfully for ${data.username}`,
-                    duration: 1,
-                });
-
-                setTimeout(() => {
-                    router.push("/login");
-                }, 1000);
-            } else {
+            if (!result.success) {
                 errorMessage({
-                    content: data.detail || "An unexpected error occurred",
+                    content: result?.detail || "An unexpected error occurred",
                 });
+                return;
             }
+
+            successMessage({
+                content: `Account created successfully for ${result.data.username}. Please login again.`,
+                duration: 1.5,
+            });
+
+            setTimeout(() => {
+                router.push("/login");
+            }, 1500);
         } catch (error) {
             console.error(error);
             errorMessage({
-                content: "An unexpected error occurred",
+                content: (error as string) || "An unexpected error occurred",
             });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -103,18 +95,21 @@ const SignUp: React.FC = () => {
         <div style={styles.container}>
             {contextHolder}
             <div style={styles.formWrapper}>
-                <h1 style={styles.header}>Sign Up</h1>
+                <h1 style={styles.header}>Register</h1>
                 <Form
                     name="basic"
-                    labelCol={{ span: 6 }}
-                    wrapperCol={{ span: 18 }}
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        width: "100%",
+                    }}
                     initialValues={{ remember: true }}
                     onFinish={onFinish}
                     onFinishFailed={onFinishFailed}
                     autoComplete="off"
                 >
                     <Form.Item
-                        label="Username"
                         name="username"
                         rules={[
                             {
@@ -122,12 +117,18 @@ const SignUp: React.FC = () => {
                                 message: "Please input your username!",
                             },
                         ]}
+                        style={{
+                            width: "80%",
+                        }}
                     >
-                        <Input autoFocus />
+                        <Input
+                            autoFocus
+                            prefix={<UserOutlined />}
+                            placeholder="Username"
+                        />
                     </Form.Item>
 
                     <Form.Item
-                        label="Email"
                         name="email"
                         rules={[
                             {
@@ -136,12 +137,17 @@ const SignUp: React.FC = () => {
                                 type: "email",
                             },
                         ]}
+                        style={{
+                            width: "80%",
+                        }}
                     >
-                        <Input />
+                        <Input
+                            prefix={<Mail size={16} />}
+                            placeholder="Email"
+                        />
                     </Form.Item>
 
                     <Form.Item
-                        label="Password"
                         name="password"
                         rules={[
                             {
@@ -161,12 +167,18 @@ const SignUp: React.FC = () => {
                                 },
                             }),
                         ]}
+                        style={{
+                            width: "80%",
+                        }}
                     >
-                        <Input.Password />
+                        <Input.Password
+                            prefix={<LockOutlined />}
+                            type="password"
+                            placeholder="Password"
+                        />
                     </Form.Item>
 
                     <Form.Item
-                        label="Retype Password"
                         name="retypePassword"
                         dependencies={["password"]}
                         rules={[
@@ -188,18 +200,30 @@ const SignUp: React.FC = () => {
                                 },
                             }),
                         ]}
+                        style={{
+                            width: "80%",
+                        }}
                     >
-                        <Input.Password />
+                        <Input.Password
+                            prefix={<LockOutlined />}
+                            type="password"
+                            placeholder="Retype password"
+                        />
                     </Form.Item>
 
                     <div
                         style={{
                             display: "flex",
                             justifyContent: "space-evenly",
+                            width: "100%",
                         }}
                     >
                         <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-                            <Button type="primary" htmlType="submit">
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                loading={loading}
+                            >
                                 Register
                             </Button>
                         </Form.Item>
@@ -219,7 +243,6 @@ const SignUp: React.FC = () => {
     );
 };
 
-// Styles object with TypeScript typing
 const styles: Record<string, React.CSSProperties> = {
     container: {
         display: "flex",
@@ -246,7 +269,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
     footer: {
         textAlign: "right",
-        marginTop: "16px",
+        marginTop: "0.5rem",
     },
 };
 

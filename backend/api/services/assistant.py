@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from langfuse.decorators import langfuse_context
 from fastapi import Depends, HTTPException, status
 
-from src.agents import ChatAssistant
+from .chat_assistant_agent import ChatAssistant
 from src.utils import get_cost_from_session_id
 from src.database import (
     get_session,

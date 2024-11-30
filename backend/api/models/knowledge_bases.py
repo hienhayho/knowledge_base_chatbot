@@ -181,7 +181,7 @@ class DocumentInKnowledgeBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MergeKnowledgeBaseResponse(BaseModel):
+class InheritableKnowledgeBaseResponse(BaseModel):
     id: UUID
     name: str
 
@@ -198,6 +198,6 @@ class GetKnowledgeBaseResponse(BaseModel):
     parents: list[UUID]
     children: list[UUID]
     documents: list[DocumentInKnowledgeBase]
-    mergeable_knowledge_bases: list[MergeKnowledgeBaseResponse]
+    inheritable_knowledge_bases: list[InheritableKnowledgeBaseResponse]
 
     model_config = ConfigDict(from_attributes=True)

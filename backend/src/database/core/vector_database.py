@@ -316,6 +316,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
         vector: list[float],
         search_params: models.SearchParams,
         query_filter: Optional[models.Filter] = None,
+        limit: int = 10,
     ) -> List[ScoredPoint]:
         """
         Search for a vector in the collection
@@ -325,6 +326,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             vector (list[float]): Vector embedding
             search_params (models.SearchParams): Search parameters
             query_filter (models.Filter): Filter conditions (list of kb_ids)
+            limit (int)
         Returns:
             List[models.PointStruct]: List of points
         """
@@ -334,4 +336,5 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             search_params=search_params,
             with_payload=True,
             query_filter=query_filter,
+            limit=limit,
         )

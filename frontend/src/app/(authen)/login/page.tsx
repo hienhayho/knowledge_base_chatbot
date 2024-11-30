@@ -1,19 +1,12 @@
 "use client";
 
-import React, { useEffect, Suspense } from "react";
-import { setCookie } from "cookies-next";
+import React, { useEffect, Suspense, useState } from "react";
 import { Button, Form, Input, FormProps, message } from "antd";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { ValidateErrorEntity } from "rc-field-form/lib/interface";
 import { useSearchParams, useRouter } from "next/navigation";
-
-interface LoginFormValues {
-    username: string;
-    password: string;
-}
-
-interface LoginResponse {
-    access_token: string;
-}
+import { useAuth } from "@/hooks/auth";
+import { ILoginFormValues } from "@/types";
 
 const styles: Record<string, React.CSSProperties> = {
     container: {
@@ -24,12 +17,12 @@ const styles: Record<string, React.CSSProperties> = {
         backgroundColor: "#f0f2f5",
     },
     formWrapper: {
-        padding: "32px",
+        padding: "16px",
         border: "1px solid #d9d9d9",
         borderRadius: "8px",
         backgroundColor: "#fff",
         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-        maxWidth: "800px",
+        maxWidth: "600px",
         width: "100%",
     },
     header: {
@@ -41,7 +34,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
     footer: {
         textAlign: "right",
-        marginTop: "16px",
+        marginTop: "0.5rem",
     },
 };
 
@@ -49,11 +42,9 @@ const SignInContent: React.FC = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [messageApi, contextHolder] = message.useMessage();
-
-    useEffect(() => {
-        const redirectPath = searchParams?.get("redirect") || "/knowledge";
-        localStorage.setItem("redirectPath", redirectPath);
-    }, [searchParams]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const redirectPath = searchParams?.get("redirect") || "/knowledge";
+    const { login } = useAuth();
 
     const successMessage = ({
         content,
@@ -83,7 +74,9 @@ const SignInContent: React.FC = () => {
         });
     };
 
-    const onFinish: FormProps["onFinish"] = async (values: LoginFormValues) => {
+    const onFinish: FormProps["onFinish"] = async (
+        values: ILoginFormValues
+    ) => {
         const { username, password } = values;
 
         const path = localStorage.getItem("redirectPath") || "/knowledge";
@@ -97,51 +90,30 @@ const SignInContent: React.FC = () => {
         body.append("client_secret", "client_secret");
 
         try {
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/users/login`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                    body: body.toString(),
-                }
-            );
+            setLoading(true);
+            await login(body);
 
-            if (response.ok) {
-                const data: LoginResponse = await response.json();
+            successMessage({
+                content: `Login successful`,
+                duration: 1.5,
+            });
 
-                setCookie("access_token", data.access_token, {
-                    maxAge: 30 * 60,
-                    path: "/",
-                });
-
-                successMessage({
-                    content: "Login successful.",
-                    duration: 1,
-                });
-
-                setTimeout(() => router.push(path), 1000);
-            } else if (response.status === 401) {
-                errorMessage({
-                    content: "Invalid username or password.",
-                });
-            } else {
-                errorMessage({
-                    content: "An unexpected error occurred. Please try again.",
-                });
-            }
+            setTimeout(() => {
+                router.push(redirectPath);
+            }, 1000);
         } catch (error) {
             console.error("Login error:", error);
             errorMessage({
                 content: "An unexpected error occurred. Please try again.",
                 duration: 1,
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     const onFinishFailed: FormProps["onFinishFailed"] = (
-        errorInfo: ValidateErrorEntity<LoginFormValues>
+        errorInfo: ValidateErrorEntity<ILoginFormValues>
     ) => {
         console.error("Failed:", errorInfo);
         errorMessage({
@@ -155,18 +127,21 @@ const SignInContent: React.FC = () => {
         <div style={styles.container}>
             {contextHolder}
             <div style={styles.formWrapper}>
-                <h1 style={styles.header}>Sign In</h1>
+                <h1 style={styles.header}>Login</h1>
                 <Form
                     name="basic"
-                    labelCol={{ span: 6 }}
-                    wrapperCol={{ span: 18 }}
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        width: "100%",
+                    }}
                     initialValues={{ remember: true }}
                     onFinish={onFinish}
                     onFinishFailed={onFinishFailed}
                     autoComplete="off"
                 >
                     <Form.Item
-                        label="Username"
                         name="username"
                         rules={[
                             {
@@ -174,12 +149,18 @@ const SignInContent: React.FC = () => {
                                 message: "Please input your username!",
                             },
                         ]}
+                        style={{
+                            width: "80%",
+                        }}
                     >
-                        <Input autoFocus />
+                        <Input
+                            autoFocus
+                            prefix={<UserOutlined />}
+                            placeholder="Username"
+                        />
                     </Form.Item>
 
                     <Form.Item
-                        label="Password"
                         name="password"
                         rules={[
                             {
@@ -187,18 +168,30 @@ const SignInContent: React.FC = () => {
                                 message: "Please input your password!",
                             },
                         ]}
+                        style={{
+                            width: "80%",
+                        }}
                     >
-                        <Input.Password />
+                        <Input.Password
+                            prefix={<LockOutlined />}
+                            type="password"
+                            placeholder="Password"
+                        />
                     </Form.Item>
 
                     <div
                         style={{
+                            width: "100%",
                             display: "flex",
                             justifyContent: "space-evenly",
                         }}
                     >
                         <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-                            <Button type="primary" htmlType="submit">
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                loading={loading}
+                            >
                                 Login
                             </Button>
                         </Form.Item>
@@ -209,7 +202,7 @@ const SignInContent: React.FC = () => {
                                 href="/register"
                                 className="text-blue-500 block ml-4"
                             >
-                                Sign Up
+                                Register
                             </a>
                         </div>
                     </div>

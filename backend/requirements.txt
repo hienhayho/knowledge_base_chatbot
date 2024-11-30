@@ -48,3 +48,4 @@ tiktoken==0.8.0
 json_repair==0.30.0
 wordcloud==1.9.3
 reportlab==4.2.5
+crewai==0.80.0

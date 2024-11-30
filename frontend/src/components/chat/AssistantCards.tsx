@@ -11,7 +11,7 @@ import {
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { IAssistant } from "@/app/(user)/(main)/chat/page";
-import { IKnowledgeBase } from "@/app/(user)/(main)/knowledge/page";
+import { IKnowledgeBase } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 

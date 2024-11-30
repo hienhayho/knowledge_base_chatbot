@@ -5,7 +5,6 @@ import {
     Search,
     Plus,
     FileText,
-    Settings,
     Check,
     FileIcon,
     File,
@@ -19,7 +18,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
-import { message, Tooltip } from "antd";
+import { message, Popconfirm, Tooltip } from "antd";
 import { formatDate } from "@/utils";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
@@ -85,10 +84,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
-            if (!token) {
-                router.push(`/login?redirect=${redirectURL}`);
-                return;
-            }
             try {
                 const response = await fetch(
                     `${API_BASE_URL}/api/kb/get_kb/${knowledgeBaseID}`,
@@ -310,42 +305,39 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     };
 
     const handleDeleteDocument = async (documentId: string) => {
-        if (window.confirm("Are you sure you want to delete this document?")) {
-            try {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
-                    {
-                        method: "DELETE",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({ delete_to_retry: false }),
-                    }
-                );
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    errorMessage({
-                        content:
-                            errorData.detail || "Failed to delete document",
-                    });
-                    return;
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ delete_to_retry: false }),
                 }
-
-                successMessage({
-                    content: "Document deleted successfully",
-                });
-
-                setDocuments((prevDocuments) =>
-                    prevDocuments.filter((doc) => doc.id !== documentId)
-                );
-            } catch (error) {
-                console.error("Error deleting document:", error);
+            );
+            if (!response.ok) {
+                const errorData = await response.json();
                 errorMessage({
-                    content: (error as Error).message,
+                    content: errorData.detail || "Failed to delete document",
                 });
-                setError((error as Error).message);
+                return;
             }
+
+            successMessage({
+                content: "Document deleted successfully",
+            });
+
+            setDocuments((prevDocuments) =>
+                prevDocuments.filter((doc) => doc.id !== documentId)
+            );
+        } catch (error) {
+            console.error("Error deleting document:", error);
+            errorMessage({
+                content: (error as Error).message,
+            });
+            setError((error as Error).message);
         }
     };
 
@@ -562,14 +554,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         <FileText className="inline-block mr-2" size={20} />
                         Dataset
                     </a>
-
-                    <a
-                        href="#"
-                        className="block py-2 px-4 text-gray-600 hover:bg-gray-100"
-                    >
-                        <Settings className="inline-block mr-2" size={20} />
-                        Configuration
-                    </a>
                 </nav>
             </aside>
 
@@ -603,10 +587,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 </div>
 
                 <div className="bg-white shadow rounded-lg p-6">
-                    <div className="flex justify-between mb-4">
-                        <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded">
-                            Bulk
-                        </button>
+                    <div className="flex justify-end mb-4">
                         <div className="flex">
                             <div className="relative mr-2">
                                 <input
@@ -721,17 +702,30 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                         </button>
                                                     </Tooltip>
                                                     <Tooltip title="Delete the document">
-                                                        <button
-                                                            onClick={() =>
+                                                        <Popconfirm
+                                                            title="Delete this file"
+                                                            description="Are you sure to delete this file?"
+                                                            onConfirm={(e) => {
+                                                                e?.preventDefault();
                                                                 handleDeleteDocument(
                                                                     doc.id
-                                                                )
-                                                            }
-                                                            className="text-red-500 hover:text-red-700"
-                                                            title="Delete"
+                                                                );
+                                                            }}
+                                                            onCancel={(e) => {
+                                                                e?.preventDefault();
+                                                            }}
+                                                            okText="Yes"
+                                                            cancelText="No"
                                                         >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                            <button
+                                                                className="text-red-500 hover:text-red-700"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                        </Popconfirm>
                                                     </Tooltip>
                                                 </div>
                                             ) : doc.status === "processing" ? (
@@ -760,7 +754,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                                 )
                                                             }
                                                             className="text-red-500 hover:text-red-700"
-                                                            title="Delete"
+                                                            title="Stop processing"
                                                         >
                                                             <CircleStop
                                                                 size={16}
@@ -787,17 +781,30 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                         </button>
                                                     </Tooltip>
                                                     <Tooltip title="Delete the document">
-                                                        <button
-                                                            onClick={() =>
+                                                        <Popconfirm
+                                                            title="Delete this file"
+                                                            description="Are you sure to delete this file?"
+                                                            onConfirm={(e) => {
+                                                                e?.preventDefault();
                                                                 handleDeleteDocument(
                                                                     doc.id
-                                                                )
-                                                            }
-                                                            className="text-red-500 hover:text-red-700"
-                                                            title="Delete"
+                                                                );
+                                                            }}
+                                                            onCancel={(e) => {
+                                                                e?.preventDefault();
+                                                            }}
+                                                            okText="Yes"
+                                                            cancelText="No"
                                                         >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                            <button
+                                                                className="text-red-500 hover:text-red-700"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                        </Popconfirm>
                                                     </Tooltip>
                                                 </div>
                                             ) : (

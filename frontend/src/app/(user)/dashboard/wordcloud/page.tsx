@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { getCookie } from "cookies-next";
-import { useRouter } from "next/navigation";
 import { Select, Button, message } from "antd";
 import { Download, Rocket } from "lucide-react";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/hooks/auth";
 
 interface SelectOption {
     value: string;
@@ -16,12 +16,10 @@ type WordCloudSource = "Knowledge Base" | "Assistant" | "Conversation" | "";
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
 const WordcloudPage = () => {
-    const router = useRouter();
+    const [loading, setLoading] = useState<boolean>(false);
     const [messageApi, contextHolder] = message.useMessage();
+    const { token } = useAuth();
 
-    const redirectURL = encodeURIComponent("/dashboard/wordcloud");
-
-    const token = getCookie("access_token");
     const wordCloudSource = ["Knowledge Base", "Assistant", "Conversation"];
     const wordCloudSourceMap: Record<WordCloudSource, string> = {
         "Knowledge Base": "kbs",
@@ -79,9 +77,6 @@ const WordcloudPage = () => {
 
     const handleFetchOption = async (source: WordCloudSource) => {
         try {
-            if (!token) {
-                router.push(`/login?redirect=${redirectURL}`);
-            }
             const response = await fetch(
                 `${BASE_API_URL}/api/dashboard/${wordCloudSourceMap[source]}`,
                 {
@@ -90,11 +85,14 @@ const WordcloudPage = () => {
                     },
                 }
             );
+            const data = await response.json();
             if (!response.ok) {
-                throw new Error("Failed to fetch data");
+                errorMessage({
+                    content: data?.detail || "Something wrong happened !!!",
+                });
+                return;
             }
 
-            const data = await response.json();
             setOptions(
                 data.map((item: { id: string; name: string }) => ({
                     value: item.id,
@@ -114,9 +112,22 @@ const WordcloudPage = () => {
 
     const handleGetWordCloud = async (source: WordCloudSource) => {
         try {
-            if (!token) {
-                throw new Error("You are not authenticated");
+            if (source === "") {
+                errorMessage({
+                    content: "Please choose base.",
+                    duration: 1,
+                });
+                return;
             }
+            if (selectedOption.value === "") {
+                errorMessage({
+                    content: "Please choose source.",
+                    duration: 1,
+                });
+                return;
+            }
+
+            setLoading(true);
 
             const userWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=true`;
             const assistantWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=false`;
@@ -128,7 +139,11 @@ const WordcloudPage = () => {
             });
 
             if (!userResponse.ok) {
-                throw new Error("Failed to fetch user's word cloud image");
+                const userData = await userResponse.json();
+                throw new Error(
+                    userData?.detail ||
+                        "Failed to fetch user's word cloud image"
+                );
             }
 
             const userBlob = await userResponse.blob();
@@ -140,20 +155,26 @@ const WordcloudPage = () => {
             });
 
             if (!assistantResponse.ok) {
-                throw new Error("Failed to fetch assistant's word cloud image");
+                const assistantData = await assistantResponse.json();
+                throw new Error(
+                    assistantData?.detail ||
+                        "Failed to fetch assistant's word cloud image"
+                );
             }
             const assistantBlob = await assistantResponse.blob();
 
             successMessage({
-                content: "Tạo wordcloud thành công !!!",
+                content: "Generate Wordcloud successfully !!!",
                 duration: 1,
             });
 
             setUserUrl(URL.createObjectURL(userBlob));
             setAssistantUrl(URL.createObjectURL(assistantBlob));
         } catch (error) {
-            errorMessage({ content: (error as Error).message });
+            errorMessage({ content: (error as Error).message, duration: 2 });
             console.error(error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -179,13 +200,11 @@ const WordcloudPage = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-[90%] mx-auto flex border-2 border-blue-400 rounded-lg shadow-lg p-2">
-                {contextHolder}
+        <div className="flex items-center justify-center h-[80%]">
+            {contextHolder}
+            <div className="w-[90%] h-[80%] mx-auto flex border-2 border-blue-400 rounded-lg shadow-lg p-2">
                 <div className="w-[30%] p-4 border-r-2 border-gray-300">
-                    <span className="text-red-500 font-bold">
-                        Bạn muốn tạo wordcloud từ nguồn nào ?
-                    </span>
+                    <span className="text-red-500 font-bold">Choose base:</span>
                     <div className="flex justify-around mt-2">
                         {wordCloudSource.map((source) => (
                             <button
@@ -210,7 +229,7 @@ const WordcloudPage = () => {
                     </div>
                     <div className="mt-10">
                         <span className="text-red-500 font-bold">
-                            Chọn nguồn dữ liệu
+                            Choose source:
                         </span>
                         <Select
                             showSearch
@@ -227,11 +246,12 @@ const WordcloudPage = () => {
                     <div className="mt-10 flex justify-end">
                         <Button
                             icon={<Rocket size={16} />}
+                            loading={loading}
                             onClick={() => {
                                 handleGetWordCloud(wordCloudSourceSelected);
                             }}
                         >
-                            Tạo Wordcloud
+                            Generate Wordcloud
                         </Button>
                     </div>
                 </div>
@@ -284,4 +304,4 @@ const WordcloudPage = () => {
     );
 };
 
-export default WordcloudPage;
+export default ProtectedRoute(WordcloudPage);

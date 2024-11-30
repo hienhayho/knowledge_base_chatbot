@@ -4,7 +4,7 @@ from pathlib import Path
 
 from llama_index.core.tools import FunctionTool
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.database import ContextualRAG
 from src.settings import GlobalSettings
 

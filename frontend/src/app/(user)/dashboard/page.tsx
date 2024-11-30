@@ -2,10 +2,11 @@
 import React, { useEffect, useState } from "react";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
-import { Button, Divider } from "antd";
+import { Button, Divider, message } from "antd";
 import AssistantStatisticsChart from "@/components/dashboard/AssistantStatisticsChart";
 import KnowledgeBaseStatisticsChart from "@/components/dashboard/KnowledgeBaseStatisticsChart";
 import ConversationsStatisticsChart from "@/components/dashboard/ConversationsStatisticsChart";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -30,14 +31,45 @@ interface IDashBoardResponse {
         name: string;
         total_user_messages: number;
     }[];
+
+    detail?: string;
 }
 
 const DashBoardPage = () => {
     const router = useRouter();
     const token = getCookie("access_token");
+    const [messageApi, contextHolder] = message.useMessage();
     const redirectUrl = encodeURIComponent("/dashboard");
     const [dashboardData, setDashboardData] =
         useState<IDashBoardResponse | null>(null);
+
+    const successMessage = ({
+        content,
+        duration = 1,
+    }: {
+        content: string;
+        duration?: number;
+    }) => {
+        messageApi.open({
+            type: "success",
+            content,
+            duration,
+        });
+    };
+
+    const errorMessage = ({
+        content,
+        duration = 1,
+    }: {
+        content: string;
+        duration?: number;
+    }) => {
+        messageApi.open({
+            type: "error",
+            content,
+            duration,
+        });
+    };
 
     useEffect(() => {
         if (!token) {
@@ -46,14 +78,25 @@ const DashBoardPage = () => {
         }
         const fetchDashboardData = async () => {
             try {
-                const response = await fetch(`${BASE_API_URL}/api/dashboard`, {
+                const response = await fetch(`${BASE_API_URL}/api/dashboard/`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
                 });
                 const data: IDashBoardResponse = await response.json();
+                if (!response.ok) {
+                    console.error(data?.detail || "Something wrong happened");
+                    return;
+                }
+                successMessage({
+                    content: "Get statistic successfully !!!",
+                });
                 setDashboardData(data);
             } catch (error) {
+                errorMessage({
+                    content:
+                        (error as string) || "Something wrong happened !!!",
+                });
                 console.error(error);
             }
         };
@@ -86,14 +129,21 @@ const DashBoardPage = () => {
                 a.download = `${file_name}.xlsx` || "export.xlsx";
                 a.click();
                 window.URL.revokeObjectURL(url);
+                successMessage({
+                    content: "Export successfully !!!",
+                });
             }
         } catch (error) {
+            errorMessage({
+                content: (error as string) || "Something wrong happened !!!",
+            });
             console.error(error);
         }
     };
 
     return (
         <div className="container mt-10 mx-auto flex flex-col">
+            {contextHolder}
             <div className="flex justify-around items-center">
                 <Button
                     type="primary"
@@ -124,7 +174,7 @@ const DashBoardPage = () => {
                 <div className="grid grid-rows-2 gap-4 w-[20%]">
                     <div className="p-2 border-2 border-blue-500 flex flex-col h-24 justify-between shadow-lg rounded-lg">
                         <span className="self-start font-bold">
-                            Tổng số cuộc trò chuyện
+                            Total Conversations:
                         </span>
                         <span className="self-end text-3xl text-blue-500">
                             {dashboardData?.total_conversations || "???"}
@@ -132,7 +182,7 @@ const DashBoardPage = () => {
                     </div>
                     <div className="p-2 border-2 border-blue-500 flex flex-col h-24 justify-between shadow-lg rounded-lg">
                         <span className="self-start font-bold">
-                            Thời gian phản hồi trung bình
+                            Average Response Time:
                         </span>
                         <span className="self-end text-3xl text-blue-500">
                             {dashboardData?.average_assistant_response_time ||
@@ -168,4 +218,4 @@ const DashBoardPage = () => {
     );
 };
 
-export default DashBoardPage;
+export default ProtectedRoute(DashBoardPage);

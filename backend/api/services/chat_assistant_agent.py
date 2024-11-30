@@ -1,14 +1,16 @@
 import uuid
+from crewai import Agent, Task
 from dotenv import load_dotenv
 from llama_index.core import Settings
 from langfuse.decorators import observe
-from llama_index.llms.openai import OpenAI
-from llama_index.agent.openai import OpenAIAgent
+from langchain_openai import ChatOpenAI
 from llama_index.core.callbacks import CallbackManager
 from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
 
-from src.tools import load_kb_tool
+from src.tools import KBSearchTool
+from src.agents import CrewAIAgent
+from src.database import ContextualRAG
 from src.settings import default_settings
 from src.utils import get_formatted_logger
 from src.constants import ASSISTANT_SYSTEM_PROMPT, ChatAssistantConfig, MesssageHistory
@@ -36,21 +38,55 @@ class ChatAssistant:
             guard_prompt=self.configuration.guard_prompt,
         ).strip("\n")
 
-        self.tools = [
-            load_kb_tool(
-                setting=default_settings,
-                kb_ids=self.configuration.kb_ids,
-                session_id=self.configuration.session_id,
-                is_contextual_rag=self.configuration.is_contextual_rag,
-                system_prompt=system_prompt,
-            )
-        ]
+        print(self.configuration.kb_ids)
 
-        self.agent = OpenAIAgent.from_tools(
-            tools=self.tools,
-            llm=self.llm,
-            verbose=True,
+        kb_search_tool = KBSearchTool(
+            setting=default_settings,
+            contextual_rag=ContextualRAG.from_setting(default_settings),
+            kb_ids=self.configuration.kb_ids,
+            session_id=self.configuration.session_id,
+            is_contextual_rag=self.configuration.is_contextual_rag,
             system_prompt=system_prompt,
+            result_as_answer=True,
+        )
+
+        kb_agent = Agent(
+            role="Assistant",
+            goal="Helping users find information in the knowledge base.",
+            backstory="You are a very intelligent assistant. You have access to a knowledge base that contains a lot of information.",
+            llm=self.llm,
+        )
+
+        kb_task = Task(
+            description="Search the knowledge base for information about {query}.",
+            expected_output="A most relevant answer from the knowledge base for the given query.",
+            agent=kb_agent,
+            tools=[
+                kb_search_tool,
+            ],
+        )
+
+        # self.tools = [
+        #     load_kb_tool(
+        #         setting=default_settings,
+        #         kb_ids=self.configuration.kb_ids,
+        #         session_id=self.configuration.session_id,
+        #         is_contextual_rag=self.configuration.is_contextual_rag,
+        #         system_prompt=system_prompt,
+        #     )
+        # ]
+
+        # self.agent = OpenAIAgent.from_tools(
+        #     tools=self.tools,
+        #     llm=self.llm,
+        #     verbose=True,
+        #     system_prompt=system_prompt,
+        # )
+        self.agent = CrewAIAgent(
+            agents=[kb_agent],
+            tasks=[kb_task],
+            manager_llm=self.llm,
+            verbose=True,
         )
 
     def _init_model(self, service, model_id):
@@ -70,7 +106,11 @@ class ChatAssistant:
 
         if service == "openai":
             logger.info(f"Loading OpenAI Model: {model_id}")
-            return OpenAI(
+            # return OpenAI(
+            #     model=model_id,
+            #     temperature=self.configuration.temperature,
+            # )
+            return ChatOpenAI(
                 model=model_id,
                 temperature=self.configuration.temperature,
             )
@@ -90,11 +130,14 @@ class ChatAssistant:
             session_id=str(session_id),
         )
 
-        message_history = [
-            LLamaIndexChatMessage(content=msg.content, role=msg.role)
-            for msg in message_history
-        ]
-        response = self.agent.chat(message, message_history).response
+        # message_history = [
+        #     LLamaIndexChatMessage(content=msg.content, role=msg.role)
+        #     for msg in message_history
+        # ]
+        inputs = {
+            "query": message,
+        }
+        response = self.agent.chat(inputs, message_history)
 
         return response
 

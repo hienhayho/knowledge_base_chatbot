@@ -4,3 +4,4 @@ postgres-data/
 .env
 .DS_Store
 .venv/
+old_frontend/

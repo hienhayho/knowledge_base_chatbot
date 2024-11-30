@@ -10,8 +10,9 @@ interface IMergeableKnowledgeBase {
 }
 
 interface IMergeableKnowledgeBaseResponse {
-    mergeable_knowledge_bases: IMergeableKnowledgeBase[];
+    inheritable_knowledge_bases: IMergeableKnowledgeBase[];
     parents: string[];
+    children: string[];
     detail?: string;
 }
 
@@ -38,9 +39,8 @@ const KnowledgeBaseCard = ({
     const buttonRef = useRef<HTMLButtonElement>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [mergeable_knowledge_bases, setMergeableKnowledgeBases] = useState<
-        IMergeableKnowledgeBase[]
-    >([]);
+    const [inheritable_knowledge_bases, setInheritableKnowledgeBases] =
+        useState<IMergeableKnowledgeBase[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedKbId, setSelectedKbId] = useState<string | null>(null);
     const [isHasParent, setIsHasParent] = useState<boolean>(false);
@@ -98,7 +98,7 @@ const KnowledgeBaseCard = ({
                 return;
             }
             setIsHasParent(data.parents.length > 0);
-            setMergeableKnowledgeBases(data.mergeable_knowledge_bases);
+            setInheritableKnowledgeBases(data.inheritable_knowledge_bases);
         } catch (error) {
             errorMessage({
                 content: "Failed to fetch mergeable knowledge bases",
@@ -158,6 +158,10 @@ const KnowledgeBaseCard = ({
     };
 
     const handleOk = () => {
+        if (inheritable_knowledge_bases.length === 0) {
+            setIsModalOpen(false);
+            return;
+        }
         handleInheritKnowledgeBase();
         setTimeout(() => {
             setIsModalOpen(false);
@@ -174,7 +178,9 @@ const KnowledgeBaseCard = ({
     };
 
     const onSearch = (value: string) => {
-        const filteredOptions = mergeable_knowledge_bases.map((kb) => kb.name);
+        const filteredOptions = inheritable_knowledge_bases.map(
+            (kb) => kb.name
+        );
         if (filteredOptions.includes(value)) {
             setSelectedKbId(value);
         }
@@ -275,7 +281,7 @@ const KnowledgeBaseCard = ({
                         loading={loading}
                         onCancel={handleCancel}
                     >
-                        {mergeable_knowledge_bases.length > 0 ? (
+                        {inheritable_knowledge_bases.length > 0 ? (
                             <>
                                 <label className="block mb-1">
                                     <strong>
@@ -284,12 +290,12 @@ const KnowledgeBaseCard = ({
                                 </label>
                                 <Select
                                     showSearch
-                                    placeholder="Select a person"
+                                    placeholder="Select knowledge base"
                                     optionFilterProp="label"
                                     onChange={onChange}
                                     onSearch={onSearch}
                                     options={(
-                                        mergeable_knowledge_bases || []
+                                        inheritable_knowledge_bases || []
                                     ).map((kb) => ({
                                         value: kb.id,
                                         label: kb.name,

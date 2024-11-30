@@ -30,7 +30,7 @@ from api.models import (
     DeleteDocumentRequestBody,
     DocumentInKnowledgeBase,
     InheritKnowledgeBaseRequest,
-    MergeKnowledgeBaseResponse,
+    InheritableKnowledgeBaseResponse,
 )
 from src.database import (
     Users,
@@ -500,9 +500,9 @@ async def get_knowledge_base(
                 )
                 for doc in documents
             ],
-            mergeable_knowledge_bases=(
+            inheritable_knowledge_bases=(
                 [
-                    MergeKnowledgeBaseResponse(id=kb.id, name=kb.name)
+                    InheritableKnowledgeBaseResponse(id=kb.id, name=kb.name)
                     for kb in mergeable_kb
                 ]
             ),

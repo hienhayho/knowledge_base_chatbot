@@ -10,23 +10,11 @@ import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { message } from "antd";
 import { formatDate } from "@/utils/";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { knowledgeBaseApi } from "@/api";
+import { ICreateKnowledgeBase, IKnowledgeBase } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-export interface IKnowledgeBase {
-    id: string;
-    name: string;
-    description: string;
-    document_count: number;
-    last_updated: string;
-    updated_at: string;
-}
-
-interface ICreateKnowledgeBase {
-    name: string;
-    description: string;
-    useContextualRag: boolean;
-}
 
 const KnowledgeBasePage: React.FC = () => {
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
@@ -56,7 +44,7 @@ const KnowledgeBasePage: React.FC = () => {
 
     const errorMessage = ({
         content,
-        duration,
+        duration = 2,
     }: {
         content: string;
         duration?: number;
@@ -64,30 +52,14 @@ const KnowledgeBasePage: React.FC = () => {
         messageApi.open({
             type: "error",
             content: content,
-            duration: duration || 2,
+            duration: duration,
         });
     };
 
     useEffect(() => {
         const fetchKnowledgeBases = async () => {
             try {
-                if (!token) {
-                    router.push(`/login?redirect=${redirectURL}`);
-                    return;
-                }
-
-                const response = await fetch(`${API_BASE_URL}/api/kb/get_all`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error("Failed to fetch knowledge bases");
-                }
-
-                const data: IKnowledgeBase[] = await response.json();
-                console.log(data);
+                const data = await knowledgeBaseApi.fetchKnowledgeBases();
 
                 successMessage({
                     content: "Knowledge bases fetched successfully",
@@ -96,6 +68,9 @@ const KnowledgeBasePage: React.FC = () => {
                 setKnowledgeBases(data);
                 setIsLoading(false);
             } catch (err) {
+                errorMessage({
+                    content: (err as Error).message,
+                });
                 setError((err as Error).message);
                 setIsLoading(false);
             }
@@ -108,24 +83,9 @@ const KnowledgeBasePage: React.FC = () => {
         formData: ICreateKnowledgeBase
     ) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/kb/create`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${getCookie("access_token")}`,
-                },
-                body: JSON.stringify({
-                    name: formData.name,
-                    description: formData.description,
-                    is_contextual_rag: formData.useContextualRag,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to create knowledge base");
-            }
-
-            const newKnowledgeBase: IKnowledgeBase = await response.json();
+            const newKnowledgeBase = await knowledgeBaseApi.createKnowledgeBase(
+                formData
+            );
 
             successMessage({
                 content: "Knowledge base created successfully",
@@ -249,4 +209,4 @@ const KnowledgeBasePage: React.FC = () => {
     );
 };
 
-export default KnowledgeBasePage;
+export default ProtectedRoute(KnowledgeBasePage);

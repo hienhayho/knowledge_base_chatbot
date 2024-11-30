@@ -502,13 +502,6 @@ class ContextualRAG:
             ),
         )
 
-        results_kb_ids = [point.payload["kb_id"] for point in semantic_results.points]
-
-        print(results_kb_ids)
-
-        for idx in results_kb_ids:
-            assert idx in kb_ids
-
         semantic_doc_id = [
             point.payload["vector_id"] for point in semantic_results.points
         ]

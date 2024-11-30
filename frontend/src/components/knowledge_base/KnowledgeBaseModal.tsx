@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { Modal, Input, InputRef } from "antd";
+import { ICreateKnowledgeBase } from "@/types";
 const { TextArea } = Input;
 
 const KnowledgeBaseModal = ({
@@ -13,11 +14,7 @@ const KnowledgeBaseModal = ({
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     onClose: () => void;
-    onCreate: (formData: {
-        name: string;
-        description: string;
-        useContextualRag: boolean;
-    }) => void;
+    onCreate: (body: ICreateKnowledgeBase) => void;
 }) => {
     const [name, setName] = useState<string>("");
     const [description, setDescription] = useState<string>("");
@@ -30,6 +27,7 @@ const KnowledgeBaseModal = ({
             name,
             description,
             useContextualRag: true,
+            is_contextual_rag: true,
         };
         onCreate(formData);
         setName("");

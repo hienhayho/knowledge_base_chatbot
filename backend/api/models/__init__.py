@@ -13,8 +13,8 @@ from .knowledge_bases import (
     GetKnowledgeBase,
     DocumentInKnowledgeBase,
     GetKnowledgeBaseResponse,
-    MergeKnowledgeBaseResponse,
     InheritKnowledgeBaseRequest,
+    InheritableKnowledgeBaseResponse,
     DeleteDocumentRequestBody,
 )
 from .assistants import (
@@ -51,6 +51,7 @@ __all__ = [
     "MergeKnowledgeBaseResponse",
     "GetKnowledgeBase",
     "GetKnowledgeBaseResponse",
+    "InheritableKnowledgeBaseResponse",
     "AssistantCreate",
     "AssistantResponse",
     "ConversationResponse",
