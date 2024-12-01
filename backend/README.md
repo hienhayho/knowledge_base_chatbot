@@ -1,6 +1,6 @@
 ### Setup Environment
 
-**IMPORTANT**: Please use `python >= 3.11` to prevent any unexpected behaviors.
+**IMPORTANT**: Please use `python==3.12` to prevent any unexpected behaviors.
 
 ```bash
 python -m venv env
