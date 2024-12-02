@@ -123,41 +123,6 @@ class DatabaseManager:
 
         return contextual_documents, contextual_documents_metadata
 
-    def es_index_document(
-        self,
-        index_name: str,
-        document_id: str | UUID,
-        documents_metadata: list[DocumentMetadata],
-    ):
-        """
-        Index document in ElasticSearch
-
-        Args:
-            index_name (str): Index name
-            document_id (str | UUID): Document ID
-            documents_metadata (list[DocumentMetadata]): List of documents metadata
-        """
-
-        self.contextual_rag_client.es_index_document(
-            index_name=index_name,
-            document_id=document_id,
-            documents_metadata=documents_metadata,
-        )
-
-    def es_delete_document(self, index_name: str, document_id: str | UUID):
-        """
-        Delete document from ElasticSearch
-
-        Args:
-            index_name (str): Index name
-            document_id (str | UUID): Document ID
-        """
-
-        self.contextual_rag_client.es_delete_document(
-            index_name=index_name,
-            document_id=document_id,
-        )
-
     def index_to_vector_db(
         self, kb_id: str, chunks_documents: list[Document], document_id: UUID
     ):
@@ -179,8 +144,6 @@ class DatabaseManager:
         self,
         object_name: str,
         document_id: UUID,
-        knownledge_base_id: UUID,
-        is_contextual_rag: bool,
         delete_to_retry: bool = False,
     ):
         """
@@ -205,55 +168,7 @@ class DatabaseManager:
             document_id=document_id,
         )
 
-        if is_contextual_rag:
-            self.contextual_rag_client.es_delete_document(
-                index_name=knownledge_base_id,
-                document_id=document_id,
-            )
-
         logger.info(f"Removed: {document_id}")
-
-    def es_migrate(
-        self, target_knowledge_base_id: str, source_knowledge_base_ids: list[str]
-    ):
-        """
-        Migrate ElasticSearch index
-
-        Args:
-            target_knowledge_base_id (str): Target knowledge base ID
-            source_knowledge_base_id (str): Source knowledge base ID
-        """
-        logger.debug(
-            "Merging source knowledge bases: %s into target knowledge base: %s",
-            source_knowledge_base_ids,
-            target_knowledge_base_id,
-        )
-        for source_knowledge_base_id in source_knowledge_base_ids:
-            self.contextual_rag_client.es.migrate_index(
-                target_index_name=target_knowledge_base_id,
-                source_index_name=source_knowledge_base_id,
-            )
-
-    def vector_db_migrate(
-        self, target_knowledge_base_id: str, source_knowledge_base_ids: list[str]
-    ):
-        """
-        Migrate Qdrant index
-
-        Args:
-            target_knowledge_base_id (str): Target knowledge base ID
-            source_knowledge_base_id (str): Source knowledge base ID
-        """
-        logger.debug(
-            "Merging source knowledge bases: %s into target knowledge base: %s",
-            source_knowledge_base_ids,
-            target_knowledge_base_id,
-        )
-        for source_knowledge_base_id in source_knowledge_base_ids:
-            self.contextual_rag_client.qdrant_client.migrate_collection(
-                source_collection=source_knowledge_base_id,
-                target_collection=target_knowledge_base_id,
-            )
 
     def delete_conversation(self, conversation_id: str | UUID):
         """
@@ -288,6 +203,16 @@ class DatabaseManager:
             session.commit()
 
             session.close()
+
+        logger.info("Deleting memory from crewAI, conversation_id: %s", conversation_id)
+        # Delete collection which are memory from crewAI
+        self.contextual_rag_client.qdrant_client.delete_collection(
+            collection_name=f"entity_memory_{conversation_id}"
+        )
+        self.contextual_rag_client.qdrant_client.delete_collection(
+            collection_name=f"short_term_memory_{conversation_id}"
+        )
+
         logger.info(f"Deleted conversation: {conversation_id}")
 
     def delete_assistant(self, assistant_id: str | UUID):

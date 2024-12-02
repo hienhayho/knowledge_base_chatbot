@@ -60,6 +60,10 @@ You must catch up with all the interested prompt and guard prompt to provide the
 Please answer in markdown format.
 """
 
+embedding_dim = {
+    "text-embedding-ada-002": 1536,
+}
+
 
 class DocumentMetadata(BaseModel):
     """
@@ -74,24 +78,6 @@ class DocumentMetadata(BaseModel):
     vector_id: UUID
     original_content: str
     contextualized_content: str
-
-
-class ElasticSearchResponse(BaseModel):
-    """
-    ElasticSearch response schema.
-
-    Attributes:
-        doc_id (str): Document ID.
-        content (str): Content of the document.
-        contextualized_content (str): Contextualized content of the document.
-        score (float): Score of the document.
-    """
-
-    vector_id: UUID
-    content: str
-    contextualized_content: str
-    score: Optional[float] = None
-    document_id: Optional[UUID] = None
 
 
 class QdrantPayload(BaseModel):
@@ -116,6 +102,7 @@ class ChatAssistantConfig(BaseModel):
 
     Attributes:
         model (str): Model name.
+        conversation_id (str): Conversation ID.
         service (str): Service name.
         temperature (float): Temperature value.
         embedding_service (str): Embedding service name.
@@ -128,6 +115,7 @@ class ChatAssistantConfig(BaseModel):
     """
 
     model: str
+    conversation_id: str
     service: str
     temperature: float
     embedding_service: str

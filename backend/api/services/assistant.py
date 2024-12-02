@@ -200,6 +200,7 @@ class AssistantService:
 
             assistant_config = ChatAssistantConfig(
                 model=configuration["model"],
+                conversation_id=conversation_id,
                 service=configuration["service"],
                 temperature=configuration["temperature"],
                 embedding_service="openai",

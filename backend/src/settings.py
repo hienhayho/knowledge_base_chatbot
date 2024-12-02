@@ -82,17 +82,6 @@ class QdrantConfig(BaseModel):
     url: Optional[str] = None
 
 
-class ElasticSearchConfig(BaseModel):
-    """
-    ElasticSearch configuration.
-
-    Attributes:
-        url (Optional[str]): ElasticSearch url
-    """
-
-    url: Optional[str] = None
-
-
 class EmbeddingConfig(BaseModel):
     """
     Embedding configuration.
@@ -213,13 +202,6 @@ class GlobalSettings(BaseModel):
             url=os.getenv("QDRANT_URL"),
         ),
         description="Qdrant configuration",
-    )
-
-    elastic_search_config: ElasticSearchConfig = Field(
-        default=ElasticSearchConfig(
-            url=os.getenv("ELASTIC_SEARCH_URL"),
-        ),
-        description="ElasticSearch configuration",
     )
 
     upload_bucket_name: str = Field(default=config.minio_config.upload_bucket_name)

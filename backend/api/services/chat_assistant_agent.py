@@ -66,27 +66,12 @@ class ChatAssistant:
             ],
         )
 
-        # self.tools = [
-        #     load_kb_tool(
-        #         setting=default_settings,
-        #         kb_ids=self.configuration.kb_ids,
-        #         session_id=self.configuration.session_id,
-        #         is_contextual_rag=self.configuration.is_contextual_rag,
-        #         system_prompt=system_prompt,
-        #     )
-        # ]
-
-        # self.agent = OpenAIAgent.from_tools(
-        #     tools=self.tools,
-        #     llm=self.llm,
-        #     verbose=True,
-        #     system_prompt=system_prompt,
-        # )
         self.agent = CrewAIAgent(
             agents=[kb_agent],
             tasks=[kb_task],
             manager_llm=self.llm,
             verbose=True,
+            conversation_id=self.configuration.conversation_id,
         )
 
     def _init_model(self, service, model_id):

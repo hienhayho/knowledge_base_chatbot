@@ -7,10 +7,6 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ConfigDict
 from crewai.tools import BaseTool
 
-# from crewai import Agent, Task, Crew, Process
-# from crewai_tools import SerperDevTool
-# from langchain_openai import ChatOpenAI
-
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.database import ContextualRAG
 from src.settings import GlobalSettings
@@ -48,8 +44,6 @@ class KBSearchTool(BaseTool):
             kb_ids=[str(kb_id) for kb_id in self.kb_ids],
             query=query,
             top_k=self.setting.contextual_rag_config.top_k,
-            top_n=self.setting.contextual_rag_config.top_n,
-            debug=True,
             system_prompt=self.system_prompt,
         )
 

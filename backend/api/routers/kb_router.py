@@ -564,14 +564,6 @@ async def delete_document(
 
         document = session.exec(query).first()
 
-        kb = session.exec(
-            select(KnowledgeBases).where(
-                KnowledgeBases.id == document.knowledge_base_id
-            )
-        ).first()
-
-        is_contextual_rag = kb.is_contextual_rag
-
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Document not found !"
@@ -587,8 +579,6 @@ async def delete_document(
             object_name=document.file_path_in_minio,
             delete_to_retry=delete_document_request_body.delete_to_retry,
             document_id=document.id,
-            knownledge_base_id=document.knowledge_base_id,
-            is_contextual_rag=is_contextual_rag,
         )
 
         document_chunks = session.exec(

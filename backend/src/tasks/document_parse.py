@@ -81,23 +81,12 @@ def parse_document(
     self.update_state(state="PROGRESS", meta={"progress": 20})
 
     if is_contextual_rag:
-        contextual_documents, contextual_documents_metadata = (
-            db_manager.get_contextual_rag_chunks(
-                documents=document,
-                chunks=chunks,
-            )
+        contextual_documents, _ = db_manager.get_contextual_rag_chunks(
+            documents=document,
+            chunks=chunks,
         )
 
     self.update_state(state="PROGRESS", meta={"progress": 40})
-
-    if is_contextual_rag:
-        db_manager.es_index_document(
-            index_name=knowledge_base_id,
-            document_id=document_id,
-            documents_metadata=contextual_documents_metadata,
-        )
-
-    self.update_state(state="PROGRESS", meta={"progress": 60})
 
     new_chunks: list[Document] = []
     for chunk in chunks:

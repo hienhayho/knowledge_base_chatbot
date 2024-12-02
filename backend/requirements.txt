@@ -52,3 +52,4 @@ reportlab==4.2.5
 embedchain==0.1.125
 crewai==0.80.0
 crewai-tools==0.14.0
+qdrant-client[fastembed]
