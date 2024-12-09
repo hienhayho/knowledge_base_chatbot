@@ -15,7 +15,9 @@ from sqlalchemy.dialects.postgresql import ARRAY
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
-from src.constants import FileStatus, SenderType, UserRole
+from src.constants import FileStatus, SenderType, UserRole, ExistTools
+
+# from src.tools.get_exist_tools import ExistTools
 from src.settings import get_default_setting, GlobalSettings
 
 load_dotenv()
@@ -175,6 +177,8 @@ class Users(SQLModel, table=True):
 class Assistants(SQLModel, table=True):
     __tablename__ = "assistants"
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     id: uuid_pkg.UUID = Field(
         default_factory=uuid_pkg.uuid4,
         primary_key=True,
@@ -201,11 +205,21 @@ class Assistants(SQLModel, table=True):
         default="",
         description="Interested Prompt that user want to focus on",
     )
+    agent_backstory: str = Field(
+        sa_column=Column(TEXT),
+        default="",
+        description="Backstory of the CrewAI's agent.",
+    )
     knowledge_base_id: uuid_pkg.UUID = Field(nullable=False)
     configuration: Optional[Dict] = Field(
         default_factory=dict,
         sa_column=Column(JSON),
         description="Configuration of the Knowledge Base",
+    )
+    tools: List[String] = Field(
+        default=[],
+        sa_column=Column(ARRAY(String)),
+        description="List of Tools used by the Assistant",
     )
     created_at: datetime = Field(
         default_factory=datetime.now,
@@ -228,6 +242,10 @@ class Assistants(SQLModel, table=True):
                 for conversation, messages in zip(conversations, messages)
             ]
         )
+
+    @property
+    def exist_tools(self):
+        return [e.value for e in ExistTools]
 
 
 class KnowledgeBases(SQLModel, table=True):

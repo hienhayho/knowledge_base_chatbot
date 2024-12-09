@@ -117,6 +117,8 @@ class ChatAssistantConfig(BaseModel):
         embedding_model_name (str): Embedding model name.
         collection_name (str): Collection name.
         session_id (str): Session ID.
+        tools (list[str]): List of tools to be used.
+        agent_backstory (str): Agent backstory for crewai agent.
         is_contextual_rag (bool): Flag to indicate if using contextual RAG.
         interested_prompt (str): Interested prompt that assistant should focus on.
         guard_prompt (str): Guard prompt that user don't want to see in the response.
@@ -131,6 +133,8 @@ class ChatAssistantConfig(BaseModel):
     collection_name: str
     kb_ids: list[str | UUID]
     session_id: str
+    tools: list[str]
+    agent_backstory: str
     is_contextual_rag: bool
     interested_prompt: Optional[str] = None
     guard_prompt: Optional[str] = None
@@ -263,3 +267,7 @@ class UserRole(str, enum.Enum):
 
     ADMIN = "admin"
     USER = "user"
+
+
+class ExistTools(str, enum.Enum):
+    KB_TOOL = "kb_tool"

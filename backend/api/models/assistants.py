@@ -10,6 +10,8 @@ class AssistantCreate(BaseModel):
     description: Optional[str] = None
     guard_prompt: Optional[str] = None
     interested_prompt: Optional[str] = None
+    tools: Optional[list[str]] = None
+    agent_backstory: Optional[str] = None
     knowledge_base_id: str
     configuration: Dict[str, Any]
 
@@ -21,10 +23,13 @@ class AssistantResponse(BaseModel):
     description: Optional[str]
     interested_prompt: str
     guard_prompt: str
+    agent_backstory: str
+    tools: list[str]
     knowledge_base_id: UUID
     configuration: Dict[str, str]
     created_at: datetime
     updated_at: datetime
+    exist_tools: list[str]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -32,6 +37,8 @@ class AssistantResponse(BaseModel):
 class AsistantUpdatePhraseRequest(BaseModel):
     guard_prompt: str = None
     interested_prompt: str = None
+    agent_backstory: str = None
+    tools: list[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

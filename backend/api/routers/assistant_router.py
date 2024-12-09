@@ -40,6 +40,7 @@ from src.database import (
     get_db_manager,
 )
 from src.utils import get_formatted_logger
+from src.constants import ExistTools
 from api.services import AssistantService
 from fastapi.responses import JSONResponse, FileResponse
 
@@ -80,12 +81,17 @@ async def create_assistant(
                 detail="You are not authorized to access this knowledge base",
             )
 
+        exist_tools = [e.value for e in ExistTools]
+        tools = [tool_name for tool_name in assistant.tools if tool_name in exist_tools]
+
         new_assistant = Assistants(
             name=assistant.name,
             description=assistant.description,
             knowledge_base_id=assistant.knowledge_base_id,
             configuration=assistant.configuration,
             user_id=current_user.id,
+            tools=tools,
+            agent_backstory=assistant.agent_backstory,
             guard_prompt=assistant.guard_prompt,
             interested_prompt=assistant.interested_prompt,
         )
@@ -159,8 +165,14 @@ async def update_assistant(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
+        # Filter if tools name not in ExistTools
+        assistant.tools = [
+            tool for tool in assistant_phrases.tools if tool.name in ExistTools
+        ]
+
         assistant.guard_prompt = assistant_phrases.guard_prompt
         assistant.interested_prompt = assistant_phrases.interested_prompt
+        assistant.agent_backstory = assistant_phrases.agent_backstory
 
         session.commit()
         session.refresh(assistant)

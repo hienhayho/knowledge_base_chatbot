@@ -19,7 +19,10 @@ export interface IAssistant {
     updated_at: string;
     interested_prompt?: string;
     guard_prompt?: string;
+    agent_backstory?: string;
     knowledge_base_id?: string;
+    tools: string[];
+    exist_tools?: string[];
     configuration?: Record<string, string | number>;
 }
 

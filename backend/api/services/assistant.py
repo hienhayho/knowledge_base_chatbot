@@ -4,7 +4,6 @@ import copy
 
 from uuid import UUID
 from typing import List, Generator
-from json_repair import repair_json
 from sqlmodel import Session, select
 from langfuse.decorators import langfuse_context
 from fastapi import Depends, HTTPException, status
@@ -208,6 +207,8 @@ class AssistantService:
                 collection_name=default_settings.global_vector_db_collection_name,
                 kb_ids=kb_ids,
                 session_id=session_id,
+                tools=assistant.tools,
+                agent_backstory=assistant.agent_backstory,
                 is_contextual_rag=is_contextual_rag,
                 interested_prompt=assistant.interested_prompt,
                 guard_prompt=assistant.guard_prompt,
@@ -218,11 +219,16 @@ class AssistantService:
             response_time = None
             full_response = ""
 
-            response = assistant_instance.on_message(
+            answer = assistant_instance.on_message(
                 message.content, message_history, session_id=session_id
             )
 
-            response = repair_json(response, return_objects=True)
+            response = {
+                "result": answer,
+                "is_chat_false": False,
+            }
+
+            # response = repair_json(response, return_objects=True)
 
             if not response:
                 response["result"] = "Something went wrong. Please try again."

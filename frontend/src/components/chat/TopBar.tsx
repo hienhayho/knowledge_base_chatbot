@@ -1,7 +1,7 @@
 import React from "react";
 import { Layout, Plus } from "lucide-react";
 import { IAssistant } from "@/app/(user)/(main)/chat/page";
-import { Button, message, Modal, Input } from "antd";
+import { Button, message, Modal, Input, Select } from "antd";
 import { getCookie } from "cookies-next";
 
 const { TextArea } = Input;
@@ -36,6 +36,13 @@ const TopBar = ({
     const [guardPrompt, setGuardPrompt] = React.useState<string>(
         selectedAssistant?.guard_prompt || ""
     );
+    const [agentBackstory, setAgentBackstory] = React.useState<string>(
+        selectedAssistant?.agent_backstory || ""
+    );
+
+    const [selectedTools, setSelectedTools] = React.useState<string[]>(
+        selectedAssistant?.tools || []
+    );
 
     const successMessage = (content: string, duration: number = 1) => {
         messageApi.open({
@@ -57,6 +64,10 @@ const TopBar = ({
         setIsModalOpen(true);
     };
 
+    const handleChange = (selected: string[]) => {
+        setSelectedTools(selected);
+    };
+
     const handleOk = async () => {
         try {
             if (!selectedAssistant) {
@@ -75,6 +86,8 @@ const TopBar = ({
                     body: JSON.stringify({
                         interested_prompt: interestPrompt,
                         guard_prompt: guardPrompt,
+                        agent_backstory: agentBackstory,
+                        tools: selectedTools,
                     }),
                 }
             );
@@ -146,30 +159,60 @@ const TopBar = ({
                         Update Assistant
                     </Button>
                     <Modal
-                        title="Update Your Assistant"
+                        title={
+                            <div className="flex justify-center items-center text-red-500 font-bold mb-4">
+                                <span>Cập nhật trợ lý của bạn</span>
+                            </div>
+                        }
                         open={isModalOpen}
                         onOk={handleOk}
                         onCancel={handleCancel}
                     >
-                        <label className="block text-sm font-medium text-gray-700 my-3">
-                            {
-                                "Type anything you want your bot to concentrate on:"
-                            }
+                        <label className="block text-sm font-bold text-gray-700 my-3">
+                            {"Bạn muốn bot của mình tập trung vào điều gì:"}
                         </label>
                         <TextArea
                             rows={3}
                             value={interestPrompt}
+                            placeholder="Nhập vào điều bạn muốn bot của mình tập trung vào"
                             onChange={(e) => setInterestPrompt(e.target.value)}
                         />
-                        <label className="block text-sm font-medium text-gray-700 my-3">
+                        <label className="block text-sm font-bold text-gray-700 my-3">
                             {
-                                "Type anything you don't want your bot to talk about:"
+                                "Những cái bạn không muốn bot của mình đề cập đến:"
                             }
                         </label>
                         <TextArea
                             rows={3}
                             value={guardPrompt}
+                            placeholder="Nhập vào những cái bạn không muốn bot của mình đề cập đến"
                             onChange={(e) => setGuardPrompt(e.target.value)}
+                        />
+                        <label className="block text-sm font-bold text-gray-700 my-3">
+                            {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}
+                        </label>
+                        <TextArea
+                            rows={3}
+                            value={agentBackstory}
+                            placeholder="Nhập vào nhiệm vụ bạn muốn trợ lý của mình thực hiện"
+                            onChange={(e) => setAgentBackstory(e.target.value)}
+                        />
+                        <label className="block text-sm font-bold text-gray-700 my-3">
+                            {"Chọn công cụ bạn muốn trợ lý của mình sử dụng:"}
+                        </label>
+                        <Select
+                            mode="multiple"
+                            allowClear
+                            style={{ width: "100%" }}
+                            placeholder="Please select"
+                            defaultValue={selectedAssistant?.tools || []}
+                            onChange={handleChange}
+                            options={
+                                selectedAssistant?.exist_tools?.map((tool) => ({
+                                    value: tool,
+                                    label: tool,
+                                })) || []
+                            }
                         />
                     </Modal>
                 </div>

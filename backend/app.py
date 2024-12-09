@@ -12,6 +12,7 @@ from api.routers import (
     user_router,
     kb_router,
     assistant_router,
+    tool_router,
     dashboard_router,
     DOWNLOAD_FOLDER,
 )
@@ -84,6 +85,7 @@ app.include_router(user_router, tags=["user"], prefix="/api/users")
 app.include_router(kb_router, tags=["knowledge_base"], prefix="/api/kb")
 app.include_router(assistant_router, tags=["assistant"], prefix="/api/assistant")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
+app.include_router(tool_router, tags=["tools"], prefix="/api/tools")
 
 if __name__ == "__main__":
     import uvicorn

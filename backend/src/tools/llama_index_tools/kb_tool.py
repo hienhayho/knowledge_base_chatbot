@@ -9,7 +9,7 @@ from src.database import ContextualRAG
 from src.settings import GlobalSettings
 
 
-def load_kb_tool(
+def load_llama_index_kb_tool(
     setting: GlobalSettings,
     kb_ids: list[str | UUID],
     session_id: str | UUID,

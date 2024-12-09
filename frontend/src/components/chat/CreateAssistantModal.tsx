@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Info } from "lucide-react";
 import { getCookie } from "cookies-next";
-import { message, Input } from "antd";
+import { message, Input, Select } from "antd";
 
 const { TextArea } = Input;
 
@@ -11,6 +11,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 interface IKnowledgeBase {
     id: string;
     name: string;
+}
+
+interface ITools {
+    value: string;
+    label: string;
 }
 
 const CreateAssistantModal = ({
@@ -27,23 +32,52 @@ const CreateAssistantModal = ({
     const [assistantName, setAssistantName] = useState<string>("");
     const [description, setDescription] = useState<string>("");
     const [guardPrompt, setGuardPrompt] = useState<string>("");
+    const [tools, setTools] = useState<ITools[]>([]);
     const [interestedPrompt, setInterestedPrompt] = useState<string>("");
+    const [agentBackstory, setAgentBackstory] = useState<string>("");
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
     const [selectedKnowledgeBase, setSelectedKnowledgeBase] =
         useState<string>("");
     const [model, setModel] = useState<string>("gpt-4o-mini");
     const [messageApi, contextHolder] = message.useMessage();
+    const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
     const token = getCookie("access_token");
     const redirectURL = encodeURIComponent("/chat");
 
     useEffect(() => {
+        const fetchTools = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/tools/`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setTools(
+                        data.tools.map((tool: string) => {
+                            return {
+                                value: tool,
+                                label: tool,
+                            };
+                        })
+                    );
+                } else {
+                    console.error("Failed to fetch tools");
+                }
+            } catch (error) {
+                console.error("Error fetching tools:", error);
+            }
+        };
+
         if (!token) {
             router.push(`/login?redirect=${redirectURL}`);
             return;
         }
         if (isOpen) {
             setIsVisible(true);
+            fetchTools();
             fetchKnowledgeBases();
         } else {
             setIsVisible(false);
@@ -93,6 +127,10 @@ const CreateAssistantModal = ({
         }, 300);
     };
 
+    const handleChange = (value: string[]) => {
+        setSelectedTools(value);
+    };
+
     const handleSubmit = async () => {
         if (!token) {
             router.push(`/login?redirect=${redirectURL}`);
@@ -105,13 +143,14 @@ const CreateAssistantModal = ({
             guard_prompt: guardPrompt,
             interested_prompt: interestedPrompt,
             knowledge_base_id: selectedKnowledgeBase,
+            agent_backstory: agentBackstory,
+            tools: selectedTools,
             configuration: {
                 model: model,
                 service: "openai",
                 temperature: "0.8",
             },
         };
-        console.log(payload);
         try {
             const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
                 method: "POST",
@@ -183,7 +222,7 @@ const CreateAssistantModal = ({
                     </button>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-2">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Assistant name{" "}
@@ -199,7 +238,6 @@ const CreateAssistantModal = ({
                     <div>
                         <label className="block text-sm font-medium text-gray-700 my-2">
                             Description{" "}
-                            <Info className="inline-block w-4 h-4 text-gray-400" />
                         </label>
                         <TextArea
                             rows={2}
@@ -208,12 +246,23 @@ const CreateAssistantModal = ({
                             placeholder="e.g A helpful assistant for math problem"
                         />
                         <label className="block text-sm font-medium text-gray-700 my-2">
+                            Select tools{" "}
+                        </label>
+                        <Select
+                            mode="multiple"
+                            allowClear
+                            style={{ width: "100%" }}
+                            placeholder="Please select"
+                            onChange={handleChange}
+                            options={tools}
+                        />
+                        <label className="block text-sm font-medium text-gray-700 my-2">
                             {
                                 "Type anything you want your bot to concentrate on:"
                             }
                         </label>
                         <TextArea
-                            rows={3}
+                            rows={2}
                             value={interestedPrompt}
                             onChange={(e) =>
                                 setInterestedPrompt(e.target.value)
@@ -226,10 +275,19 @@ const CreateAssistantModal = ({
                             }
                         </label>
                         <TextArea
-                            rows={3}
+                            rows={2}
                             value={guardPrompt}
                             onChange={(e) => setGuardPrompt(e.target.value)}
                             placeholder="e.g. I don't want you to talk about my personal life"
+                        />
+                        <label className="block text-sm font-medium text-gray-700 my-2">
+                            {"CrewAI's agent backstory"}
+                        </label>
+                        <TextArea
+                            rows={2}
+                            value={agentBackstory}
+                            onChange={(e) => setAgentBackstory(e.target.value)}
+                            placeholder="e.g. I am a math tutor assistant with 5 years of experience."
                         />
                     </div>
 
