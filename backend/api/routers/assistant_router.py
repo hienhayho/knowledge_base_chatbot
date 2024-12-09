@@ -167,7 +167,7 @@ async def update_assistant(
 
         # Filter if tools name not in ExistTools
         assistant.tools = [
-            tool for tool in assistant_phrases.tools if tool.name in ExistTools
+            tool for tool in assistant_phrases.tools if tool in ExistTools
         ]
 
         assistant.guard_prompt = assistant_phrases.guard_prompt
