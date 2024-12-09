@@ -1,6 +1,6 @@
-import React from "react";
-import { Bar } from "react-chartjs-2";
+import React, { useEffect, useRef } from "react";
 import {
+    Chart as ChartJS,
     CategoryScale,
     LinearScale,
     BarElement,
@@ -8,8 +8,6 @@ import {
     Tooltip,
     Legend,
 } from "chart.js";
-
-import { Chart as ChartJS } from "chart.js/auto";
 
 ChartJS.register(
     CategoryScale,
@@ -30,33 +28,47 @@ interface AssistantStatisticsChartProps {
 const AssistantStatisticsChart: React.FC<AssistantStatisticsChartProps> = ({
     data,
 }) => {
-    const chartData = {
-        labels: data.map((item) => item.name),
-        datasets: [
-            {
-                label: "Number of Conversations",
-                data: data.map((item) => item.number_of_conversations),
-                backgroundColor: "rgba(75, 192, 75, 0.2)",
-                borderColor: "rgba(75, 192, 75, 1)",
-                borderWidth: 1,
-            },
-        ],
-    };
+    const chartRef = useRef<HTMLCanvasElement>(null);
 
-    const options = {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: "top" as const,
-            },
-            title: {
-                display: true,
-                text: "Assistant Statistics",
-            },
-        },
-    };
+    useEffect(() => {
+        if (chartRef.current) {
+            // Hủy biểu đồ cũ nếu đã tồn tại
+            ChartJS.getChart(chartRef.current)?.destroy();
 
-    return <Bar data={chartData} options={options} />;
+            // Khởi tạo biểu đồ mới
+            new ChartJS(chartRef.current, {
+                type: "bar",
+                data: {
+                    labels: data.map((item) => item.name),
+                    datasets: [
+                        {
+                            label: "Number of Conversations",
+                            data: data.map(
+                                (item) => item.number_of_conversations
+                            ),
+                            backgroundColor: "rgba(75, 192, 75, 0.2)",
+                            borderColor: "rgba(75, 192, 75, 1)",
+                            borderWidth: 1,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: "top",
+                        },
+                        title: {
+                            display: true,
+                            text: "Assistant Statistics",
+                        },
+                    },
+                },
+            });
+        }
+    }, [data]);
+
+    return <canvas ref={chartRef}></canvas>;
 };
 
 export default AssistantStatisticsChart;
