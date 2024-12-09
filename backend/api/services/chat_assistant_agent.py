@@ -7,10 +7,10 @@ from langchain_openai import ChatOpenAI
 from llama_index.core.callbacks import CallbackManager
 from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
+from crewai_tools import LlamaIndexTool
 
-from src.tools import KBSearchTool
+from src.tools import load_kb_tool
 from src.agents import CrewAIAgent
-from src.database import ContextualRAG
 from src.settings import default_settings
 from src.utils import get_formatted_logger
 from src.constants import ASSISTANT_SYSTEM_PROMPT, ChatAssistantConfig, MesssageHistory
@@ -38,33 +38,75 @@ class ChatAssistant:
             guard_prompt=self.configuration.guard_prompt,
         ).strip("\n")
 
-        print(self.configuration.kb_ids)
+        self.tools = [
+            load_kb_tool(
+                setting=default_settings,
+                kb_ids=self.configuration.kb_ids,
+                session_id=self.configuration.session_id,
+                is_contextual_rag=self.configuration.is_contextual_rag,
+                system_prompt=system_prompt,
+            )
+        ]
 
-        kb_search_tool = KBSearchTool(
-            setting=default_settings,
-            contextual_rag=ContextualRAG.from_setting(default_settings),
-            kb_ids=self.configuration.kb_ids,
-            session_id=self.configuration.session_id,
-            is_contextual_rag=self.configuration.is_contextual_rag,
-            system_prompt=system_prompt,
-            result_as_answer=True,
-        )
+        # kb_search_tool = KBSearchTool(
+        #     kb_ids=self.configuration.kb_ids,
+        #     contextual_rag=ContextualRAG.from_setting(default_settings),
+        #     session_id=self.configuration.session_id,
+        #     is_contextual_rag=self.configuration.is_contextual_rag,
+        #     system_prompt=system_prompt,
+        #     result_as_answer=True,
+        # )
+
+        # crewai_kb_search_tool = CrewAIStructuredTool().from_function(
+        #     kb_search_tool._run,
+        #     name=kb_search_tool.name,
+        #     description=kb_search_tool.description,
+        #     args_schema=kb_search_tool.args_schema,
+        #     return_direct=True,
+        # )
 
         kb_agent = Agent(
             role="Assistant",
-            goal="Helping users find information in the knowledge base.",
-            backstory="You are a very intelligent assistant. You have access to a knowledge base that contains a lot of information.",
+            goal="Trả lời câu hỏi của người dùng",
+            backstory="""
+Bạn là một nhân viên chăm sóc khách hàng chuyên nghiệp và thân thiện của công ty Quang Nhật. Nhiệm vụ của bạn là hỗ trợ khách hàng bằng cách lắng nghe thắc mắc, giải đáp câu hỏi, và tư vấn sản phẩm với giọng điệu vui tươi, lịch sự, dễ thương.
+- Tuyệt đối không được bịa đặt thông tin, sử dụng ngôn ngữ không phù hợp, hoặc thô lỗ.
+- Bạn hãy xưng hô anh hoặc chị dựa theo cuộc trò chuyện với khách hàng.
+- Sử dụng từ ngữ như “dạ, vâng” trong câu trả lời để thể hiện sự chuyên nghiệp.
+- Khi được hỏi về sản phẩm bán chạy thì bạn trả lời FPT Camera.
+
+Khi được hỏi về những sản phẩm của công ty như:
+- Bên em có những sp gì?
+- Sản phẩm bên em có gì?
+- Bên em bán những gì?
+thì bạn hãy trả lời:"Những sản phẩm của công ty Quang Nhật bao gồm các bảng điều khiển, các bộ phận cảm biến, các loại công tắc, các loại đèn led, sản phẩm FPT camera, FPT camera play, các loại khóa cửa, các loại ổ cắm, các loại nút bấm, FPT play box, thiết bị mở rộng sóng zigbee
+
+Hướng dẫn xử lý yêu cầu của khách hàng:
+1. **Thông tin chung và chính sách**
+   - Sử dụng **knowledge_base_query**
+   - Bao gồm: thông tin liên hệ, smart home, ổ cắm thông minh,  thông tin lắp đặt, tiện ích giải pháp smart home, hướng dẫn nghiệp vụ (tính toán, giải thích,...), thông tin các thiết bị (cảm biến, đèn led, động cơ rèm, cửa tự động), giải pháp an ninh, giải pháp tiết kiệm điện, truyền hình, thông tin giỏ hàng, chương trình khuyến mãi, thông tin lắp đặt, ý tưởng thiết kế.
+   - Với thông tin mà bạn không biết thì bạn hãy trả lời:"Với câu hỏi này hiện em chưa trả lời được. Anh/chị có thể cung cấp số điện thoại để em có thể hỗ trợ trả lời sau được không ạ?"
+"
+            """,
             llm=self.llm,
         )
 
         kb_task = Task(
-            description="Search the knowledge base for information about {query}.",
-            expected_output="A most relevant answer from the knowledge base for the given query.",
+            description="Phản hồi câu hỏi của khách hàng như sau: {query}.",
+            expected_output="Một câu trả lời phù hợp nhất với câu hỏi của khách hàng.",
             agent=kb_agent,
             tools=[
-                kb_search_tool,
+                # kb_search_tool,
+                LlamaIndexTool.from_tool(self.tools[0], return_as_answer=True),
+                # crewai_kb_search_tool
             ],
         )
+
+        # self.agent = OpenAIAgent.from_tools(
+        #     tools=self.tools,
+        #     llm=self.llm,
+        #     verbose=True,
+        # )
 
         self.agent = CrewAIAgent(
             agents=[kb_agent],
@@ -122,7 +164,10 @@ class ChatAssistant:
         inputs = {
             "query": message,
         }
+        # response = self.agent.chat(message, message_history).response
         response = self.agent.chat(inputs, message_history)
+
+        print("response: ", response)
 
         return response
 

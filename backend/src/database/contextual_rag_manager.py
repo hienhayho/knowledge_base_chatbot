@@ -1,6 +1,5 @@
 import sys
 import time
-import json
 import uuid
 import torch
 from uuid import UUID
@@ -12,7 +11,6 @@ from qdrant_client.http import models
 from llama_index.core import (
     Settings,
     Document,
-    QueryBundle,
     StorageContext,
     VectorStoreIndex,
 )
@@ -274,6 +272,7 @@ class ContextualRAG:
 
             # Prepend the contextualized content to the chunk
             new_chunk = contextualized_content + "\n\n" + chunk.text
+            # new_chunk = chunk.text
 
             # Manually generate a doc_id for indexing in elastic search
             documents.append(
@@ -289,6 +288,7 @@ class ContextualRAG:
                     vector_id=chunk.metadata["vector_id"],
                     original_content=whole_document,
                     contextualized_content=contextualized_content,
+                    # contextualized_content="",
                 ),
             )
 
@@ -323,6 +323,8 @@ class ContextualRAG:
             )
             documents.extend(document)
             documents_metadata.extend(metadata)
+
+        # return splited_documents, documents_metadata
 
         return documents, documents_metadata
 
@@ -417,7 +419,7 @@ class ContextualRAG:
         kb_ids: list[str],
         query: str,
         session_id: str | uuid.UUID,
-        top_k: int = 50,
+        top_k: int = 150,
         system_prompt: str = ASSISTANT_SYSTEM_PROMPT,
     ) -> str:
         """
@@ -434,6 +436,7 @@ class ContextualRAG:
         Returns:
             str: The search results.
         """
+        print(kb_ids)
         start_time = time.time()
 
         langfuse_callback_handler.set_trace_params(
@@ -441,40 +444,50 @@ class ContextualRAG:
         )
 
         logger.debug("Semantic search ...")
-        semantic_results = self.qdrant_client.search_vector(
-            collection_name=self.setting.global_vector_db_collection_name,
-            vector=get_embedding(query),
-            search_params=models.SearchParams(
-                quantization=models.QuantizationSearchParams(
-                    ignore=False,
-                    rescore=True,
-                    oversampling=2.0,
-                )
-            ),
-            query_filter=models.Filter(
-                should=[
-                    models.FieldCondition(
-                        key="kb_id", match=models.MatchAny(any=kb_ids)
+        while True:
+            semantic_results = self.qdrant_client.search_vector(
+                collection_name=self.setting.global_vector_db_collection_name,
+                vector=get_embedding(query),
+                search_params=models.SearchParams(
+                    quantization=models.QuantizationSearchParams(
+                        ignore=False,
+                        rescore=True,
+                        oversampling=2.0,
                     )
-                ]
-            ),
-            limit=top_k,
-        )
+                ),
+                query_filter=models.Filter(
+                    should=[
+                        models.FieldCondition(
+                            key="kb_id", match=models.MatchAny(any=kb_ids)
+                        ),
+                    ],
+                ),
+                limit=top_k,
+                timeout=30,
+            )
+
+            if len(semantic_results.points) > 0:
+                break
 
         combined_nodes: list[NodeWithScore] = [
             NodeWithScore(
-                node=Node(text=point.payload["text"], metadata={}),
+                node=Node(text=point.payload["text"]),
                 score=point.score,
             )
             for point in semantic_results.points
         ]
 
-        query_bundle = QueryBundle(query_str=query)
+        logger.info("combined_nodes: %s", combined_nodes)
 
-        logger.debug("Reranking ...")
-        retrieved_nodes = self.reranker.postprocess_nodes(combined_nodes, query_bundle)
+        # query_bundle = QueryBundle(query_str=query)
 
-        contexts = [n.node.text for n in retrieved_nodes]
+        # logger.debug("Reranking ...")
+        # retrieved_nodes = self.reranker.postprocess_nodes(combined_nodes, query_bundle)
+
+        # contexts = [n.node.text for n in retrieved_nodes]
+        contexts = [n.node.text for n in combined_nodes]
+
+        logger.info("contexts: %s", contexts)
 
         logger.debug("Generating response ...")
         messages = [
@@ -485,13 +498,15 @@ class ContextualRAG:
             ChatMessage(
                 role="user",
                 content=QA_PROMPT.format(
-                    context_str=json.dumps(contexts),
+                    context_str="\n\n".join(contexts),
                     query_str=query,
                 ),
             ),
         ]
 
         response = self.llm.chat(messages).message.content
+
+        logger.info("response: %s", response)
 
         logger.info("Time taken: %s", time.time() - start_time)
 
@@ -506,7 +521,7 @@ class ContextualRAG:
         is_contextual_rag: bool,
         kb_ids: list[str | UUID],
         query: str,
-        top_k: int = 50,
+        top_k: int = 150,
         system_prompt: str = ASSISTANT_SYSTEM_PROMPT,
     ):
         """

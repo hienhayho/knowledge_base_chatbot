@@ -1,5 +1,9 @@
+import os
 import sys
 from pathlib import Path
+
+os.environ["CREWAI_TELEMETRY_OPT_OUT"] = "true"
+os.environ["OTEL_SDK_DISABLED"] = "true"
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 

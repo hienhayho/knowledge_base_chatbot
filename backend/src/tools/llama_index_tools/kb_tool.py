@@ -34,8 +34,6 @@ def load_kb_tool(
             kb_ids=[str(kb_id) for kb_id in kb_ids],
             query=query,
             top_k=setting.contextual_rag_config.top_k,
-            top_n=setting.contextual_rag_config.top_n,
-            debug=True,
             system_prompt=system_prompt,
         )
 

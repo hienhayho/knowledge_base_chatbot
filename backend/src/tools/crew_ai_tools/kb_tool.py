@@ -9,25 +9,38 @@ from crewai.tools import BaseTool
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.database import ContextualRAG
-from src.settings import GlobalSettings
 
 
 load_dotenv()
 
 
 class KBSearchToolInput(BaseModel):
+    """Input schema for KBSearchTool."""
+
     query: str = Field(
-        ..., description="The query to search the knowledge base for information."
+        title="Query",
+        description="Câu hỏi của người dùng.",
     )
 
 
 class KBSearchTool(BaseTool):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str = "KB Search Tool"
-    description: str = "Useful for searching the knowledge base for information."
-    args_schema: Type[BaseModel] = KBSearchToolInput
+    name: str = "KB Search tool"
+    description: str = """
+Trả lời những câu hỏi liên quan tới: sử dụng các sản phẩm thông minh, dịch vụ liên quan đến nhà thông minh như các dịch vụ an ninh, giải pháp cho các vấn đề liên quan đến nhà thông minh.
+Nếu câu hỏi nào bạn không có thông tin hoặc không biết câu trả lời thì hãy trả lời là:"Với câu hỏi này hiện em chưa trả lời được. Anh/chị có thể cung cấp số điện thoại để em có thể hỗ trợ trả lời sau được không ạ?"
 
-    setting: GlobalSettings
+        The output should be formatted as a JSON instance that conforms to the JSON schema below.
+
+As an example, for the schema {"properties": {"foo": {"title": "Foo", "description": "a list of strings", "type": "array", "items": {"type": "string"}}}, "required": ["foo"]}
+the object {"foo": ["bar", "baz"]} is a well-formatted instance of the schema. The object {"properties": {"foo": ["bar", "baz"]}} is not well-formatted.
+
+Here is the output schema:
+```
+{"description": "Input schema for KBSearchTool.", "properties": {"query": {"description": "Câu hỏi của người dùng.", "title": "Query", "type": "string"}}, "required": ["query"]}
+```
+    """
+    args_schema: Type[BaseModel] = KBSearchToolInput
     contextual_rag: ContextualRAG
     kb_ids: list[str | uuid.UUID]
     session_id: str | uuid.UUID
@@ -35,9 +48,6 @@ class KBSearchTool(BaseTool):
     system_prompt: str
 
     def _run(self, query: str) -> str:
-        """
-        Query the knowledge base using contextual RAG
-        """
         return self.contextual_rag.search(
             session_id=str(self.session_id),
             is_contextual_rag=self.is_contextual_rag,

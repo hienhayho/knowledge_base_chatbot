@@ -718,8 +718,6 @@ async def delete_knowledge_base(
             db_manager.delete_file(
                 object_name=doc.file_path_in_minio,
                 document_id=doc.id,
-                knownledge_base_id=kb.id,
-                is_contextual_rag=kb.is_contextual_rag,
                 delete_to_retry=False,
             )
 

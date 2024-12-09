@@ -317,6 +317,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
         search_params: models.SearchParams,
         query_filter: Optional[models.Filter] = None,
         limit: int = 10,
+        timeout: int = 30,
     ) -> List[ScoredPoint]:
         """
         Search for a vector in the collection
@@ -337,4 +338,5 @@ class QdrantVectorDatabase(BaseVectorDatabase):
             with_payload=True,
             query_filter=query_filter,
             limit=limit,
+            timeout=timeout,
         )

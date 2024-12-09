@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, Suspense, useState } from "react";
+import React, { Suspense, useState } from "react";
 import { Button, Form, Input, FormProps, message } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { ValidateErrorEntity } from "rc-field-form/lib/interface";
@@ -78,8 +78,6 @@ const SignInContent: React.FC = () => {
         values: ILoginFormValues
     ) => {
         const { username, password } = values;
-
-        const path = localStorage.getItem("redirectPath") || "/knowledge";
 
         const body = new URLSearchParams();
         body.append("grant_type", "password");

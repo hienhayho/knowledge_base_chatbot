@@ -529,6 +529,7 @@ async def websocket_endpoint(
                 )
 
             except Exception as e:
+                print(e)
                 # Handle any errors during message processing
                 error_message = f"Error processing message: {str(e)}"
                 await ws_manager.send_error(conversation_id, error_message)

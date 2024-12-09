@@ -58,16 +58,19 @@ async def get_dashboard(
 
         total_conversations = len(conversations)
 
-        average_assistant_response_time = session.exec(
-            select(func.avg(Messages.response_time).label("average_response_time"))
-            .join(Conversations, Conversations.id == Messages.conversation_id)
-            .join(Assistants, Assistants.id == Conversations.assistant_id)
-            .join(KnowledgeBases, KnowledgeBases.id == Assistants.knowledge_base_id)
-            .where(
-                KnowledgeBases.user_id == current_user.id,
-                Messages.sender_type == SenderType.ASSISTANT,
-            )
-        ).first()
+        average_assistant_response_time = (
+            session.exec(
+                select(func.avg(Messages.response_time).label("average_response_time"))
+                .join(Conversations, Conversations.id == Messages.conversation_id)
+                .join(Assistants, Assistants.id == Conversations.assistant_id)
+                .join(KnowledgeBases, KnowledgeBases.id == Assistants.knowledge_base_id)
+                .where(
+                    KnowledgeBases.user_id == current_user.id,
+                    Messages.sender_type == SenderType.ASSISTANT,
+                )
+            ).first()
+            or 0
+        )
 
         knowledge_base_statistics = session.exec(
             select(

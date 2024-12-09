@@ -14,14 +14,22 @@ SUPPORTED_FILE_EXTENSIONS = [
     # ".pptx",
 ]
 
+# CONTEXTUAL_PROMPT = """<document>
+# {WHOLE_DOCUMENT}
+# </document>
+# Here is the chunk we want to situate within the whole document
+# <chunk>
+# {CHUNK_CONTENT}
+# </chunk>
+# Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else. Please answer in the source language of the document."""
 CONTEXTUAL_PROMPT = """<document>
 {WHOLE_DOCUMENT}
 </document>
-Here is the chunk we want to situate within the whole document
+Đây là đoạn văn mà chúng tôi muốn bạn cần đọc
 <chunk>
 {CHUNK_CONTENT}
 </chunk>
-Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
+bạn hãy cung cấp một ngữ cảnh ngắn gọn và phù hợp để đặt đoạn văn này trong tổng thể tài liệu nhằm cải thiện khả năng tìm kiếm và truy xuất đoạn văn. Chỉ trả lời bằng ngữ cảnh ngắn gọn và không thêm gì khác."""
 
 QA_PROMPT = """We have provided context information below.
 ---------------------
@@ -57,12 +65,12 @@ Here are guard prompt:
 
 You must catch up with all the interested prompt and guard prompt to provide the best possible answer to the user's query.
 
+If there are any product's link, please provide the link in the response.
+
 Please answer in markdown format.
 """
 
-embedding_dim = {
-    "text-embedding-ada-002": 1536,
-}
+embedding_dim = {"text-embedding-ada-002": 1536, "text-embedding-3-large": 3072}
 
 
 class DocumentMetadata(BaseModel):

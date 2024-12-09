@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/chart.js": "^2.9.41",
     "antd": "^5.21.3",
     "chart.js": "^4.4.6",
     "cookies-next": "^4.3.0",
