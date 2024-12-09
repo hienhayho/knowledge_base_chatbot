@@ -9,7 +9,7 @@ from llama_index.readers.llama_parse import LlamaParse  # noqa
 from src.readers import (
     DocxReader,
     JSONReader,
-    PandasCSVReader,
+    PandasCSVReaderCustomised,
     PandasExcelReader,
     TxtReader,
 )
@@ -31,7 +31,9 @@ def test_load_json():
 
 def test_load_csv():
     path = Path("sample/dummy.csv")
-    _ = PandasCSVReader(pandas_config=dict(on_bad_lines="skip")).load_data(path)
+    _ = PandasCSVReaderCustomised(pandas_config=dict(on_bad_lines="skip")).load_data(
+        path
+    )
     assert True
 
 
