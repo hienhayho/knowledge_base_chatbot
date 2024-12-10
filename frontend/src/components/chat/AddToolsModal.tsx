@@ -64,7 +64,6 @@ const AddToolsModal = ({
                     name: tool,
                 }));
 
-                console.log("tools", tools);
                 const choosenTools: Item[] = [];
                 if (assistantId) {
                     const response = await fetch(

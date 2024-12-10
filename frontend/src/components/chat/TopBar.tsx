@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Plus, Settings, Wrench } from "lucide-react";
-import { IAssistant } from "@/app/(user)/(main)/chat/page";
+import { IAssistant } from "@/types";
 import { Button, message, Modal, Input } from "antd";
 import { getCookie } from "cookies-next";
 import AddToolsModal from "./AddToolsModal";

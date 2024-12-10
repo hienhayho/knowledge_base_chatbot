@@ -9,8 +9,7 @@ import {
     Download,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { IAssistant } from "@/app/(user)/(main)/chat/page";
-import { IKnowledgeBase } from "@/types";
+import { IAssistant, IKnowledgeBase } from "@/types";
 import AddToolsModal from "./AddToolsModal";
 import { Settings } from "lucide-react";
 import { Tooltip } from "antd";
@@ -199,7 +198,7 @@ const AssistantCard = ({
                 )}
             </div>
             <div className="p-4 flex justify-around items-center border gap-4">
-                <div className="border-2 p-3 rounded-lg border-red-300 w-full h-full">
+                <div className="border-2 p-3 rounded-lg border-green-200 w-full h-full">
                     <Tooltip title="Tên trợ lý">
                         <h3 className="font-semibold text-lg text-gray-800 truncate">
                             {assistant.name}

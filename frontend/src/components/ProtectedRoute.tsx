@@ -19,9 +19,10 @@ export default function ProtectedRoute<P extends object>(
             }
             if (!loading) {
                 if (!isAuthenticated && pathname !== "/login") {
-                    router.push("/login");
+                    const redirectUrl = encodeURIComponent(pathname);
+                    router.push(`/login?redirect=${redirectUrl}`);
                 } else if (isAuthenticated && pathname === "/login") {
-                    router.push("/");
+                    router.push("/knowledge");
                 }
             }
         }, [loading, isAuthenticated, router, pathname, user]);

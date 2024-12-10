@@ -8,31 +8,11 @@ import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { message } from "antd";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { IAssistant } from "@/types";
 // import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-export interface IAssistant {
-    id: string;
-    name: string;
-    description: string;
-    created_at: string;
-    updated_at: string;
-    instruct_prompt: string;
-    agent_backstory?: string;
-    knowledge_base_id?: string;
-    tools: string[];
-    exist_tools?: string[];
-    configuration?: Record<string, string | number>;
-}
-
-export interface IConversation {
-    id: string;
-    name: string;
-    assistant_id: string;
-    created_at: string;
-    updated_at: string;
-}
 
 const ChatMainPage = () => {
     const router = useRouter();
@@ -175,4 +155,4 @@ const ChatMainPage = () => {
     );
 };
 
-export default ChatMainPage;
+export default ProtectedRoute(ChatMainPage);
