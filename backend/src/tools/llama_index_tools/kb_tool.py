@@ -15,6 +15,7 @@ def load_llama_index_kb_tool(
     session_id: str | UUID,
     is_contextual_rag: bool = False,
     system_prompt: str = "",
+    description: str = "",
 ) -> FunctionTool:
     contextual_rag = ContextualRAG.from_setting(setting=setting)
 
@@ -40,5 +41,6 @@ def load_llama_index_kb_tool(
     return FunctionTool.from_defaults(
         fn=knowledge_base_query,
         return_direct=True,
-        description="Useful tool for querying knowledge base using contextual RAG",
+        description=description
+        or "Useful tool for querying knowledge base using contextual RAG",
     )

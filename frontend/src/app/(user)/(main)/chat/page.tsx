@@ -8,6 +8,7 @@ import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { message } from "antd";
+// import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -159,6 +160,7 @@ const ChatMainPage = () => {
                         Your Assistants
                     </h1>
                     <AssistantCards
+                        token={token as string}
                         assistants={assistants}
                         onSelect={handleAssistantSelect}
                         onDelete={handleDeleteAssistant}

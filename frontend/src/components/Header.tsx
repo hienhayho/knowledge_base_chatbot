@@ -16,7 +16,7 @@ const Header = () => {
     const navItems = [
         { name: "Knowledge Base", path: "/knowledge" },
         { name: "Chat", path: "/chat" },
-        { name: "Dashboard", path: "/dashboard" },
+        // { name: "Dashboard", path: "/dashboard" },
     ];
 
     const successMessage = ({

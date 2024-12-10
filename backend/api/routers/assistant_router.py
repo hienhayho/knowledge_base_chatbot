@@ -14,6 +14,7 @@ from api.models import (
     AssistantWithTotalCost,
     AsistantUpdatePhraseRequest,
     ConversationRenameRequest,
+    AssistantUpdateToolsRequest,
 )
 from .user_router import decode_user_token
 from .kb_router import DOWNLOAD_FOLDER
@@ -40,7 +41,6 @@ from src.database import (
     get_db_manager,
 )
 from src.utils import get_formatted_logger
-from src.constants import ExistTools
 from api.services import AssistantService
 from fastapi.responses import JSONResponse, FileResponse
 
@@ -81,16 +81,12 @@ async def create_assistant(
                 detail="You are not authorized to access this knowledge base",
             )
 
-        exist_tools = [e.value for e in ExistTools]
-        tools = [tool_name for tool_name in assistant.tools if tool_name in exist_tools]
-
         new_assistant = Assistants(
             name=assistant.name,
             description=assistant.description,
             knowledge_base_id=assistant.knowledge_base_id,
             configuration=assistant.configuration,
             user_id=current_user.id,
-            tools=tools,
             agent_backstory=assistant.agent_backstory,
             guard_prompt=assistant.guard_prompt,
             interested_prompt=assistant.interested_prompt,
@@ -165,14 +161,43 @@ async def update_assistant(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
-        # Filter if tools name not in ExistTools
-        assistant.tools = [
-            tool for tool in assistant_phrases.tools if tool in ExistTools
-        ]
-
         assistant.guard_prompt = assistant_phrases.guard_prompt
         assistant.interested_prompt = assistant_phrases.interested_prompt
         assistant.agent_backstory = assistant_phrases.agent_backstory
+
+        session.commit()
+        session.refresh(assistant)
+
+        return assistant
+
+
+@assistant_router.post("/{assistant_id}/tools", response_model=AssistantResponse)
+async def update_assistant_tool(
+    assistant_id: str,
+    assistant_phrases: AssistantUpdateToolsRequest,
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    with db_session as session:
+        if not is_valid_uuid(assistant_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
+            )
+
+        query = select(Assistants).where(
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+        )
+        assistant = session.exec(query).first()
+        if not assistant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+            )
+
+        tool_configurations = {
+            tool.name: tool.description for tool in assistant_phrases.tools
+        }
+
+        assistant.tools = tool_configurations
 
         session.commit()
         session.refresh(assistant)

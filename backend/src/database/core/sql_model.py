@@ -216,10 +216,10 @@ class Assistants(SQLModel, table=True):
         sa_column=Column(JSON),
         description="Configuration of the Knowledge Base",
     )
-    tools: List[String] = Field(
-        default=[],
-        sa_column=Column(ARRAY(String)),
-        description="List of Tools used by the Assistant",
+    tools: Optional[Dict] = Field(
+        default_factory=dict,
+        sa_column=Column(JSON),
+        description="Tools name along with its description",
     )
     created_at: datetime = Field(
         default_factory=datetime.now,

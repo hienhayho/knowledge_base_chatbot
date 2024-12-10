@@ -62,7 +62,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="NoCodeAgentSystem",
+    title="Knowledge Base Chatbot",
+    contact={"name": "hienhayho", "email": "hienhayho3002@gmail.com"},
     lifespan=lifespan,
 )
 

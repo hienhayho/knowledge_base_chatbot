@@ -46,7 +46,10 @@ class ChatAssistant:
         self.tools = []
 
         for tool_name in self.configuration.tools:
-            if tool_name == ExistTools.KB_TOOL:
+            logger.info(
+                f"Loading {tool_name}, description: {self.configuration.tools[tool_name]}"
+            )
+            if tool_name == ExistTools.KNOWLEDGE_BASE_QUERY:
                 self.tools.append(
                     load_llama_index_kb_tool(
                         setting=default_settings,
@@ -54,8 +57,10 @@ class ChatAssistant:
                         session_id=self.configuration.session_id,
                         is_contextual_rag=self.configuration.is_contextual_rag,
                         system_prompt=system_prompt,
+                        description=self.configuration.tools[tool_name],
                     )
                 )
+
             else:
                 logger.warning(f"Tool {tool_name} is not supported yet!")
                 continue

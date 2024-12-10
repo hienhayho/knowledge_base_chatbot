@@ -5,13 +5,15 @@ import {
     Book,
     MoreVertical,
     Trash2,
-    LoaderCircle,
+    // LoaderCircle,
     Download,
 } from "lucide-react";
-import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { IAssistant } from "@/app/(user)/(main)/chat/page";
 import { IKnowledgeBase } from "@/types";
+import AddToolsModal from "./AddToolsModal";
+import { Settings } from "lucide-react";
+import { Tooltip } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -45,10 +47,12 @@ const getBadgeText = (createdAt: string, updatedAt: string) => {
 };
 
 const AssistantCard = ({
+    token,
     assistant,
     onSelect,
     onDelete,
 }: {
+    token: string;
     assistant: IAssistant;
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
@@ -59,10 +63,8 @@ const AssistantCard = ({
         null
     );
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [cost, setCost] = useState<number | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    // const [cost, setCost] = useState<number | null>(null);
     const randomGradient = useMemo(() => getRandomGradient(), []);
-    const token = getCookie("access_token");
     const redirectUrl = encodeURIComponent("/chat");
     const badgeText = getBadgeText(assistant.created_at, assistant.updated_at);
 
@@ -127,31 +129,31 @@ const AssistantCard = ({
         }
     };
 
-    const handleGetTotalCost = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isLoading) return;
+    // const handleGetTotalCost = async (e: React.MouseEvent) => {
+    //     e.stopPropagation();
+    //     if (isLoading) return;
 
-        setIsLoading(true);
-        try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistant.id}/total_cost`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-            if (!response.ok) {
-                throw new Error("Failed to fetch total cost");
-            }
-            const data = await response.json();
-            setCost(data.total_cost);
-        } catch (error) {
-            console.error("Error fetching total cost:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    //     setIsLoading(true);
+    //     try {
+    //         const response = await fetch(
+    //             `${API_BASE_URL}/api/assistant/${assistant.id}/total_cost`,
+    //             {
+    //                 headers: {
+    //                     Authorization: `Bearer ${token}`,
+    //                 },
+    //             }
+    //         );
+    //         if (!response.ok) {
+    //             throw new Error("Failed to fetch total cost");
+    //         }
+    //         const data = await response.json();
+    //         setCost(data.total_cost);
+    //     } catch (error) {
+    //         console.error("Error fetching total cost:", error);
+    //     } finally {
+    //         setIsLoading(false);
+    //     }
+    // };
 
     const handleExportConversations = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -196,19 +198,23 @@ const AssistantCard = ({
                     </div>
                 )}
             </div>
-            <div className="p-4 flex justify-around">
-                <div>
-                    <h3 className="font-semibold text-lg text-gray-800 truncate">
-                        {assistant.name}
-                    </h3>
-                    <p className="text-gray-600 text-sm mt-1 truncate">
-                        {assistant.description}
-                    </p>
+            <div className="p-4 flex justify-around items-center border gap-4">
+                <div className="border p-3 rounded-lg border-gray-400">
+                    <Tooltip title="Tên trợ lý">
+                        <h3 className="font-semibold text-lg text-gray-800 truncate">
+                            {assistant.name}
+                        </h3>
+                    </Tooltip>
+                    <Tooltip title="Mô tả về trợ lý">
+                        <p className="text-gray-600 text-sm mt-1 truncate">
+                            {assistant.description}
+                        </p>
+                    </Tooltip>
                 </div>
-                <div className="flex items-center text-gray-700 text-sm mt-2">
-                    <button
+                <div className="flex items-center flex-col text-gray-700 text-sm mt-2 gap-4">
+                    {/* <button
                         type="button"
-                        className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 flex items-center justify-center min-w-[120px] h-[40px]"
+                        className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center justify-center min-w-[120px] h-[40px]"
                         onClick={handleGetTotalCost}
                         disabled={isLoading}
                     >
@@ -219,7 +225,16 @@ const AssistantCard = ({
                         ) : (
                             `$${cost.toFixed(6)}`
                         )}
-                    </button>
+                    </button> */}
+
+                    <div>
+                        <AddToolsModal
+                            token={token}
+                            icon={<Settings size={16} />}
+                            buttonTitle="Chỉnh tools"
+                            assistantId={assistant.id}
+                        />
+                    </div>
                 </div>
             </div>
             <div className="px-4 pt-2 pb-4">
@@ -271,10 +286,12 @@ const AssistantCard = ({
 };
 
 const AssistantCards = ({
+    token,
     assistants,
     onSelect,
     onDelete,
 }: {
+    token: string;
     assistants: IAssistant[];
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
@@ -283,6 +300,7 @@ const AssistantCards = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {assistants.map((assistant) => (
                 <AssistantCard
+                    token={token}
                     key={assistant.id}
                     assistant={assistant}
                     onSelect={onSelect}

@@ -1,6 +1,6 @@
 import enum
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Dict
 from llama_index.core.bridge.pydantic import BaseModel
 
 SUPPORTED_FILE_EXTENSIONS = [
@@ -133,7 +133,7 @@ class ChatAssistantConfig(BaseModel):
     collection_name: str
     kb_ids: list[str | UUID]
     session_id: str
-    tools: list[str]
+    tools: Dict[str, str]
     agent_backstory: str
     is_contextual_rag: bool
     interested_prompt: Optional[str] = None
@@ -270,4 +270,4 @@ class UserRole(str, enum.Enum):
 
 
 class ExistTools(str, enum.Enum):
-    KB_TOOL = "kb_tool"
+    KNOWLEDGE_BASE_QUERY = "knowledge_base_query"
