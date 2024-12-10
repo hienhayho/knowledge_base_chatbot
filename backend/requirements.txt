@@ -50,6 +50,6 @@ json_repair==0.30.0
 wordcloud==1.9.3
 reportlab==4.2.5
 embedchain==0.1.125
-crewai==0.80.0
-crewai-tools==0.14.0
+crewai==0.86.0
+crewai-tools==0.17.0
 qdrant-client[fastembed]
