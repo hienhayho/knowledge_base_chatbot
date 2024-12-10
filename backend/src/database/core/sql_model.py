@@ -195,15 +195,9 @@ class Assistants(SQLModel, table=True):
         sa_column=Column(TEXT),
         description="Assistant Description",
     )
-    guard_prompt: str = Field(
+    instruct_prompt: str = Field(
         sa_column=Column(TEXT),
-        default="",
-        description="Guard Prompt that user not want to be included in asisistant's response",
-    )
-    interested_prompt: str = Field(
-        sa_column=Column(TEXT),
-        default="",
-        description="Interested Prompt that user want to focus on",
+        description="Instruct Prompt for the last RAG final llm's answer",
     )
     agent_backstory: str = Field(
         sa_column=Column(TEXT),

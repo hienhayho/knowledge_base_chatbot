@@ -20,12 +20,14 @@ const AddToolsModal = ({
     token,
     icon,
     buttonTitle,
+    modalTitle,
     alreadyChoosenTools,
     assistantId,
 }: {
     token: string;
     icon?: React.ReactNode;
     buttonTitle?: string;
+    modalTitle?: string;
     alreadyChoosenTools?: Item[];
     assistantId?: string;
 }) => {
@@ -39,7 +41,6 @@ const AddToolsModal = ({
         alreadyChoosenTools || []
     );
     const [messageApi, contextHolder] = message.useMessage();
-    const [dropdownDisabled, setDropdownDisabled] = useState<boolean>(false);
 
     useEffect(() => {
         const fetchTools = async () => {
@@ -204,15 +205,12 @@ const AddToolsModal = ({
             setChoosenTools(initChoosenTools);
             console.error(error);
         } finally {
-            setTimeout(() => {
-                setDropdownDisabled(true);
-                setIsModalOpen(false);
-            }, 1000);
+            setIsModalOpen(false);
         }
     };
 
     return (
-        <>
+        <div onClick={(e) => e.stopPropagation()}>
             {contextHolder}
             <Button
                 onClick={(e) => {
@@ -229,7 +227,7 @@ const AddToolsModal = ({
             <Modal
                 title={
                     <div className="flex justify-center items-center text-red-500 font-bold mb-4">
-                        <span>Chọn tools</span>
+                        <span>{modalTitle || "Chọn tools"}</span>
                     </div>
                 }
                 open={isModalOpen}
@@ -239,16 +237,10 @@ const AddToolsModal = ({
                     e.stopPropagation();
                     setIsModalOpen(false);
                 }}
-                afterOpenChange={(isOpen) => {
-                    if (!isOpen) {
-                        setDropdownDisabled(false);
-                    }
-                }}
             >
                 <div className="w-full mx-auto p-5">
                     <div className="flex justify-around gap-4 mb-5">
                         <Dropdown
-                            disabled={dropdownDisabled}
                             menu={{
                                 items: choosableTools.map((tool) => ({
                                     key: tool,
@@ -331,7 +323,7 @@ const AddToolsModal = ({
                     </div>
                 </div>
             </Modal>
-        </>
+        </div>
     );
 };
 

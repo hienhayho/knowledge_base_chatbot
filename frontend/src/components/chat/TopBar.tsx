@@ -31,11 +31,8 @@ const TopBar = ({
     const token = getCookie("access_token");
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [interestPrompt, setInterestPrompt] = React.useState<string>(
-        selectedAssistant?.interested_prompt || ""
-    );
-    const [guardPrompt, setGuardPrompt] = React.useState<string>(
-        selectedAssistant?.guard_prompt || ""
+    const [instructPrompt, setInstructPrompt] = React.useState<string>(
+        selectedAssistant?.instruct_prompt || ""
     );
     const [agentBackstory, setAgentBackstory] = React.useState<string>(
         selectedAssistant?.agent_backstory || ""
@@ -77,8 +74,7 @@ const TopBar = ({
                         Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify({
-                        interested_prompt: interestPrompt,
-                        guard_prompt: guardPrompt,
+                        instruct_prompt: instructPrompt,
                         agent_backstory: agentBackstory,
                     }),
                 }
@@ -94,8 +90,8 @@ const TopBar = ({
                     if (setSelectedAssistant) {
                         setSelectedAssistant({
                             ...selectedAssistant,
-                            interested_prompt: interestPrompt,
-                            guard_prompt: guardPrompt,
+                            instruct_prompt: instructPrompt,
+                            agent_backstory: agentBackstory,
                         });
                     }
                     setIsModalOpen(false);
@@ -142,6 +138,7 @@ const TopBar = ({
                         token={token as string}
                         icon={<Wrench size={16} />}
                         buttonTitle="Chỉnh tools"
+                        modalTitle={`Chọn tools cho trợ lý: ${selectedAssistant?.name}`}
                         assistantId={selectedAssistant?.id}
                     />
                     <Button
@@ -169,24 +166,13 @@ const TopBar = ({
                         onCancel={handleCancel}
                     >
                         <label className="block text-sm font-bold text-gray-700 my-3">
-                            {"Bạn muốn trợ lý của mình tập trung vào điều gì:"}
+                            {"Những lưu ý cho trợ lý khi trả lời:"}
                         </label>
                         <TextArea
                             rows={3}
-                            value={interestPrompt}
-                            placeholder="Nhập vào điều bạn muốn trợ lý của mình tập trung vào"
-                            onChange={(e) => setInterestPrompt(e.target.value)}
-                        />
-                        <label className="block text-sm font-bold text-gray-700 my-3">
-                            {
-                                "Những cái bạn không muốn trợ lý của mình đề cập đến:"
-                            }
-                        </label>
-                        <TextArea
-                            rows={3}
-                            value={guardPrompt}
-                            placeholder="Nhập vào những cái bạn không muốn trợ lý của mình đề cập đến"
-                            onChange={(e) => setGuardPrompt(e.target.value)}
+                            value={instructPrompt}
+                            placeholder="Nhập vào những lưu ý cho trợ lý khi trả lời trong phạm vi knowledge base này"
+                            onChange={(e) => setInstructPrompt(e.target.value)}
                         />
                         <label className="block text-sm font-bold text-gray-700 my-3">
                             {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}

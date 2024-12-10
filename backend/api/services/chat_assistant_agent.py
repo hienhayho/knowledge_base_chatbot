@@ -39,8 +39,7 @@ class ChatAssistant:
         self.llm = self._init_model(service, model_name)
 
         system_prompt = ASSISTANT_SYSTEM_PROMPT.format(
-            interested_prompt=self.configuration.interested_prompt,
-            guard_prompt=self.configuration.guard_prompt,
+            instruct_prompt=self.configuration.instruct_prompt,
         ).strip("\n")
 
         self.tools = []

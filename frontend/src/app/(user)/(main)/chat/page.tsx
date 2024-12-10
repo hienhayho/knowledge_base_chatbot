@@ -18,8 +18,7 @@ export interface IAssistant {
     description: string;
     created_at: string;
     updated_at: string;
-    interested_prompt?: string;
-    guard_prompt?: string;
+    instruct_prompt: string;
     agent_backstory?: string;
     knowledge_base_id?: string;
     tools: string[];

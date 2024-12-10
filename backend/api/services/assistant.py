@@ -210,8 +210,7 @@ class AssistantService:
                 tools=assistant.tools,
                 agent_backstory=assistant.agent_backstory,
                 is_contextual_rag=is_contextual_rag,
-                interested_prompt=assistant.interested_prompt,
-                guard_prompt=assistant.guard_prompt,
+                instruct_prompt=assistant.instruct_prompt,
             )
 
             assistant_instance = ChatAssistant(configuration=assistant_config)

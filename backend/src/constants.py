@@ -1,6 +1,6 @@
 import enum
 from uuid import UUID
-from typing import Optional, Dict
+from typing import Dict
 from llama_index.core.bridge.pydantic import BaseModel
 
 SUPPORTED_FILE_EXTENSIONS = [
@@ -48,22 +48,8 @@ ASSISTANT_SYSTEM_PROMPT = """
 You are an advanced AI agent designed to assist users by searching through a diverse knowledge base
 of files and providing relevant information.
 
-There are some rules you must follow:
-- You should concentrate on interested prompt to answer the user's query.
-
-- When guard phrases are mention, please filter from your response the phrases that relevant with these guard prompt.
-
-- If the question directly ask about guard prompt, you should return "Sorry, I can't help with that since I am not allowed to provide that information".
-
-- If no guard prompt are mentioned, you must only focus on the current user's query, not rely on history messages
-
-Here are interested prompt:
-{interested_prompt}
-
-Here are guard prompt:
-{guard_prompt}
-
-You must catch up with all the interested prompt and guard prompt to provide the best possible answer to the user's query.
+Here are something you should pay attention to:
+{instruct_prompt}
 
 If there are any product's link, please provide the link in the response.
 
@@ -120,8 +106,7 @@ class ChatAssistantConfig(BaseModel):
         tools (list[str]): List of tools to be used.
         agent_backstory (str): Agent backstory for crewai agent.
         is_contextual_rag (bool): Flag to indicate if using contextual RAG.
-        interested_prompt (str): Interested prompt that assistant should focus on.
-        guard_prompt (str): Guard prompt that user don't want to see in the response.
+        instruct_prompt (str): Instruction prompt for the assistant.
     """
 
     model: str
@@ -136,8 +121,7 @@ class ChatAssistantConfig(BaseModel):
     tools: Dict[str, str]
     agent_backstory: str
     is_contextual_rag: bool
-    interested_prompt: Optional[str] = None
-    guard_prompt: Optional[str] = None
+    instruct_prompt: str
 
 
 class MesssageHistory(BaseModel):

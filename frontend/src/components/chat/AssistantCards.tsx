@@ -199,7 +199,7 @@ const AssistantCard = ({
                 )}
             </div>
             <div className="p-4 flex justify-around items-center border gap-4">
-                <div className="border p-3 rounded-lg border-gray-400">
+                <div className="border-2 p-3 rounded-lg border-red-300 w-full h-full">
                     <Tooltip title="Tên trợ lý">
                         <h3 className="font-semibold text-lg text-gray-800 truncate">
                             {assistant.name}
@@ -232,6 +232,7 @@ const AssistantCard = ({
                             token={token}
                             icon={<Settings size={16} />}
                             buttonTitle="Chỉnh tools"
+                            modalTitle={`Chọn tools cho trợ lý: ${assistant.name}`}
                             assistantId={assistant.id}
                         />
                     </div>

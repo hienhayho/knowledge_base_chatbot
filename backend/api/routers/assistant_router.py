@@ -88,8 +88,7 @@ async def create_assistant(
             configuration=assistant.configuration,
             user_id=current_user.id,
             agent_backstory=assistant.agent_backstory,
-            guard_prompt=assistant.guard_prompt,
-            interested_prompt=assistant.interested_prompt,
+            instruct_prompt=assistant.instruct_prompt,
         )
         session.add(new_assistant)
         session.commit()
@@ -161,8 +160,7 @@ async def update_assistant(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
-        assistant.guard_prompt = assistant_phrases.guard_prompt
-        assistant.interested_prompt = assistant_phrases.interested_prompt
+        assistant.instruct_prompt = assistant_phrases.instruct_prompt
         assistant.agent_backstory = assistant_phrases.agent_backstory
 
         session.commit()
