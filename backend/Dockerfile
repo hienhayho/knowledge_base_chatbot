@@ -8,8 +8,9 @@ COPY requirements.txt .
 
 COPY scripts/nltk_download.sh ./scripts/nltk_download.sh
 
-RUN pip install --no-cache-dir -r requirements.txt \
-    && ./scripts/nltk_download.sh
+RUN chmod +x ./scripts/nltk_download.sh && bash ./scripts/nltk_download.sh \
+    && pip install --no-cache-dir -r requirements.txt
+
 
 EXPOSE 8000
 
