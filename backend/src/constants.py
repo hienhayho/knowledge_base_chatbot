@@ -1,7 +1,10 @@
 import enum
 from uuid import UUID
+from pathlib import Path
 from typing import Dict
 from llama_index.core.bridge.pydantic import BaseModel
+
+DOWNLOAD_FOLDER = Path("downloads")
 
 SUPPORTED_FILE_EXTENSIONS = [
     ".pdf",
@@ -107,6 +110,7 @@ class ChatAssistantConfig(BaseModel):
         agent_backstory (str): Agent backstory for crewai agent.
         is_contextual_rag (bool): Flag to indicate if using contextual RAG.
         instruct_prompt (str): Instruction prompt for the assistant.
+        file_product_path (str): File path for the product file.
     """
 
     model: str
@@ -122,6 +126,7 @@ class ChatAssistantConfig(BaseModel):
     agent_backstory: str
     is_contextual_rag: bool
     instruct_prompt: str
+    file_product_path: str | None
 
 
 class MesssageHistory(BaseModel):
@@ -254,4 +259,9 @@ class UserRole(str, enum.Enum):
 
 
 class ExistTools(str, enum.Enum):
+    """
+    Enum class for all existing tools that allow to be used in the assistant system
+    """
+
     KNOWLEDGE_BASE_QUERY = "knowledge_base_query"
+    PRODUCT_SEARCH = "product_search"

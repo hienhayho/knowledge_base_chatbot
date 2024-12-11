@@ -1,1 +1,2 @@
-from .kb_tool import load_llama_index_kb_tool  # noqa: F401
+from .kb_tool import *  # noqa: F401, F403
+from .product_search_tool import *  # noqa: F401, F403

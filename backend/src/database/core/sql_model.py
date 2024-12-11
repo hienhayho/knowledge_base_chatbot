@@ -316,6 +316,10 @@ class Documents(SQLModel, table=True):
         nullable=False,
         description="Path of the Document",
     )
+    is_product_file: bool = Field(
+        default=False,
+        description="Is the file a product file or not",
+    )
     file_type: str = Field(
         nullable=False,
         description="File extension",

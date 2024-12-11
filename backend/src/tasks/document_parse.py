@@ -1,7 +1,6 @@
 import sys
 import math
 import celery
-import tempfile
 from pathlib import Path
 from llama_index.core import Document
 
@@ -9,7 +8,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.celery import celery_app
 from src.settings import default_settings
-from src.utils import get_formatted_logger
+from src.utils import get_formatted_logger, is_product_file
 from src.readers import parse_multiple_files, get_extractor
 from src.database import (
     DatabaseManager,
@@ -57,7 +56,7 @@ def parse_document(
         dict: The task ID and status.
     """
     extension = Path(file_path_in_minio).suffix
-    file_path = Path(tempfile.mktemp(suffix=extension))
+    file_path = Path("downloads") / f"{document_id}.{extension}"
 
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
@@ -66,6 +65,13 @@ def parse_document(
         object_name=file_path_in_minio,
         file_path=file_path,
     )
+
+    if is_product_file(file_path):
+        logger.info("product file detected, skipping parsing")
+        return {
+            "task_id": self.request.id,
+            "status": "SUCCESS",
+        }
 
     self.update_state(state="PROGRESS", meta={"progress": 5})
 

@@ -9,10 +9,17 @@ from llama_index.core import Document
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from .contextual_rag_manager import ContextualRAG
-from .core import MinioClient, get_instance_session, Messages, Conversations, Assistants
+from .core import (
+    MinioClient,
+    get_instance_session,
+    Messages,
+    Conversations,
+    Assistants,
+    Documents,
+)
 
 from src.utils import get_formatted_logger
-from src.constants import DocumentMetadata
+from src.constants import DocumentMetadata, DOWNLOAD_FOLDER
 from src.settings import GlobalSettings, get_default_setting
 
 logger = get_formatted_logger(__file__)
@@ -68,6 +75,30 @@ class DatabaseManager:
             object_name=object_name,
             file_path=file_path,
         )
+
+    def get_product_file_path(self, knowledge_base_id: str) -> str:
+        """
+        Get product file path
+
+        Args:
+            knowledge_base_id (str): Knowledge base ID
+
+        Returns:
+            str: Product file path or None
+        """
+        with self.db_session as session:
+            query = select(Documents.file_path_in_minio).where(
+                Documents.knowledge_base_id == knowledge_base_id,
+                Documents.is_product_file,
+            )
+            product_file_path = session.exec(query).first()
+            file_path_to_save = str(DOWNLOAD_FOLDER / f"{knowledge_base_id}.xlsx")
+
+            if product_file_path:
+                self.download_file(product_file_path, file_path_to_save)
+                return file_path_to_save
+
+            return None
 
     def download_file(self, object_name: str, file_path: str):
         """

@@ -16,6 +16,8 @@ from src.database import (
     Conversations,
     Assistants,
     KnowledgeBases,
+    get_db_manager,
+    DatabaseManager,
 )
 from api.models import (
     ChatMessage,
@@ -27,8 +29,13 @@ from src.constants import SenderType, ChatAssistantConfig, MesssageHistory
 
 
 class AssistantService:
-    def __init__(self, db_session: Session = Depends(get_session)):
+    def __init__(
+        self,
+        db_session: Session = Depends(get_session),
+        db_manager: DatabaseManager = Depends(get_db_manager),
+    ):
         self.db_session = db_session
+        self.db_manager = db_manager
 
     def chat_with_assistant(
         self, conversation_id: UUID, user_id: int, message: ChatMessage
@@ -187,6 +194,10 @@ class AssistantService:
 
             message_history = self._get_message_history(conversation_id)
 
+            file_product_path = self.db_manager.get_product_file_path(
+                knowledge_base_id=kb.id
+            )
+
             user_message = Messages(
                 conversation_id=conversation_id,
                 sender_type=SenderType.USER,
@@ -211,6 +222,7 @@ class AssistantService:
                 agent_backstory=assistant.agent_backstory,
                 is_contextual_rag=is_contextual_rag,
                 instruct_prompt=assistant.instruct_prompt,
+                file_product_path=file_product_path,
             )
 
             assistant_instance = ChatAssistant(configuration=assistant_config)

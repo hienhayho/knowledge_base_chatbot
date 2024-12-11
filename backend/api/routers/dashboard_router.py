@@ -15,7 +15,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from .user_router import get_current_user
-from .kb_router import DOWNLOAD_FOLDER
 from src.database import (
     get_session,
     Users,
@@ -24,7 +23,7 @@ from src.database import (
     Messages,
     Assistants,
 )
-from src.constants import SenderType
+from src.constants import SenderType, DOWNLOAD_FOLDER
 from api.models import (
     DashboardStaticsResponse,
     KnowledgeBaseStaticsResponse,

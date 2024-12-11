@@ -17,7 +17,6 @@ from api.models import (
     AssistantUpdateToolsRequest,
 )
 from .user_router import decode_user_token
-from .kb_router import DOWNLOAD_FOLDER
 from fastapi import (
     APIRouter,
     Depends,
@@ -40,6 +39,7 @@ from src.database import (
     DatabaseManager,
     get_db_manager,
 )
+from src.constants import DOWNLOAD_FOLDER
 from src.utils import get_formatted_logger
 from api.services import AssistantService
 from fastapi.responses import JSONResponse, FileResponse

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from datetime import datetime
 from dotenv import load_dotenv
 from src.utils import get_formatted_logger
+from src.constants import DOWNLOAD_FOLDER
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import (
@@ -14,7 +15,6 @@ from api.routers import (
     assistant_router,
     tool_router,
     dashboard_router,
-    DOWNLOAD_FOLDER,
 )
 from contextlib import asynccontextmanager
 

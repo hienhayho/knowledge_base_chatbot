@@ -47,8 +47,8 @@ from src.database import (
 )
 from src.celery import celery_app
 from src.tasks import parse_document
-from src.utils import get_formatted_logger
-from src.constants import FileStatus, ErrorResponse
+from src.utils import get_formatted_logger, is_product_file
+from src.constants import FileStatus, ErrorResponse, DOWNLOAD_FOLDER
 
 logger = get_formatted_logger(__file__)
 
@@ -58,7 +58,6 @@ kb_router = APIRouter()
 UPLOAD_FOLDER = Path(default_settings.upload_temp_folder)
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
-DOWNLOAD_FOLDER = Path("downloads")
 DOWNLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
@@ -192,6 +191,7 @@ async def upload_file(
             file_path_in_minio=f"{uuid.uuid4()}_{file.filename}",
             file_type=Path(file.filename).suffix,
             status=FileStatus.UPLOADED,
+            is_product_file=is_product_file(file_path),
             file_size=file_size,
             knowledge_base_id=knowledge_base_id,
             user_id=current_user.id,
