@@ -1,7 +1,6 @@
 import sys
 import math
 import celery
-import tempfile
 from pathlib import Path
 from llama_index.core import Document
 
@@ -9,20 +8,17 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.celery import celery_app
 from src.settings import default_settings
-from src.utils import get_formatted_logger
+from src.utils import get_formatted_logger, is_product_file
 from src.readers import parse_multiple_files, get_extractor
 from src.database import (
     DatabaseManager,
     DocumentChunks,
-    MinioClient,
     get_instance_session,
 )
 
 logger = get_formatted_logger(__file__)
 
 db_manager: DatabaseManager = DatabaseManager.from_setting(setting=default_settings)
-
-minio_client: MinioClient = MinioClient.from_setting(setting=default_settings)
 
 
 class FileExtractor:
@@ -60,15 +56,22 @@ def parse_document(
         dict: The task ID and status.
     """
     extension = Path(file_path_in_minio).suffix
-    file_path = Path(tempfile.mktemp(suffix=extension))
+    file_path = Path("downloads") / f"{document_id}.{extension}"
 
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
-    minio_client.download_file(
+    db_manager.minio_client.download_file(
         bucket_name=default_settings.upload_bucket_name,
         object_name=file_path_in_minio,
         file_path=file_path,
     )
+
+    if is_product_file(file_path):
+        logger.info("product file detected, skipping parsing")
+        return {
+            "task_id": self.request.id,
+            "status": "SUCCESS",
+        }
 
     self.update_state(state="PROGRESS", meta={"progress": 5})
 
@@ -84,30 +87,19 @@ def parse_document(
     self.update_state(state="PROGRESS", meta={"progress": 20})
 
     if is_contextual_rag:
-        contextual_documents, contextual_documents_metadata = (
-            db_manager.get_contextual_rag_chunks(
-                documents=document,
-                chunks=chunks,
-            )
+        contextual_documents, _ = db_manager.get_contextual_rag_chunks(
+            documents=document,
+            chunks=chunks,
         )
 
     self.update_state(state="PROGRESS", meta={"progress": 40})
-
-    if is_contextual_rag:
-        db_manager.es_index_document(
-            index_name=knowledge_base_id,
-            document_id=document_id,
-            documents_metadata=contextual_documents_metadata,
-        )
-
-    self.update_state(state="PROGRESS", meta={"progress": 60})
 
     new_chunks: list[Document] = []
     for chunk in chunks:
         new_chunks.extend(chunk)
 
     db_manager.index_to_vector_db(
-        collection_name=str(knowledge_base_id),
+        kb_id=knowledge_base_id,
         chunks_documents=contextual_documents if is_contextual_rag else new_chunks,
         document_id=document_id,
     )

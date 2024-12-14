@@ -2,9 +2,8 @@ name: Frontend (install and build)
 
 on:
     push:
-        branches: ["main", "hien_dev"]
     pull_request:
-        branches: ["main", "hien_dev"]
+        branches: ["main"]
 
 jobs:
     build:

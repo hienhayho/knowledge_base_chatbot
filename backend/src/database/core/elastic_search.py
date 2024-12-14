@@ -135,24 +135,20 @@ class ElasticSearch:
         return success
 
     def search(
-        self, index_name: str, query: str, top_k: int = 20
+        self, kb_ids: list[str | UUID], query: str, top_k: int = 20
     ) -> list[ElasticSearchResponse]:
         """
         Search the documents relevant to the query.
 
         Args:
             index_name (str): Name of the index to search
+            kb_ids (list[str | UUID]): List of knowledge base IDs
             query (str): Query to search
             top_k (int): Number of documents to return
 
         Returns:
             list[ElasticSearchResponse]: List of ElasticSearch response objects.
         """
-        logger.info("index_name: %s - query: %s - top_k: %s", index_name, query, top_k)
-
-        self.es_client.indices.refresh(
-            index=index_name
-        )  # Force refresh before each search
         search_body = {
             "query": {
                 "multi_match": {
@@ -162,7 +158,15 @@ class ElasticSearch:
             },
             "size": top_k,
         }
-        response = self.es_client.search(index=index_name, body=search_body)
+        exist_index = []
+        for kb_id in kb_ids:
+            if self.check_index_exists(kb_id):
+                exist_index.append(kb_id)
+
+        response = self.es_client.search(
+            index=",".join(exist_index),
+            body=search_body,
+        )
 
         return [
             ElasticSearchResponse(

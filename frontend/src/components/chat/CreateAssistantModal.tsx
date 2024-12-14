@@ -26,8 +26,8 @@ const CreateAssistantModal = ({
     const [isVisible, setIsVisible] = useState<boolean>(false);
     const [assistantName, setAssistantName] = useState<string>("");
     const [description, setDescription] = useState<string>("");
-    const [guardPrompt, setGuardPrompt] = useState<string>("");
-    const [interestedPrompt, setInterestedPrompt] = useState<string>("");
+    const [instructionPrompt, setInstructionPrompt] = useState<string>("");
+    const [agentBackstory, setAgentBackstory] = useState<string>("");
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
     const [selectedKnowledgeBase, setSelectedKnowledgeBase] =
         useState<string>("");
@@ -102,16 +102,15 @@ const CreateAssistantModal = ({
         const payload = {
             name: assistantName,
             description: description,
-            guard_prompt: guardPrompt,
-            interested_prompt: interestedPrompt,
+            instruct_prompt: instructionPrompt,
             knowledge_base_id: selectedKnowledgeBase,
+            agent_backstory: agentBackstory,
             configuration: {
                 model: model,
                 service: "openai",
                 temperature: "0.8",
             },
         };
-        console.log(payload);
         try {
             const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
                 method: "POST",
@@ -130,7 +129,7 @@ const CreateAssistantModal = ({
                 setTimeout(() => {
                     onClose();
                     onCreateSuccess();
-                    router.push(`/chat/${data.id}`);
+                    // router.push(`/chat/${data.id}`);
                 }, 1500);
             } else {
                 errorMessage(data.detail);
@@ -183,7 +182,7 @@ const CreateAssistantModal = ({
                     </button>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-2">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Assistant name{" "}
@@ -199,7 +198,6 @@ const CreateAssistantModal = ({
                     <div>
                         <label className="block text-sm font-medium text-gray-700 my-2">
                             Description{" "}
-                            <Info className="inline-block w-4 h-4 text-gray-400" />
                         </label>
                         <TextArea
                             rows={2}
@@ -209,27 +207,25 @@ const CreateAssistantModal = ({
                         />
                         <label className="block text-sm font-medium text-gray-700 my-2">
                             {
-                                "Type anything you want your bot to concentrate on:"
+                                "Nhập vào những lưu ý cho trợ lý khi trả lời trong phạm vi knowledge base này"
                             }
                         </label>
                         <TextArea
-                            rows={3}
-                            value={interestedPrompt}
+                            rows={2}
+                            value={instructionPrompt}
                             onChange={(e) =>
-                                setInterestedPrompt(e.target.value)
+                                setInstructionPrompt(e.target.value)
                             }
-                            placeholder="e.g. I want you to help me with algebra problems"
+                            placeholder="e.g. I don't want you to talk about my personal life"
                         />
                         <label className="block text-sm font-medium text-gray-700 my-2">
-                            {
-                                "Type anything you don't want your bot to talk about:"
-                            }
+                            {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}
                         </label>
                         <TextArea
-                            rows={3}
-                            value={guardPrompt}
-                            onChange={(e) => setGuardPrompt(e.target.value)}
-                            placeholder="e.g. I don't want you to talk about my personal life"
+                            rows={2}
+                            value={agentBackstory}
+                            onChange={(e) => setAgentBackstory(e.target.value)}
+                            placeholder="e.g. I am a math tutor assistant with 5 years of experience."
                         />
                     </div>
 
@@ -259,7 +255,7 @@ const CreateAssistantModal = ({
                             }
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 p-2"
                         >
-                            <option value="">Please select</option>
+                            <option value="">Chọn knowledge base</option>
                             {knowledgeBases.map((kb) => (
                                 <option key={kb.id} value={kb.id}>
                                     {kb.name}
@@ -274,13 +270,13 @@ const CreateAssistantModal = ({
                         onClick={handleClose}
                         className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
-                        Cancel
+                        Hủy
                     </button>
                     <button
                         onClick={handleSubmit}
                         className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
-                        Create Assistant
+                        Tạo trợ lý
                     </button>
                 </div>
             </div>

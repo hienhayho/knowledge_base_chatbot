@@ -25,21 +25,16 @@ class KnowledgeBaseRequest(BaseModel):
     )
 
 
-class MergeKnowledgeBasesRequest(BaseModel):
-    knowledge_base_ids: list[UUID] = Field(
+class InheritKnowledgeBaseRequest(BaseModel):
+    source_knowledge_base_id: UUID = Field(
         ...,
-        title="List of Knowledge Base IDs",
-        description="List of Knowledge Base IDs to be merged",
+        title="Source Knowledge Base ID",
+        description="Source Knowledge Base ID",
     )
-    name: str = Field(
-        default="Merged Knowledge Base",
-        title="Name of the merged Knowledge Base",
-        description="Name of the merged Knowledge Base",
-    )
-    description: str = Field(
-        default="No description",
-        title="Description of the merged Knowledge Base",
-        description="Description of the merged Knowledge Base",
+    target_knowledge_base_id: UUID | None = Field(
+        None,
+        title="Target Knowledge Base ID",
+        description="Target Knowledge Base ID",
     )
 
 
@@ -106,6 +101,11 @@ class UploadFileResponse(BaseModel):
         ...,
         title="Knowledge Base",
         description="Knowledge Base",
+    )
+    file_size_in_mb: float = Field(
+        ...,
+        title="File Size in MB",
+        description="File Size in MB",
     )
 
 
@@ -176,8 +176,14 @@ class DocumentInKnowledgeBase(BaseModel):
     file_type: str
     created_at: datetime
     status: str
+    file_size_in_mb: float
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class InheritableKnowledgeBaseResponse(BaseModel):
+    id: UUID
+    name: str
 
 
 class GetKnowledgeBaseResponse(BaseModel):
@@ -189,6 +195,9 @@ class GetKnowledgeBaseResponse(BaseModel):
     updated_at: datetime
     document_count: int
     last_updated: datetime
+    parents: list[UUID]
+    children: list[UUID]
     documents: list[DocumentInKnowledgeBase]
+    inheritable_knowledge_bases: list[InheritableKnowledgeBaseResponse]
 
     model_config = ConfigDict(from_attributes=True)

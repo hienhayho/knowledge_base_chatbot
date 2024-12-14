@@ -1,8 +1,9 @@
 import React from "react";
-import { Layout, Plus } from "lucide-react";
-import { IAssistant } from "@/app/(user)/chat/page";
+import { Layout, Plus, Settings, Wrench } from "lucide-react";
+import { IAssistant } from "@/types";
 import { Button, message, Modal, Input } from "antd";
 import { getCookie } from "cookies-next";
+import AddToolsModal from "./AddToolsModal";
 
 const { TextArea } = Input;
 
@@ -30,11 +31,11 @@ const TopBar = ({
     const token = getCookie("access_token");
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [interestPrompt, setInterestPrompt] = React.useState<string>(
-        selectedAssistant?.interested_prompt || ""
+    const [instructPrompt, setInstructPrompt] = React.useState<string>(
+        selectedAssistant?.instruct_prompt || ""
     );
-    const [guardPrompt, setGuardPrompt] = React.useState<string>(
-        selectedAssistant?.guard_prompt || ""
+    const [agentBackstory, setAgentBackstory] = React.useState<string>(
+        selectedAssistant?.agent_backstory || ""
     );
 
     const successMessage = (content: string, duration: number = 1) => {
@@ -73,8 +74,8 @@ const TopBar = ({
                         Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify({
-                        interested_prompt: interestPrompt,
-                        guard_prompt: guardPrompt,
+                        instruct_prompt: instructPrompt,
+                        agent_backstory: agentBackstory,
                     }),
                 }
             );
@@ -84,13 +85,13 @@ const TopBar = ({
                     setIsModalOpen(false);
                     return;
                 }
-                successMessage("Assistant updated successfully");
+                successMessage("Updated assistant successfully");
                 setTimeout(() => {
                     if (setSelectedAssistant) {
                         setSelectedAssistant({
                             ...selectedAssistant,
-                            interested_prompt: interestPrompt,
-                            guard_prompt: guardPrompt,
+                            instruct_prompt: instructPrompt,
+                            agent_backstory: agentBackstory,
                         });
                     }
                     setIsModalOpen(false);
@@ -132,44 +133,55 @@ const TopBar = ({
                 </button>
             )}
             {showUpdateAssistantButton && (
-                <div className="flex-shrink-0 p-4">
+                <div className="flex flex-row item-center justify-around flex-shrink-0 gap-10 p-4">
+                    <AddToolsModal
+                        token={token as string}
+                        icon={<Wrench size={16} />}
+                        buttonTitle="Chỉnh tools"
+                        modalTitle={`Chọn tools cho trợ lý: ${selectedAssistant?.name}`}
+                        assistantId={selectedAssistant?.id}
+                    />
                     <Button
-                        type="primary"
                         onClick={showModal}
+                        icon={<Settings size={16} />}
                         style={{
                             width: "100%",
                             display: "flex",
                             justifyContent: "center",
                             alignItems: "center",
+                            borderColor: "gray",
                         }}
                     >
-                        Update Assistant
+                        Cập nhật trợ lý của bạn
                     </Button>
                     <Modal
-                        title="Update Your Assistant"
+                        title={
+                            <div className="flex justify-center items-center text-red-500 font-bold mb-4">
+                                <span>Cập nhật trợ lý của bạn</span>
+                            </div>
+                        }
                         open={isModalOpen}
+                        width={"80%"}
                         onOk={handleOk}
                         onCancel={handleCancel}
                     >
-                        <label className="block text-sm font-medium text-gray-700 my-3">
-                            {
-                                "Type anything you want your bot to concentrate on:"
-                            }
+                        <label className="block text-sm font-bold text-gray-700 my-3">
+                            {"Những lưu ý cho trợ lý khi trả lời:"}
                         </label>
                         <TextArea
                             rows={3}
-                            value={interestPrompt}
-                            onChange={(e) => setInterestPrompt(e.target.value)}
+                            value={instructPrompt}
+                            placeholder="Nhập vào những lưu ý cho trợ lý khi trả lời trong phạm vi knowledge base này"
+                            onChange={(e) => setInstructPrompt(e.target.value)}
                         />
-                        <label className="block text-sm font-medium text-gray-700 my-3">
-                            {
-                                "Type anything you don't want your bot to talk about:"
-                            }
+                        <label className="block text-sm font-bold text-gray-700 my-3">
+                            {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}
                         </label>
                         <TextArea
-                            rows={3}
-                            value={guardPrompt}
-                            onChange={(e) => setGuardPrompt(e.target.value)}
+                            rows={9}
+                            value={agentBackstory}
+                            placeholder="Nhập vào nhiệm vụ bạn muốn trợ lý của mình thực hiện"
+                            onChange={(e) => setAgentBackstory(e.target.value)}
                         />
                     </Modal>
                 </div>

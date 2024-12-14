@@ -1,4 +1,1 @@
-from .contextual_rag_agent import ContextualRAGAgent
-from .chat_assistant_agent import ChatAssistant
-
-__all__ = ["ContextualRAGAgent", "ChatAssistant"]
+from .crew_ai_agent import CrewAIAgent  # noqa: F401

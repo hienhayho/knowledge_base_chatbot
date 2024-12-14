@@ -2,7 +2,7 @@
 
 ## Database Diagram
 
-![](./backend/public/knowledge_base.png)
+![](./backend/public/db_version1_1.png)
 
 ## Run production
 

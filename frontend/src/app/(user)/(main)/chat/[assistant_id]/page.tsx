@@ -7,8 +7,8 @@ import TopBar from "@/components/chat/TopBar";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
-import { IAssistant } from "@/app/(user)/chat/page";
-import { IConversation } from "@/app/(user)/chat/page";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { IAssistant, IConversation } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -104,7 +104,6 @@ const ChatAssistantPage = () => {
 
     const handleCreateConversation = async () => {
         try {
-            console.log(assistant_id);
             const response = await fetch(
                 `${API_BASE_URL}/api/assistant/${assistant_id}/conversations`,
                 {
@@ -176,4 +175,4 @@ const ChatAssistantPage = () => {
     );
 };
 
-export default ChatAssistantPage;
+export default ProtectedRoute(ChatAssistantPage);

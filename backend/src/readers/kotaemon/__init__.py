@@ -9,6 +9,8 @@ from .loaders import (
     PDFReader,
 )
 
+from .csv_reader_customized import PandasCSVReaderCustomised
+
 __all__ = [
     "TxtReader",
     "HtmlReader",
@@ -18,4 +20,5 @@ __all__ = [
     "PDFThumbnailReader",
     "PandasExcelReader",
     "ExcelReader",
+    "PandasCSVReaderCustomised",
 ]

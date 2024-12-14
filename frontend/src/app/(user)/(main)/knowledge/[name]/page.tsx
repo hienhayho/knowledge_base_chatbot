@@ -3,12 +3,15 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import DatasetView from "@/components/knowledge_base/KBDatasetView";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-export default function KnowledgeBasePage() {
+const KnowledgeBasePage = () => {
     const params = useParams();
     const knowledgeBaseID = Array.isArray(params.name)
         ? params.name[0]
         : params.name;
 
     return <DatasetView knowledgeBaseID={knowledgeBaseID} />;
-}
+};
+
+export default ProtectedRoute(KnowledgeBasePage);

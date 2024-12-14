@@ -1,10 +1,18 @@
 "use client";
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Cpu, Book, MoreVertical, Trash2, LoaderCircle } from "lucide-react";
-import { getCookie } from "cookies-next";
+import {
+    Cpu,
+    Book,
+    MoreVertical,
+    Trash2,
+    // LoaderCircle,
+    Download,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { IAssistant } from "@/app/(user)/chat/page";
-import { IKnowledgeBase } from "@/app/(user)/knowledge/page";
+import { IAssistant, IKnowledgeBase } from "@/types";
+import AddToolsModal from "./AddToolsModal";
+import { Settings } from "lucide-react";
+import { Tooltip } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -38,10 +46,12 @@ const getBadgeText = (createdAt: string, updatedAt: string) => {
 };
 
 const AssistantCard = ({
+    token,
     assistant,
     onSelect,
     onDelete,
 }: {
+    token: string;
     assistant: IAssistant;
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
@@ -52,10 +62,8 @@ const AssistantCard = ({
         null
     );
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [cost, setCost] = useState<number | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    // const [cost, setCost] = useState<number | null>(null);
     const randomGradient = useMemo(() => getRandomGradient(), []);
-    const token = getCookie("access_token");
     const redirectUrl = encodeURIComponent("/chat");
     const badgeText = getBadgeText(assistant.created_at, assistant.updated_at);
 
@@ -120,14 +128,38 @@ const AssistantCard = ({
         }
     };
 
-    const handleGetTotalCost = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isLoading) return;
+    // const handleGetTotalCost = async (e: React.MouseEvent) => {
+    //     e.stopPropagation();
+    //     if (isLoading) return;
 
-        setIsLoading(true);
+    //     setIsLoading(true);
+    //     try {
+    //         const response = await fetch(
+    //             `${API_BASE_URL}/api/assistant/${assistant.id}/total_cost`,
+    //             {
+    //                 headers: {
+    //                     Authorization: `Bearer ${token}`,
+    //                 },
+    //             }
+    //         );
+    //         if (!response.ok) {
+    //             throw new Error("Failed to fetch total cost");
+    //         }
+    //         const data = await response.json();
+    //         setCost(data.total_cost);
+    //     } catch (error) {
+    //         console.error("Error fetching total cost:", error);
+    //     } finally {
+    //         setIsLoading(false);
+    //     }
+    // };
+
+    const handleExportConversations = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsMenuOpen(false);
         try {
             const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistant.id}/total_cost`,
+                `${API_BASE_URL}/api/assistant/${assistant.id}/export_conversations`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -135,14 +167,17 @@ const AssistantCard = ({
                 }
             );
             if (!response.ok) {
-                throw new Error("Failed to fetch total cost");
+                throw new Error("Failed to export conversations");
             }
-            const data = await response.json();
-            setCost(data.total_cost);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `assistant_${assistant.id}.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("Error fetching total cost:", error);
-        } finally {
-            setIsLoading(false);
+            console.error("Error exporting conversations:", error);
         }
     };
 
@@ -162,19 +197,23 @@ const AssistantCard = ({
                     </div>
                 )}
             </div>
-            <div className="p-4 flex justify-around">
-                <div>
-                    <h3 className="font-semibold text-lg text-gray-800 truncate">
-                        {assistant.name}
-                    </h3>
-                    <p className="text-gray-600 text-sm mt-1 truncate">
-                        {assistant.description}
-                    </p>
+            <div className="p-4 flex justify-around items-center border gap-4">
+                <div className="border-2 p-3 rounded-lg border-green-200 w-full h-full">
+                    <Tooltip title="Tên trợ lý">
+                        <h3 className="font-semibold text-lg text-gray-800 truncate">
+                            {assistant.name}
+                        </h3>
+                    </Tooltip>
+                    <Tooltip title="Mô tả về trợ lý">
+                        <p className="text-gray-600 text-sm mt-1 truncate">
+                            {assistant.description}
+                        </p>
+                    </Tooltip>
                 </div>
-                <div className="flex items-center text-gray-700 text-sm mt-2">
-                    <button
+                <div className="flex items-center flex-col text-gray-700 text-sm mt-2 gap-4">
+                    {/* <button
                         type="button"
-                        className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 flex items-center justify-center min-w-[120px] h-[40px]"
+                        className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center justify-center min-w-[120px] h-[40px]"
                         onClick={handleGetTotalCost}
                         disabled={isLoading}
                     >
@@ -185,7 +224,17 @@ const AssistantCard = ({
                         ) : (
                             `$${cost.toFixed(6)}`
                         )}
-                    </button>
+                    </button> */}
+
+                    <div>
+                        <AddToolsModal
+                            token={token}
+                            icon={<Settings size={16} />}
+                            buttonTitle="Chỉnh tools"
+                            modalTitle={`Chọn tools cho trợ lý: ${assistant.name}`}
+                            assistantId={assistant.id}
+                        />
+                    </div>
                 </div>
             </div>
             <div className="px-4 pt-2 pb-4">
@@ -210,14 +259,25 @@ const AssistantCard = ({
                     <MoreVertical size={20} />
                 </button>
                 {isMenuOpen && (
-                    <div className="absolute bottom-8 right-0 bg-white shadow-lg rounded-lg py-2 w-32">
-                        <button
-                            onClick={handleDelete}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-red-600"
-                        >
-                            <Trash2 size={16} className="mr-2" />
-                            Delete
-                        </button>
+                    <div className="flex flex-col justify-center">
+                        <div className="absolute bottom-20 right-0 bg-white shadow-lg rounded-lg py-2 w-32">
+                            <button
+                                onClick={handleExportConversations}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-green-600"
+                            >
+                                <Download size={16} className="mr-2" />
+                                Export
+                            </button>
+                        </div>
+                        <div className="absolute bottom-8 right-0 bg-white shadow-lg rounded-lg py-2 w-32">
+                            <button
+                                onClick={handleDelete}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-red-600"
+                            >
+                                <Trash2 size={16} className="mr-2" />
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -226,10 +286,12 @@ const AssistantCard = ({
 };
 
 const AssistantCards = ({
+    token,
     assistants,
     onSelect,
     onDelete,
 }: {
+    token: string;
     assistants: IAssistant[];
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
@@ -238,6 +300,7 @@ const AssistantCards = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {assistants.map((assistant) => (
                 <AssistantCard
+                    token={token}
                     key={assistant.id}
                     assistant={assistant}
                     onSelect={onSelect}

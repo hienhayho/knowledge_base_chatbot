@@ -1,5 +1,5 @@
 import sys
-import json
+import time
 import uuid
 import torch
 from uuid import UUID
@@ -7,10 +7,10 @@ from tqdm import tqdm
 from pathlib import Path
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
+from qdrant_client.http import models
 from llama_index.core import (
     Settings,
     Document,
-    QueryBundle,
     StorageContext,
     VectorStoreIndex,
 )
@@ -23,9 +23,6 @@ from llama_index.core.llms import ChatMessage
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.schema import NodeWithScore, Node
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.core.base.response.schema import Response
-from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.node_parser import SemanticSplitterNodeParser
@@ -40,7 +37,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from .utils import get_embedding
 from src.utils import get_formatted_logger
-from .core import ElasticSearch, QdrantVectorDatabase
+from .core import QdrantVectorDatabase
 from src.settings import GlobalSettings, default_settings
 from src.constants import (
     QA_PROMPT,
@@ -72,7 +69,6 @@ class ContextualRAG:
     setting: GlobalSettings
     llm: FunctionCallingLLM
     splitter: SemanticSplitterNodeParser
-    es: ElasticSearch
     qdrant_client: QdrantVectorDatabase
 
     def __init__(self, setting: GlobalSettings):
@@ -99,9 +95,9 @@ class ContextualRAG:
             buffer_size=1, breakpoint_percentile_threshold=95, embed_model=embed_model
         )
 
-        self.es = ElasticSearch(url=setting.elastic_search_config.url)
         self.reranker = self.load_reranker(
-            setting.contextual_rag_config.reranker_service
+            setting.contextual_rag_config.reranker_service,
+            top_n=setting.contextual_rag_config.top_n,
         )
 
         self.qdrant_client = QdrantVectorDatabase(
@@ -276,6 +272,7 @@ class ContextualRAG:
 
             # Prepend the contextualized content to the chunk
             new_chunk = contextualized_content + "\n\n" + chunk.text
+            # new_chunk = chunk.text
 
             # Manually generate a doc_id for indexing in elastic search
             documents.append(
@@ -291,6 +288,7 @@ class ContextualRAG:
                     vector_id=chunk.metadata["vector_id"],
                     original_content=whole_document,
                     contextualized_content=contextualized_content,
+                    # contextualized_content="",
                 ),
             )
 
@@ -326,49 +324,13 @@ class ContextualRAG:
             documents.extend(document)
             documents_metadata.extend(metadata)
 
+        # return splited_documents, documents_metadata
+
         return documents, documents_metadata
-
-    def es_index_document(
-        self,
-        index_name: str,
-        document_id: str | uuid.UUID,
-        documents_metadata: list[DocumentMetadata],
-    ):
-        """
-        Index the documents in the ElasticSearch.
-
-        Args:
-            index_name (str): Name of the index to index documents.
-            document_id (str | uuid.UUID): Document ID.
-            documents_metadata (list[DocumentMetadata]): List of documents metadata to index.
-        """
-        logger.info(
-            "index_name: %s - len(documents_metadata): %s",
-            index_name,
-            len(documents_metadata),
-        )
-        self.es.index_documents(
-            index_name=index_name,
-            document_id=document_id,
-            documents_metadata=documents_metadata,
-        )
-
-    def es_delete_document(
-        self, index_name: str | uuid.UUID, document_id: str | uuid.UUID
-    ):
-        """
-        Delete the document from the ElasticSearch.
-
-        Args:
-            index_name (str | uuid.UUID): Name of the index to delete the document.
-            document_id (str | uuid.UUID): Document ID to delete.
-        """
-        logger.debug("index_name: %s - document_id: %s", index_name, document_id)
-        self.es.delete_documents(index_name=index_name, document_id=document_id)
 
     def qdrant_insert_data(
         self,
-        collection_name: str,
+        kb_id: str | UUID,
         chunks: list[Document],
         document_id: uuid.UUID,
         show_progress: bool = True,
@@ -376,19 +338,16 @@ class ContextualRAG:
         """
         Insert data to the QdrantVectorStore.
         """
-        chunks = (
-            tqdm(chunks, desc=f"Inserting data to: {collection_name} ...")
-            if show_progress
-            else chunks
-        )
+        chunks = tqdm(chunks, desc="Inserting data ...") if show_progress else chunks
         for doc in chunks:
             self.qdrant_client.add_vector(
-                collection_name=collection_name,
+                collection_name=self.setting.global_vector_db_collection_name,
                 vector=get_embedding(doc.text),
                 vector_id=doc.metadata["vector_id"],
                 payload=QdrantPayload(
                     document_id=str(document_id),
                     text=doc.text,
+                    kb_id=kb_id,
                     vector_id=doc.metadata["vector_id"],
                 ),
             )
@@ -457,12 +416,10 @@ class ContextualRAG:
     @observe(capture_input=False)
     def contextual_rag_search(
         self,
-        collection_name: str,
+        kb_ids: list[str],
         query: str,
         session_id: str | uuid.UUID,
         top_k: int = 150,
-        top_n: int = 3,
-        debug: bool = False,
         system_prompt: str = ASSISTANT_SYSTEM_PROMPT,
     ) -> str:
         """
@@ -479,98 +436,58 @@ class ContextualRAG:
         Returns:
             str: The search results.
         """
-        logger.info(
-            "collection_name: %s - top_k: %s - query: %s", collection_name, top_k, query
-        )
-
-        bm25_weight = self.setting.contextual_rag_config.bm25_weight
-        semantic_weight = self.setting.contextual_rag_config.semantic_weight
-
-        index = self.get_qdrant_vector_store_index(
-            self.qdrant_client.client, collection_name=collection_name
-        )
+        print(kb_ids)
+        start_time = time.time()
 
         langfuse_callback_handler.set_trace_params(
             session_id=str(session_id),
         )
 
-        retriever = VectorIndexRetriever(
-            index=index,
-            similarity_top_k=top_k,
-        )
+        logger.debug("Semantic search ...")
+        while True:
+            semantic_results = self.qdrant_client.search_vector(
+                collection_name=self.setting.global_vector_db_collection_name,
+                vector=get_embedding(query),
+                search_params=models.SearchParams(
+                    quantization=models.QuantizationSearchParams(
+                        ignore=False,
+                        rescore=True,
+                        oversampling=2.0,
+                    )
+                ),
+                query_filter=models.Filter(
+                    should=[
+                        models.FieldCondition(
+                            key="kb_id", match=models.MatchAny(any=kb_ids)
+                        ),
+                    ],
+                ),
+                limit=top_k,
+                timeout=30,
+            )
 
-        query_engine = RetrieverQueryEngine(retriever=retriever)
+            if len(semantic_results.points) > 0:
+                break
 
-        logger.debug("Running semantic search ...")
-        semantic_results: Response = query_engine.query(query)
-        semantic_doc_id = [
-            node.metadata["vector_id"] for node in semantic_results.source_nodes
+        combined_nodes: list[NodeWithScore] = [
+            NodeWithScore(
+                node=Node(text=point.payload["text"]),
+                score=point.score,
+            )
+            for point in semantic_results.points
         ]
 
-        def get_content_by_doc_id(doc_id: str):
-            for node in semantic_results.source_nodes:
-                if node.metadata["vector_id"] == doc_id:
-                    return node.text
-            return ""
+        logger.info("combined_nodes: %s", combined_nodes)
 
-        logger.debug("Running BM25 search ...")
-        bm25_results = self.es.search(
-            index_name=collection_name, query=query, top_k=top_k
-        )
-        bm25_doc_id = [result.vector_id for result in bm25_results]
+        # query_bundle = QueryBundle(query_str=query)
 
-        logger.debug("Rank Fusion ...")
-        combined_nodes: list[NodeWithScore] = []
-        combined_ids: list[UUID] = list(set(semantic_doc_id + bm25_doc_id))
+        # logger.debug("Reranking ...")
+        # retrieved_nodes = self.reranker.postprocess_nodes(combined_nodes, query_bundle)
 
-        # Compute score according to: https://github.com/anthropics/anthropic-cookbook/blob/main/skills/contextual-embeddings/guide.ipynb
-        semantic_count = 0
-        bm25_count = 0
-        both_count = 0
-        for id in combined_ids:
-            score = 0
-            content = ""
-            if id in semantic_doc_id:
-                index = semantic_doc_id.index(id)
-                score += semantic_weight * (1 / (index + 1))
-                content = get_content_by_doc_id(id)
-                semantic_count += 1
+        # contexts = [n.node.text for n in retrieved_nodes]
+        contexts = [n.node.text for n in combined_nodes]
 
-            if id in bm25_doc_id:
-                index = bm25_doc_id.index(id)
-                score += bm25_weight * (1 / (index + 1))
-
-                if content == "":
-                    content = (
-                        bm25_results[index].contextualized_content
-                        + "\n\n"
-                        + bm25_results[index].content
-                    )
-                bm25_count += 1
-            if id in semantic_doc_id and id in bm25_doc_id:
-                both_count += 1
-
-            combined_nodes.append(
-                NodeWithScore(
-                    node=Node(text=content, metada={}),
-                    score=score,
-                )
-            )
-
-        if debug:
-            logger.debug(
-                "semantic_count: %s - bm25_count: %s - both_count: %s",
-                semantic_count,
-                bm25_count,
-                both_count,
-            )
-
-        query_bundle = QueryBundle(query_str=query)
-
-        logger.debug("Reranking ...")
-        retrieved_nodes = self.reranker.postprocess_nodes(combined_nodes, query_bundle)
-
-        contexts = [n.node.text for n in retrieved_nodes]
+        logger.info("contexts: %s", contexts)
 
         logger.debug("Generating response ...")
         messages = [
@@ -581,13 +498,17 @@ class ContextualRAG:
             ChatMessage(
                 role="user",
                 content=QA_PROMPT.format(
-                    context_str=json.dumps(contexts),
+                    context_str="\n\n".join(contexts),
                     query_str=query,
                 ),
             ),
         ]
 
         response = self.llm.chat(messages).message.content
+
+        logger.info("response: %s", response)
+
+        logger.info("Time taken: %s", time.time() - start_time)
 
         langfuse.flush()
 
@@ -598,11 +519,9 @@ class ContextualRAG:
         self,
         session_id: str | uuid.UUID,
         is_contextual_rag: bool,
-        collection_name: str,
+        kb_ids: list[str | UUID],
         query: str,
         top_k: int = 150,
-        top_n: int = 3,
-        debug: bool = False,
         system_prompt: str = ASSISTANT_SYSTEM_PROMPT,
     ):
         """
@@ -613,7 +532,7 @@ class ContextualRAG:
             is_contextual_rag (bool): Is contextual RAG or not.
             collection_name (str): The qdrant collection name (knowledge_bases.id).
             query (str): The query to search.
-            top_k (int): The top K documents to retrieve. Default to `150`.
+            top_k (int): The top K documents to retrieve. Default to `50`.
             top_n (int): The top N documents to return after reranking. Default to `3`.
             debug (bool): debug mode.
         """
@@ -623,9 +542,14 @@ class ContextualRAG:
 
         if is_contextual_rag:
             response = self.contextual_rag_search(
-                collection_name, query, session_id, top_k, top_n, debug, system_prompt
+                kb_ids=kb_ids,
+                query=query,
+                session_id=session_id,
+                top_k=top_k,
+                system_prompt=system_prompt,
             )
         else:
-            response = self.rag_search(collection_name, query, session_id)
+            logger.warning("Original RAG search is deprecated.")
+            response = ""
 
         return response

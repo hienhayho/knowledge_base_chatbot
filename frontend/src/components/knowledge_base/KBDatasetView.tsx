@@ -5,7 +5,6 @@ import {
     Search,
     Plus,
     FileText,
-    Settings,
     Check,
     FileIcon,
     File,
@@ -19,7 +18,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
-import { message, Tooltip } from "antd";
+import { message, Popconfirm, Tooltip } from "antd";
 import { formatDate } from "@/utils";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
@@ -48,6 +47,7 @@ interface Document {
     file_name: string;
     created_at: string;
     file_type: string;
+    file_size_in_mb: number;
     status: string;
     progress?: number;
 }
@@ -61,6 +61,7 @@ interface IUploadFile {
     doc_id: string;
     file_name: string;
     file_type: string;
+    file_size_in_mb: number;
     created_at: string;
     status: string;
 }
@@ -83,10 +84,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
-            if (!token) {
-                router.push(`/login?redirect=${redirectURL}`);
-                return;
-            }
             try {
                 const response = await fetch(
                     `${API_BASE_URL}/api/kb/get_kb/${knowledgeBaseID}`,
@@ -96,10 +93,10 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         },
                     }
                 );
+                const data: KnowledgeBase = await response.json();
                 if (!response.ok) {
                     throw new Error("Failed to fetch knowledge base data");
                 }
-                const data: KnowledgeBase = await response.json();
 
                 setKnowledgeBase(data);
                 setDocuments(data.documents);
@@ -117,7 +114,13 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     useEffect(() => {
         const checkProcessingDocuments = async () => {
             if (!token) {
-                router.push(`/login?redirect=${redirectURL}`);
+                errorMessage({
+                    content: "Session expired. Please login again.",
+                    duration: 3,
+                });
+                setTimeout(() => {
+                    router.push(`/login?redirect=${redirectURL}`);
+                }, 3000);
                 return;
             }
             const processingDocs = documents.filter(
@@ -222,9 +225,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(
-                        errorData.detail || "Failed to upload document"
-                    );
+                    errorMessage({
+                        content:
+                            errorData.detail || "Failed to upload document",
+                        duration: 3,
+                    });
+                    continue;
                 }
 
                 const result: IUploadFile = await response.json();
@@ -236,6 +242,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         created_at: result.created_at,
                         file_type: result.file_type,
                         status: "uploaded",
+                        file_size_in_mb: result.file_size_in_mb,
                     },
                 ]);
 
@@ -298,42 +305,39 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     };
 
     const handleDeleteDocument = async (documentId: string) => {
-        if (window.confirm("Are you sure you want to delete this document?")) {
-            try {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
-                    {
-                        method: "DELETE",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({ delete_to_retry: false }),
-                    }
-                );
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    errorMessage({
-                        content:
-                            errorData.detail || "Failed to delete document",
-                    });
-                    return;
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ delete_to_retry: false }),
                 }
-
-                successMessage({
-                    content: "Document deleted successfully",
-                });
-
-                setDocuments((prevDocuments) =>
-                    prevDocuments.filter((doc) => doc.id !== documentId)
-                );
-            } catch (error) {
-                console.error("Error deleting document:", error);
+            );
+            if (!response.ok) {
+                const errorData = await response.json();
                 errorMessage({
-                    content: (error as Error).message,
+                    content: errorData.detail || "Failed to delete document",
                 });
-                setError((error as Error).message);
+                return;
             }
+
+            successMessage({
+                content: "Document deleted successfully",
+            });
+
+            setDocuments((prevDocuments) =>
+                prevDocuments.filter((doc) => doc.id !== documentId)
+            );
+        } catch (error) {
+            console.error("Error deleting document:", error);
+            errorMessage({
+                content: (error as Error).message,
+            });
+            setError((error as Error).message);
         }
     };
 
@@ -550,14 +554,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         <FileText className="inline-block mr-2" size={20} />
                         Dataset
                     </a>
-
-                    <a
-                        href="#"
-                        className="block py-2 px-4 text-gray-600 hover:bg-gray-100"
-                    >
-                        <Settings className="inline-block mr-2" size={20} />
-                        Configuration
-                    </a>
                 </nav>
             </aside>
 
@@ -591,10 +587,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 </div>
 
                 <div className="bg-white shadow rounded-lg p-6">
-                    <div className="flex justify-between mb-4">
-                        <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded">
-                            Bulk
-                        </button>
+                    <div className="flex justify-end mb-4">
                         <div className="flex">
                             <div className="relative mr-2">
                                 <input
@@ -618,7 +611,8 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                     </div>
                     <table className="w-full">
                         <colgroup>
-                            <col style={{ width: "40%" }} />
+                            <col style={{ width: "25%" }} />
+                            <col style={{ width: "15%" }} />
                             <col style={{ width: "15%" }} />
                             <col style={{ width: "20%" }} />
                             <col style={{ width: "15%" }} />
@@ -627,6 +621,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                         <thead>
                             <tr className="text-left text-gray-600 bg-gray-100">
                                 <th className="p-2">Name</th>
+                                <th className="p-2">File Size (MB)</th>
                                 <th className="p-2">File Type</th>
                                 <th className="p-2">Upload Date</th>
                                 <th className="p-2">Status</th>
@@ -649,6 +644,11 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                     )}
                                                 </span>
                                             </div>
+                                        </td>
+                                        <td className="p-2">
+                                            {Math.round(
+                                                doc.file_size_in_mb * 100
+                                            ) / 100}
                                         </td>
                                         <td className="p-2">{doc.file_type}</td>
                                         <td className="p-2">
@@ -702,17 +702,30 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                         </button>
                                                     </Tooltip>
                                                     <Tooltip title="Delete the document">
-                                                        <button
-                                                            onClick={() =>
+                                                        <Popconfirm
+                                                            title="Delete this file"
+                                                            description="Are you sure to delete this file?"
+                                                            onConfirm={(e) => {
+                                                                e?.preventDefault();
                                                                 handleDeleteDocument(
                                                                     doc.id
-                                                                )
-                                                            }
-                                                            className="text-red-500 hover:text-red-700"
-                                                            title="Delete"
+                                                                );
+                                                            }}
+                                                            onCancel={(e) => {
+                                                                e?.preventDefault();
+                                                            }}
+                                                            okText="Yes"
+                                                            cancelText="No"
                                                         >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                            <button
+                                                                className="text-red-500 hover:text-red-700"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                        </Popconfirm>
                                                     </Tooltip>
                                                 </div>
                                             ) : doc.status === "processing" ? (
@@ -741,7 +754,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                                 )
                                                             }
                                                             className="text-red-500 hover:text-red-700"
-                                                            title="Delete"
+                                                            title="Stop processing"
                                                         >
                                                             <CircleStop
                                                                 size={16}
@@ -768,17 +781,30 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                                                         </button>
                                                     </Tooltip>
                                                     <Tooltip title="Delete the document">
-                                                        <button
-                                                            onClick={() =>
+                                                        <Popconfirm
+                                                            title="Delete this file"
+                                                            description="Are you sure to delete this file?"
+                                                            onConfirm={(e) => {
+                                                                e?.preventDefault();
                                                                 handleDeleteDocument(
                                                                     doc.id
-                                                                )
-                                                            }
-                                                            className="text-red-500 hover:text-red-700"
-                                                            title="Delete"
+                                                                );
+                                                            }}
+                                                            onCancel={(e) => {
+                                                                e?.preventDefault();
+                                                            }}
+                                                            okText="Yes"
+                                                            cancelText="No"
                                                         >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                            <button
+                                                                className="text-red-500 hover:text-red-700"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                        </Popconfirm>
                                                     </Tooltip>
                                                 </div>
                                             ) : (

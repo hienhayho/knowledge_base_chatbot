@@ -7,12 +7,13 @@ from qdrant_client.http import models
 from qdrant_client import QdrantClient
 from typing import List, Dict, Any, Optional
 from qdrant_client.http.exceptions import ResponseHandlingException
+from qdrant_client.models import ScoredPoint
 from tenacity import (
     retry,
-    stop_after_attempt,
     wait_fixed,
     after_log,
     before_sleep_log,
+    stop_after_attempt,
     retry_if_exception_type,
 )
 
@@ -33,14 +34,14 @@ class BaseVectorDatabase(ABC):
         Args:
             collection_name (str): Collection name to check
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def test_connection(self):
         """
         Test the connection with the server.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def create_collection(self, collection_name: str, vector_size: int):
@@ -51,7 +52,7 @@ class BaseVectorDatabase(ABC):
             collection_name (str): Collection name
             vector_size (int): Vector size
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def add_vector(
@@ -70,7 +71,26 @@ class BaseVectorDatabase(ABC):
             vector (List[float]): Vector embedding
             payload (Dict[str, Any]): Payload for the vector
         """
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_vectors(
+        self,
+        collection_name: str,
+        vector_ids: List[str],
+        vectors: List[List[float]],
+        payloads: List[Dict[str, Any]],
+    ):
+        """
+        Add multiple vectors to the collection
+
+        Args:
+            collection_name (str): Collection name to add
+            vector_ids (List[str]): Vector IDs
+            vectors (List[List[float]]): Vector embeddings
+            payloads (List[Dict[str, Any]]): Payloads for the vectors
+        """
+        raise NotImplementedError
 
 
 class QdrantVectorDatabase(BaseVectorDatabase):
@@ -108,11 +128,20 @@ class QdrantVectorDatabase(BaseVectorDatabase):
 
     def create_collection(self, collection_name: str, vector_size: int):
         if not self.client.collection_exists(collection_name):
-            logger.info(f"Creating collection {collection_name}")
+            logger.info(
+                "collection_name: %s - vector_size: %s", collection_name, vector_size
+            )
             self.client.create_collection(
                 collection_name,
                 vectors_config=models.VectorParams(
-                    size=vector_size, distance=self.distance
+                    size=vector_size, distance=self.distance, on_disk=True
+                ),
+                optimizers_config=models.OptimizersConfigDiff(
+                    default_segment_number=5,
+                    indexing_threshold=0,
+                ),
+                quantization_config=models.BinaryQuantization(
+                    binary=models.BinaryQuantizationConfig(always_ram=True),
                 ),
             )
 
@@ -145,6 +174,36 @@ class QdrantVectorDatabase(BaseVectorDatabase):
                 )
             ],
         )
+
+    def add_vectors(
+        self,
+        collection_name: str,
+        vector_ids: List[str],
+        vectors: List[List[float]],
+        payloads: List[QdrantPayload],
+    ):
+        """
+        Add multiple vectors to the collection
+
+        Args:
+            collection_name (str): Collection name to add
+            vector_ids (List[str]): Vector IDs
+            vectors (List[List[float]]): Vector embeddings
+            payloads (List[QdrantPayload]): Payloads for the vectors
+        """
+        if not self.check_collection_exists(collection_name):
+            self.create_collection(collection_name, len(vectors[0]))
+
+        points = [
+            models.PointStruct(
+                id=vector_id,
+                payload=payload.model_dump(),
+                vector=vector,
+            )
+            for vector_id, vector, payload in zip(vector_ids, vectors, payloads)
+        ]
+
+        self.client.upsert(collection_name=collection_name, points=points)
 
     def delete_vector(self, collection_name: str, document_id: str | UUID):
         """
@@ -249,4 +308,35 @@ class QdrantVectorDatabase(BaseVectorDatabase):
 
         logger.info(
             f"Migration from {source_collection} to {target_collection} completed successfully!"
+        )
+
+    def search_vector(
+        self,
+        collection_name: str,
+        vector: list[float],
+        search_params: models.SearchParams,
+        query_filter: Optional[models.Filter] = None,
+        limit: int = 10,
+        timeout: int = 30,
+    ) -> List[ScoredPoint]:
+        """
+        Search for a vector in the collection
+
+        Args:
+            collection_name (str): Collection name to search
+            vector (list[float]): Vector embedding
+            search_params (models.SearchParams): Search parameters
+            query_filter (models.Filter): Filter conditions (list of kb_ids)
+            limit (int)
+        Returns:
+            List[models.PointStruct]: List of points
+        """
+        return self.client.query_points(
+            collection_name=collection_name,
+            query=vector,
+            search_params=search_params,
+            with_payload=True,
+            query_filter=query_filter,
+            limit=limit,
+            timeout=timeout,
         )

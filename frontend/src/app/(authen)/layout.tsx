@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { AuthProvider } from "@/hooks/auth";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,7 +16,9 @@ export default function AuthenLayout({
     return (
         <html lang="en" className="h-full">
             <body className={`${inter.className} flex flex-col h-full`}>
-                <div className="flex-grow">{children}</div>
+                <AuthProvider>
+                    <div className="flex-grow">{children}</div>
+                </AuthProvider>
             </body>
         </html>
     );

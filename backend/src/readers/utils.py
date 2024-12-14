@@ -8,7 +8,6 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from llama_index.readers.json import JSONReader
 from llama_index.readers.file import (
-    PandasCSVReader,
     PptxReader,  # noqa
     PandasExcelReader,
     UnstructuredReader,
@@ -20,7 +19,11 @@ from llama_index.readers.file import (
     RTFReader,
 )
 
-from .kotaemon import DocxReader, HtmlReader, TxtReader  # noqa
+from .kotaemon import (
+    DocxReader,
+    TxtReader,
+    PandasCSVReaderCustomised,
+)  # noqa
 from src.constants import SUPPORTED_FILE_EXTENSIONS
 from src.utils import get_formatted_logger
 from src.settings import GlobalSettings
@@ -84,7 +87,10 @@ def get_extractor():
         ".pdf": PDFReader(),
         ".docx": DocxReader(),
         ".html": UnstructuredReader(),
-        ".csv": PandasCSVReader(pandas_config=dict(on_bad_lines="skip")),
+        # ".csv": PandasCSVReader(pandas_config=dict(on_bad_lines="skip")),
+        ".csv": PandasCSVReaderCustomised(
+            pandas_config=dict(on_bad_lines="skip"), concat_rows=True, top_k=100
+        ),
         ".xlsx": PandasExcelReader(),
         ".json": JSONReader(),
         ".txt": TxtReader(),

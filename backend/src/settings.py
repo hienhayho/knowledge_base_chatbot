@@ -10,10 +10,16 @@ from src.constants import (
     VectorDatabaseService,
     ASSISTANT_SYSTEM_PROMPT,
 )
+from src.utils import get_formatted_logger
 
 load_dotenv()
 
 config = Config.fromfile("config.py")
+
+logger = get_formatted_logger(__file__)
+
+logger.info("App configuration: \n")
+print(config.pretty_text)
 
 
 class APIKeys(BaseModel):
@@ -71,17 +77,6 @@ class QdrantConfig(BaseModel):
 
     Attributes:
         url (Optional[str]): Qdrant url
-    """
-
-    url: Optional[str] = None
-
-
-class ElasticSearchConfig(BaseModel):
-    """
-    ElasticSearch configuration.
-
-    Attributes:
-        url (Optional[str]): ElasticSearch url
     """
 
     url: Optional[str] = None
@@ -209,13 +204,6 @@ class GlobalSettings(BaseModel):
         description="Qdrant configuration",
     )
 
-    elastic_search_config: ElasticSearchConfig = Field(
-        default=ElasticSearchConfig(
-            url=os.getenv("ELASTIC_SEARCH_URL"),
-        ),
-        description="ElasticSearch configuration",
-    )
-
     upload_bucket_name: str = Field(default=config.minio_config.upload_bucket_name)
     upload_temp_folder: str = Field(
         default="uploads", description="Temporary upload folder before moving to Minio"
@@ -256,6 +244,10 @@ class GlobalSettings(BaseModel):
             type=config.agent_config.type,
         ),
         description="Agent configuration",
+    )
+    global_vector_db_collection_name: str = Field(
+        default=config.global_vector_db_collection_name,
+        description="Global vector database collection name",
     )
 
 

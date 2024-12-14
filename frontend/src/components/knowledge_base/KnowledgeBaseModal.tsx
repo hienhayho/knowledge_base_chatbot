@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { Modal, Input } from "antd";
+import React, { useState, useRef } from "react";
+import { Modal, Input, InputRef } from "antd";
+import { ICreateKnowledgeBase } from "@/types";
 const { TextArea } = Input;
 
 const KnowledgeBaseModal = ({
@@ -13,14 +14,11 @@ const KnowledgeBaseModal = ({
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     onClose: () => void;
-    onCreate: (formData: {
-        name: string;
-        description: string;
-        useContextualRag: boolean;
-    }) => void;
+    onCreate: (body: ICreateKnowledgeBase) => void;
 }) => {
     const [name, setName] = useState<string>("");
     const [description, setDescription] = useState<string>("");
+    const inputRef = useRef<InputRef>(null);
 
     if (!isOpen) return null;
 
@@ -29,6 +27,7 @@ const KnowledgeBaseModal = ({
             name,
             description,
             useContextualRag: true,
+            is_contextual_rag: true,
         };
         onCreate(formData);
         setName("");
@@ -51,12 +50,20 @@ const KnowledgeBaseModal = ({
             open={isOpen}
             onCancel={handleCancel}
             onOk={handleOk}
+            afterOpenChange={(open) => {
+                if (open && inputRef.current) {
+                    setTimeout(() => {
+                        inputRef.current?.focus();
+                    }, 100);
+                }
+            }}
         >
             <div className="mt-3">
                 <label className="block mb-1">
                     <strong>Name:</strong>
                 </label>
                 <Input
+                    ref={inputRef}
                     placeholder="e.g Math kb"
                     value={name}
                     onChange={(e) => setName(e.target.value)}

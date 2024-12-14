@@ -6,9 +6,17 @@ from fastapi import FastAPI
 from datetime import datetime
 from dotenv import load_dotenv
 from src.utils import get_formatted_logger
+from src.constants import DOWNLOAD_FOLDER
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import user_router, kb_router, assistant_router, DOWNLOAD_FOLDER
+from api.routers import (
+    user_router,
+    kb_router,
+    assistant_router,
+    tool_router,
+    dashboard_router,
+    admin_router,
+)
 from contextlib import asynccontextmanager
 
 logger = get_formatted_logger(__file__)
@@ -55,7 +63,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="NoCodeAgentSystem",
+    title="Knowledge Base Chatbot",
+    contact={"name": "hienhayho", "email": "hienhayho3002@gmail.com"},
     lifespan=lifespan,
 )
 
@@ -77,6 +86,9 @@ def health_check():
 app.include_router(user_router, tags=["user"], prefix="/api/users")
 app.include_router(kb_router, tags=["knowledge_base"], prefix="/api/kb")
 app.include_router(assistant_router, tags=["assistant"], prefix="/api/assistant")
+app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
+app.include_router(tool_router, tags=["tools"], prefix="/api/tools")
+app.include_router(admin_router, tags=["admin"], prefix="/api/admin")
 
 if __name__ == "__main__":
     import uvicorn

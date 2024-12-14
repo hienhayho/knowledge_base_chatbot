@@ -1,46 +1,5 @@
-from .users import UserRequest, UserResponse, UserLogin, DeleteUserRequest
-from .knowledge_bases import (
-    KnowledgeBaseRequest,
-    KnowledgeBaseResponse,
-    UploadFileResponse,
-    GetDocumentStatusReponse,
-    GetKnowledgeBase,
-    GetKnowledgeBaseResponse,
-    MergeKnowledgeBasesRequest,
-    DeleteDocumentRequestBody,
-)
-from .assistants import (
-    AssistantCreate,
-    AssistantResponse,
-    ConversationResponse,
-    ConversationRenameRequest,
-    ChatMessage,
-    MessageResponse,
-    ChatResponse,
-    AssistantWithTotalCost,
-    AsistantUpdatePhraseRequest,
-)
-
-__all__ = [
-    "UserRequest",
-    "UserResponse",
-    "UserLogin",
-    "DeleteUserRequest",
-    "KnowledgeBaseRequest",
-    "KnowledgeBaseResponse",
-    "UploadFileResponse",
-    "GetDocumentStatusReponse",
-    "GetKnowledgeBase",
-    "GetKnowledgeBaseResponse",
-    "AssistantCreate",
-    "AssistantResponse",
-    "ConversationResponse",
-    "ConversationRenameRequest",
-    "ChatMessage",
-    "MessageResponse",
-    "ChatResponse",
-    "AssistantWithTotalCost",
-    "MergeKnowledgeBasesRequest",
-    "AsistantUpdatePhraseRequest",
-    "DeleteDocumentRequestBody",
-]
+from .users import *  # noqa
+from .knowledge_bases import *  # noqa
+from .assistants import *  # noqa
+from .dashboard import *  # noqa
+from .admin import *  # noqa

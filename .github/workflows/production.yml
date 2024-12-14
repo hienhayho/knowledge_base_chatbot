@@ -2,9 +2,8 @@ name: Production-Ready
 
 on:
     push:
-        branches: ["main", "hien_dev"]
     pull_request:
-        branches: ["main", "hien_dev"]
+        branches: ["main"]
 
 jobs:
     build-production:
@@ -18,10 +17,10 @@ jobs:
                   cp .env.production frontend/.env.local
                   docker compose up -d --build
 
-            - name: Sleep for 120 seconds
+            - name: Sleep for 30 seconds
               uses: jakejarvis/wait-action@master
               with:
-                  time: "120"
+                  time: "30"
 
             - name: List all docker images
               run: |
