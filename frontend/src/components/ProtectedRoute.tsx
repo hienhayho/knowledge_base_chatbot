@@ -7,7 +7,7 @@ export default function ProtectedRoute<P extends object>(
     WrappedComponent: ComponentType<P>
 ) {
     return function WithProtectedRoute(props: P) {
-        const { isAuthenticated, loading, user } = useAuth();
+        const { isAuthenticated, loading, user, token } = useAuth();
         const router = useRouter();
         const pathname = usePathname();
 
@@ -25,7 +25,7 @@ export default function ProtectedRoute<P extends object>(
                     router.push("/knowledge");
                 }
             }
-        }, [loading, isAuthenticated, router, pathname, user]);
+        }, [loading, isAuthenticated, router, pathname, user, token]);
 
         if (loading) {
             return <LoadingSpinner />;

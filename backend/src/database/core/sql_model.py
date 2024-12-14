@@ -17,7 +17,6 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from src.constants import FileStatus, SenderType, UserRole, ExistTools
 
-# from src.tools.get_exist_tools import ExistTools
 from src.settings import get_default_setting, GlobalSettings
 
 load_dotenv()
@@ -105,7 +104,7 @@ class Users(SQLModel, table=True):
     )
     username: str = Field(nullable=False, unique=True, description="Unique Username")
     email: EmailStr = Field(
-        sa_type=String(), nullable=False, unique=True, description="Email Address"
+        sa_type=String(), nullable=True, description="Email Address"
     )
     hashed_password: str = Field(nullable=False, description="Hashed Password")
 

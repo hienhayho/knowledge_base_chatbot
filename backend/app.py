@@ -15,6 +15,7 @@ from api.routers import (
     assistant_router,
     tool_router,
     dashboard_router,
+    admin_router,
 )
 from contextlib import asynccontextmanager
 
@@ -87,6 +88,7 @@ app.include_router(kb_router, tags=["knowledge_base"], prefix="/api/kb")
 app.include_router(assistant_router, tags=["assistant"], prefix="/api/assistant")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(tool_router, tags=["tools"], prefix="/api/tools")
+app.include_router(admin_router, tags=["admin"], prefix="/api/admin")
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,4 +1,3 @@
-import { getCookie } from "cookies-next";
 import { authEndpoints } from "@/endpoints";
 import { IUser, SignUpFormValues } from "@/types";
 
@@ -41,9 +40,7 @@ export const register = async (body: SignUpFormValues) => {
     };
 };
 
-export const me = async () => {
-    const token = getCookie("access_token");
-
+export const me = async (token: string) => {
     const response = await fetch(authEndpoints.me, {
         method: "GET",
         headers: {

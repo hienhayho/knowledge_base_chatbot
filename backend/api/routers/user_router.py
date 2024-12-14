@@ -5,18 +5,17 @@ from typing import Annotated
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from passlib.context import CryptContext
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, select
 from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timedelta, timezone
 from api.models import (
     UserResponse,
     UserRequest,
     DeleteUserRequest,
-    AdminRegisterRequest,
 )
 
 from fastapi.responses import JSONResponse
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from src.constants import UserRole
@@ -86,10 +85,11 @@ def get_password_hash(password: str) -> str:
 
 
 def get_user(
-    session: Session, username: str | None = None, email: str | None = None
+    session: Session,
+    username: str | None = None,
 ) -> Users:
     """
-    Get user by username or email
+    Get user by username
 
     Args:
         session (Session): Database session
@@ -103,11 +103,11 @@ def get_user(
         ValueError: If username or email is not provided
     """
 
-    if not username and not email:
-        raise ValueError("Username or email is required")
+    if not username:
+        raise ValueError("Username is required")
     with session as session_db:
         query = select(Users).where(
-            or_(Users.username == username, Users.email == email)
+            Users.username == username,
         )
         user = session_db.exec(query).first()
 
@@ -226,6 +226,7 @@ def create_new_user(
     username = userInfo.username
     email = userInfo.email
     password = userInfo.password
+    admin_access_token = userInfo.admin_access_token
 
     with db_session as session:
         user = get_user(session, username, email)
@@ -235,8 +236,21 @@ def create_new_user(
                 detail="Username or email already registered",
             )
 
+        role = UserRole.USER
+        if admin_access_token is not None:
+            if admin_access_token == ADMIN_ACCESS_TOKEN:
+                role = UserRole.ADMIN
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Key not match, forbidden to create admin user",
+                )
+
         new_user = Users(
-            username=username, email=email, hashed_password=get_password_hash(password)
+            username=username,
+            email=email,
+            hashed_password=get_password_hash(password),
+            role=role,
         )
         session.add(new_user)
         session.commit()
@@ -254,6 +268,7 @@ async def login_for_access_token(
     """
     Endpoint to login and get access token
     """
+    print("form_data: ", form_data.username, form_data.password)
     user = authenticate_user(db_session, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -309,51 +324,3 @@ async def delete_user(
             status_code=status.HTTP_200_OK,
             content={"message": f"User: {delete_user_request.username} deleted"},
         )
-
-
-@user_router.post(
-    "/admin-register", response_model=Token, status_code=status.HTTP_201_CREATED
-)
-async def admin_register(
-    admin_register_request: Annotated[AdminRegisterRequest, Body(...)],
-    db_session: Annotated[Session, Depends(get_session)],
-):
-    """
-    Endpoint to register admin user
-    """
-    username = admin_register_request.username
-    email = admin_register_request.username
-    password = admin_register_request.password
-    admin_access_token = admin_register_request.admin_access_token
-
-    if admin_access_token != ADMIN_ACCESS_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not authorized to register an admin account",
-        )
-
-    with db_session as session:
-        user = get_user(session, username, email)
-        if user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username or email already registered",
-            )
-
-        new_user = Users(
-            username=username,
-            email=email,
-            hashed_password=get_password_hash(password),
-            role=UserRole.ADMIN,
-        )
-        session.add(new_user)
-        session.commit()
-        session.refresh(new_user)
-        session.close()
-
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": new_user.username}, expires_delta=access_token_expires
-        )
-
-        return {"access_token": access_token, "token_type": "bearer"}

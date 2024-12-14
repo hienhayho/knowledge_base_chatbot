@@ -11,6 +11,7 @@
   "dependencies": {
     "@types/chart.js": "^2.9.41",
     "antd": "^5.21.3",
+    "antd-style": "^3.7.1",
     "chart.js": "^4.4.6",
     "cookies-next": "^4.3.0",
     "lucide-react": "^0.452.0",

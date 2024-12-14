@@ -2,9 +2,8 @@
 
 import React, { useState } from "react";
 import { Button, Form, Input, FormProps, message } from "antd";
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
+import { KeyOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { Mail } from "lucide-react";
 import { SignUpFormValues } from "@/types";
 import { authApi } from "@/api";
 
@@ -44,7 +43,13 @@ const SignUp: React.FC = () => {
     const onFinish: FormProps["onFinish"] = async (
         values: SignUpFormValues
     ) => {
-        const { username, email, password, retypePassword } = values;
+        const {
+            username,
+            email,
+            password,
+            retypePassword,
+            admin_access_token,
+        } = values;
 
         if (password !== retypePassword) {
             errorMessage({
@@ -60,7 +65,7 @@ const SignUp: React.FC = () => {
                 email: email,
                 password: password,
                 retypePassword: retypePassword,
-                admin_access_token: "",
+                admin_access_token: admin_access_token,
             });
 
             if (!result.success) {
@@ -96,7 +101,7 @@ const SignUp: React.FC = () => {
         <div style={styles.container}>
             {contextHolder}
             <div style={styles.formWrapper}>
-                <h1 style={styles.header}>Register</h1>
+                <h1 style={styles.header}>Admin Register</h1>
                 <Form
                     name="basic"
                     style={{
@@ -126,25 +131,6 @@ const SignUp: React.FC = () => {
                             autoFocus
                             prefix={<UserOutlined />}
                             placeholder="Username"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="email"
-                        rules={[
-                            {
-                                required: true,
-                                message: "Please input your email!",
-                                type: "email",
-                            },
-                        ]}
-                        style={{
-                            width: "80%",
-                        }}
-                    >
-                        <Input
-                            prefix={<Mail size={16} />}
-                            placeholder="Email"
                         />
                     </Form.Item>
 
@@ -212,6 +198,38 @@ const SignUp: React.FC = () => {
                         />
                     </Form.Item>
 
+                    <Form.Item
+                        name="admin_access_token"
+                        rules={[
+                            {
+                                required: true,
+                                message:
+                                    "Please input your admin access token!",
+                            },
+                            () => ({
+                                validator(_, value) {
+                                    if (!value || value.length >= 1) {
+                                        return Promise.resolve();
+                                    }
+                                    return Promise.reject(
+                                        new Error(
+                                            "Admin access token must not be empty!"
+                                        )
+                                    );
+                                },
+                            }),
+                        ]}
+                        style={{
+                            width: "80%",
+                        }}
+                    >
+                        <Input.Password
+                            prefix={<KeyOutlined />}
+                            type="password"
+                            placeholder="Admin Access Token"
+                        />
+                    </Form.Item>
+
                     <div
                         style={{
                             display: "flex",
@@ -225,7 +243,7 @@ const SignUp: React.FC = () => {
                                 htmlType="submit"
                                 loading={loading}
                             >
-                                Register
+                                Register Admin
                             </Button>
                         </Form.Item>
                         <div style={styles.footer}>

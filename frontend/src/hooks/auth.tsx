@@ -26,6 +26,7 @@ interface AuthContextType {
     }>;
     loading: boolean;
     isAuthenticated: boolean;
+    changeUser: (user: IUser | null, token: string) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -46,17 +47,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     useEffect(() => {
         const verifyToken = async () => {
-            console.log("run");
             try {
-                const user_access_token = getCookie("access_token");
+                const user_access_token = getCookie("access_token") as string;
                 if (!user_access_token) {
-                    throw new Error("Token not found");
+                    setUser(null);
+                    setIsAuthenticated(false);
+                    setIsLoggedOut(true);
+                    return;
                 }
-
                 // Optionally, call an endpoint to verify the token's validity
-                const userData = await authApi.me();
+                const userData = await authApi.me(user_access_token);
                 setUser(userData);
-                setToken(user_access_token as string);
+                setToken(user_access_token);
                 setIsAuthenticated(true);
             } catch (error) {
                 console.error("Token verification failed:", error);
@@ -74,31 +76,57 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return () => {
             clearInterval(intervalId);
         };
-    }, [router, pathname]);
+    }, [router, pathname, token]);
 
     useEffect(() => {
-        if (isLoggedOut && pathname !== "/login") {
+        if (
+            isLoggedOut &&
+            pathname !== "/login" &&
+            pathname !== "/register" &&
+            pathname !== "/admin/register"
+        ) {
             router.push(`/login?redirect=${redirectURL}`);
-            setIsLoggedOut(false);
+            setIsLoggedOut(true);
         }
     }, [isLoggedOut, pathname, router, redirectURL]);
+
+    const changeUser = (user: IUser | null, token: string) => {
+        setUser(user);
+        setToken(token);
+        setIsAuthenticated(!!user);
+        setIsLoggedOut(false);
+    };
 
     useEffect(() => {
         async function loadUserFromToken() {
             try {
-                const user_access_token = getCookie("access_token");
-                const userData = await authApi.me();
-                setToken(user_access_token || "");
+                const user_access_token = getCookie("access_token") as string;
+
+                if (!user_access_token) {
+                    setIsAuthenticated(false);
+                    setUser(null);
+                    setIsLoggedOut(true);
+                    setLoading(false);
+                    return;
+                }
+
+                const userData = await authApi.me(user_access_token);
+
+                setToken(user_access_token);
                 setUser(userData);
                 setIsAuthenticated(true);
+                setIsLoggedOut(false);
             } catch (error) {
                 console.error("Failed to verify token:", error);
                 setIsAuthenticated(false);
+                setUser(null);
+                setToken("");
+                setIsLoggedOut(true);
             }
             setLoading(false);
         }
         loadUserFromToken();
-    }, []);
+    }, [token]);
 
     const login = async (body: URLSearchParams) => {
         try {
@@ -109,11 +137,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 path: "/",
             });
 
-            const userData = await authApi.me();
+            const userData = await authApi.me(data.access_token);
 
             setUser(userData);
             setToken(data.access_token);
             setIsAuthenticated(true);
+            setLoading(false);
+            setIsLoggedOut(false);
 
             return data;
         } catch (err) {
@@ -156,6 +186,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 register,
                 loading,
                 isAuthenticated,
+                changeUser,
             }}
         >
             {children}

@@ -1,3 +1,4 @@
+export type IApiResponse<T> = T | { detail: string };
 export interface INavItem {
     name: string;
     path: string;
@@ -44,6 +45,7 @@ export interface SignUpFormValues {
     email: string;
     password: string;
     retypePassword: string;
+    admin_access_token: string;
 }
 
 export interface SignUpResponse {
@@ -71,4 +73,15 @@ export interface IConversation {
     assistant_id: string;
     created_at: string;
     updated_at: string;
+}
+
+export interface IAdminUserSelect {
+    value: string;
+    label: string;
+}
+
+export interface IAdminSwitchUserResponse {
+    user: IUser;
+    access_token: string;
+    type: string;
 }

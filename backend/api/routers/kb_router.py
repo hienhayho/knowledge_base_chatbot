@@ -91,6 +91,7 @@ async def create_new_knowledge_base(
             updated_at=kb.updated_at,
             user=UserResponse(
                 id=current_user.id,
+                role=current_user.role,
                 username=current_user.username,
                 created_at=current_user.created_at,
                 updated_at=current_user.updated_at,

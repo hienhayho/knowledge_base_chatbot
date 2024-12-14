@@ -19,12 +19,12 @@ def load_llama_index_kb_tool(
 ) -> FunctionTool:
     contextual_rag = ContextualRAG.from_setting(setting=setting)
 
-    def knowledge_base_query(query: str) -> str:
+    def knowledge_base_query(user_question: str) -> str:
         """
         Query the knowledge base using contextual RAG
 
         Args:
-            query (str): Query string
+            user_question (str): Query string
 
         Returns:
             str: Response from the contextual RAG
@@ -33,7 +33,7 @@ def load_llama_index_kb_tool(
             session_id=session_id,
             is_contextual_rag=is_contextual_rag,
             kb_ids=[str(kb_id) for kb_id in kb_ids],
-            query=query,
+            query=user_question,
             top_k=setting.contextual_rag_config.top_k,
             system_prompt=system_prompt,
         )

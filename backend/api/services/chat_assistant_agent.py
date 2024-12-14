@@ -7,12 +7,12 @@ from langchain_openai import ChatOpenAI
 from llama_index.core.callbacks import CallbackManager
 from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
-from crewai_tools import LlamaIndexTool
+
 
 from src.agents import CrewAIAgent
 from src.settings import default_settings
 from src.utils import get_formatted_logger
-from src.tools import load_llama_index_kb_tool, load_product_search_tool
+from src.tools import load_llama_index_kb_tool, load_product_search_tool, LlamaIndexTool
 from src.constants import (
     ASSISTANT_SYSTEM_PROMPT,
     ChatAssistantConfig,
@@ -83,11 +83,11 @@ class ChatAssistant:
         )
 
         kb_task = Task(
-            description="Phản hồi câu hỏi của khách hàng như sau: {query}.",
-            expected_output="Một câu trả lời phù hợp nhất với câu hỏi của khách hàng.",
+            description="Phản hồi câu hỏi: {query}.",
+            expected_output="Một câu trả lời phù hợp nhất với câu hỏi được đưa ra.",
             agent=kb_agent,
             tools=[
-                LlamaIndexTool.from_tool(tool, return_as_answer=True)
+                LlamaIndexTool.from_tool(tool, result_as_answer=True)
                 for tool in self.tools
             ],
         )
