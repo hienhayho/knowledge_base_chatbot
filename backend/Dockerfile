@@ -4,6 +4,9 @@ FROM python:${VERSION:-3.11}
 
 WORKDIR /app
 
+RUN mkdir downloads \
+    && mkdir uploads
+
 COPY requirements.txt .
 
 COPY scripts/nltk_download.sh ./scripts/nltk_download.sh
