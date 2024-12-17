@@ -229,7 +229,7 @@ def create_new_user(
     admin_access_token = userInfo.admin_access_token
 
     with db_session as session:
-        user = get_user(session, username, email)
+        user = get_user(session, username)
         if user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

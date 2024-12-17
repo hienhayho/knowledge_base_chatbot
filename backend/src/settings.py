@@ -1,5 +1,4 @@
 import os
-import enum
 from mmengine import Config
 from typing import Optional
 from dotenv import load_dotenv
@@ -9,6 +8,8 @@ from src.constants import (
     RerankerService,
     VectorDatabaseService,
     ASSISTANT_SYSTEM_PROMPT,
+    StorageService,
+    LLMCollection,
 )
 from src.utils import get_formatted_logger
 
@@ -130,19 +131,6 @@ class ContextualRAGConfig(BaseModel):
     top_n: int
 
 
-class LLMCollection(str, enum.Enum):
-    """
-    LLM collection configuration.
-
-    Attributes:
-        OPENAI (str): OpenAI
-        REACT (str): React
-    """
-
-    OPENAI = "openai"
-    REACT = "react"
-
-
 class AgentConfig(BaseModel):
     """
     Agent configuration.
@@ -152,6 +140,18 @@ class AgentConfig(BaseModel):
     """
 
     type: LLMCollection
+
+
+class StorageConfig(BaseModel):
+    """
+    Storage configuration.
+
+    Attributes:
+        type (StorageService): Storage service
+        bucket_name (str): Bucket name
+    """
+
+    type: StorageService
 
 
 class GlobalSettings(BaseModel):
@@ -180,14 +180,11 @@ class GlobalSettings(BaseModel):
         description="API keys configuration",
     )
 
-    minio_config: MinioConfig = Field(
-        default=MinioConfig(
-            url=os.getenv("MINIO_URL"),
-            access_key=os.getenv("MINIO_ACCESS_KEY"),
-            secret_key=os.getenv("MINIO_SECRET_KEY"),
-            secure=config.minio_config.secure,
+    storage_config: StorageConfig = Field(
+        default=StorageConfig(
+            type=config.storage_config.type,
         ),
-        description="Minio configuration",
+        description="Storage service configuration, usally S3 or Minio",
     )
 
     sql_config: SQLConfig = Field(
@@ -204,7 +201,6 @@ class GlobalSettings(BaseModel):
         description="Qdrant configuration",
     )
 
-    upload_bucket_name: str = Field(default=config.minio_config.upload_bucket_name)
     upload_temp_folder: str = Field(
         default="uploads", description="Temporary upload folder before moving to Minio"
     )

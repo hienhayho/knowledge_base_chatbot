@@ -10,12 +10,13 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from .contextual_rag_manager import ContextualRAG
 from .core import (
-    MinioClient,
     get_instance_session,
     Messages,
     Conversations,
     Assistants,
     Documents,
+    load_storage_service,
+    BaseStorageClient,
 )
 
 from src.utils import get_formatted_logger
@@ -43,7 +44,9 @@ class DatabaseManager:
         else:
             self.db_session = db_session
 
-        self.minio_client = MinioClient.from_setting(setting)
+        self.storage_client: BaseStorageClient = load_storage_service(
+            setting.storage_config.type
+        )
         self.contextual_rag_client = ContextualRAG.from_setting(setting)
 
         logger.info("DatabaseManager initialized successfully !!!")
@@ -70,8 +73,8 @@ class DatabaseManager:
             file_path (str | Path): Local file path
         """
 
-        self.minio_client.upload_file(
-            bucket_name=self.setting.upload_bucket_name,
+        self.storage_client.upload_file(
+            bucket_name=self.storage_client.get_upload_bucket_name(),
             object_name=object_name,
             file_path=file_path,
         )
@@ -87,7 +90,7 @@ class DatabaseManager:
             str: Product file path or None
         """
         with self.db_session as session:
-            query = select(Documents.file_path_in_minio).where(
+            query = select(Documents.file_path_in_storage_service).where(
                 Documents.knowledge_base_id == knowledge_base_id,
                 Documents.is_product_file,
             )
@@ -109,8 +112,8 @@ class DatabaseManager:
             file_path (str): Local file path
         """
 
-        self.minio_client.download_file(
-            bucket_name=self.setting.upload_bucket_name,
+        self.storage_client.download_file(
+            bucket_name=self.storage_client.get_upload_bucket_name(),
             object_name=object_name,
             file_path=file_path,
         )
@@ -189,8 +192,8 @@ class DatabaseManager:
         """
 
         if not delete_to_retry:
-            self.minio_client.remove_file(
-                bucket_name=self.setting.upload_bucket_name,
+            self.storage_client.remove_file(
+                bucket_name=self.storage_client.get_upload_bucket_name(),
                 object_name=object_name,
             )
 
