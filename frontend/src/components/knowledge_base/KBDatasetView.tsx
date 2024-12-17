@@ -16,10 +16,10 @@ import {
 import UploadFileModal from "@/components/knowledge_base/UploadFileModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
-import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { message, Popconfirm, Tooltip } from "antd";
 import { formatDate } from "@/utils";
+import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -79,7 +79,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
     const [messageApi, contextHolder] = message.useMessage();
     const router = useRouter();
-    const token = getCookie("access_token") as string | undefined;
+    const { token } = useAuth();
     const redirectURL = encodeURIComponent(`/knowledge/${knowledgeBaseID}`);
 
     useEffect(() => {

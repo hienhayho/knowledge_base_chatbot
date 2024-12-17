@@ -6,9 +6,9 @@ import ChatArea from "@/components/chat/ChatArea";
 import TopBar from "@/components/chat/TopBar";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
-import { getCookie } from "cookies-next";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { IAssistant, IConversation } from "@/types";
+import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -30,21 +30,17 @@ const ChatAssistantPage = () => {
     const [conversations, setConversations] = useState<IConversation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const token = getCookie("access_token");
+    const { token } = useAuth();
     const redirectUrl = encodeURIComponent(`/chat/${params.assistant_id}`);
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectUrl}`);
-            return;
-        }
         if (conversation_id && conversations.length > 0) {
             const conv = conversations.find((c) => c.id === conversation_id);
             if (conv) {
                 setSelectedConversation(conv);
             }
         }
-    }, [conversation_id, conversations]);
+    }, [conversation_id, conversations, redirectUrl, router, token]);
 
     useEffect(() => {
         fetchAssistant();

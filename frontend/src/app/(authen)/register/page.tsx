@@ -60,7 +60,6 @@ const SignUp: React.FC = () => {
                 email: email,
                 password: password,
                 retypePassword: retypePassword,
-                admin_access_token: "",
             });
 
             if (!result.success) {

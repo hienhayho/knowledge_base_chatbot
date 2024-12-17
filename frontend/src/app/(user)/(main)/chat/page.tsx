@@ -5,12 +5,11 @@ import TopBar from "@/components/chat/TopBar";
 import CreateAssistantModal from "@/components/chat/CreateAssistantModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
-import { getCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { message } from "antd";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { IAssistant } from "@/types";
-// import { useAuth } from "@/hooks/auth";
+import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -24,13 +23,9 @@ const ChatMainPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const redirectUrl = encodeURIComponent("/chat");
-    const token = getCookie("access_token");
+    const { token } = useAuth();
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectUrl}`);
-            return;
-        }
         fetchAssistants();
     }, [token, redirectUrl, router]);
 
