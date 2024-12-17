@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FileText, MoreVertical, Trash2, Combine } from "lucide-react";
 import { Modal, Select, message } from "antd";
-import { getCookie } from "cookies-next";
+import { useAuth } from "@/hooks/auth";
 
 interface IMergeableKnowledgeBase {
     id: string;
@@ -33,7 +33,7 @@ const KnowledgeBaseCard = ({
     onClick: () => void;
     onDelete: () => void;
 }) => {
-    const token = getCookie("access_token");
+    const { token } = useAuth();
     const [messageApi, contextHolder] = message.useMessage();
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);

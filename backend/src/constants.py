@@ -258,6 +258,32 @@ class UserRole(str, enum.Enum):
     USER = "user"
 
 
+class LLMCollection(str, enum.Enum):
+    """
+    LLM collection configuration.
+
+    Attributes:
+        OPENAI (str): OpenAI
+        REACT (str): React
+    """
+
+    OPENAI = "openai"
+    REACT = "react"
+
+
+class StorageService(str, enum.Enum):
+    """
+    Storage service configuration.
+
+    Attributes:
+        S3 (str): S3
+        MINIO (str): Minio
+    """
+
+    S3 = "s3"
+    MINIO = "minio"
+
+
 class ExistTools(str, enum.Enum):
     """
     Enum class for all existing tools that allow to be used in the assistant system

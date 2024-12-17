@@ -1,31 +1,28 @@
+import os
 import sys
 import logging
 from minio import Minio
 from pathlib import Path
-from fastapi import Depends
-from typing import Annotated
 from urllib3.exceptions import MaxRetryError
 from tenacity import retry, stop_after_attempt, wait_fixed, after_log, before_sleep_log
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from src.settings import GlobalSettings, get_default_setting
-from src.utils import get_formatted_logger
+from .base import BaseStorageClient
+from src.utils import get_formatted_logger, convert_boolean_env_var
 
 logger = get_formatted_logger(__file__)
 
 
-def get_minio_client(
-    setting: Annotated[GlobalSettings, Depends(get_default_setting)],
-) -> "MinioClient":
-    return MinioClient(
-        url=setting.minio_config.url,
-        access_key=setting.minio_config.access_key,
-        secret_key=setting.minio_config.secret_key,
-        secure=setting.minio_config.secure,
+def get_minio_client() -> "MinioClient":
+    return MinioClient.get_instance(
+        url=os.getenv("MINIO_URL"),
+        access_key=os.getenv("MINIO_ACCESS_KEY"),
+        secret_key=os.getenv("MINIO_SECRET_KEY"),
+        secure=convert_boolean_env_var("MINIO_SECURE"),
     )
 
 
-class MinioClient:
+class MinioClient(BaseStorageClient):
     """
     Minio client to interact with Minio server
     """
@@ -56,14 +53,30 @@ class MinioClient:
         self.test_connection()
         logger.info("MinioClient initialized successfully !!!")
 
+    def get_upload_bucket_name(self):
+        return os.getenv("MINIO_UPLOAD_BUCKET_NAME")
+
     @classmethod
-    def from_setting(cls, setting: GlobalSettings) -> "MinioClient":
-        return cls(
-            url=setting.minio_config.url,
-            access_key=setting.minio_config.access_key,
-            secret_key=setting.minio_config.secret_key,
-            secure=setting.minio_config.secure,
-        )
+    def get_instance(
+        cls,
+        url: str,
+        access_key: str,
+        secret_key: str,
+        secure: bool = False,
+    ) -> "MinioClient":
+        """
+        Get Minio client instance
+
+        Args:
+            url (str): Minio url
+            access_key (str): Minio access key
+            secret_key (str): Minio secret key
+            secure (bool): Enable secure connection
+
+        Returns:
+            MinioClient: Minio client instance
+        """
+        return cls(url, access_key, secret_key, secure)
 
     def test_connection(self):
         """

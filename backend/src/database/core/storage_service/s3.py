@@ -1,31 +1,31 @@
+import os
 import sys
 import boto3
 import logging
 from pathlib import Path
-from fastapi import Depends
-from typing import Annotated
+from dotenv import load_dotenv
 from botocore.exceptions import ClientError
 from tenacity import retry, stop_after_attempt, wait_fixed, after_log, before_sleep_log
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from src.settings import GlobalSettings, get_default_setting
+from .base import BaseStorageClient
 from src.utils import get_formatted_logger
 
 logger = get_formatted_logger(__file__)
 
+load_dotenv()
 
-def get_s3_client(
-    setting: Annotated[GlobalSettings, Depends(get_default_setting)],
-) -> "S3Client":
+
+def get_s3_client() -> "S3Client":
     return S3Client(
-        region_name=setting.s3_config.region_name,
-        aws_access_key_id=setting.s3_config.aws_access_key_id,
-        aws_secret_access_key=setting.s3_config.aws_secret_access_key,
-        upload_bucket_name=setting.upload_bucket_name,
+        region_name=os.getenv("AWS_REGION"),
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_KEY"),
+        upload_bucket_name=os.getenv("AWS_BUCKET_NAME"),
     )
 
 
-class S3Client:
+class S3Client(BaseStorageClient):
     """
     S3Client to interact with AWS S3
     """
@@ -65,13 +65,34 @@ class S3Client:
         self.test_connection()
         logger.info("S3Client initialized successfully !!!")
 
+    def get_upload_bucket_name(self) -> str:
+        return self.upload_bucket_name
+
     @classmethod
-    def from_setting(cls, setting: GlobalSettings) -> "S3Client":
+    def get_instance(
+        cls,
+        region_name: str,
+        aws_access_key_id: str,
+        aws_secret_access_key: str,
+        upload_bucket_name: str,
+    ):
+        """
+        Get S3Client instance
+
+        Args:
+            region_name (str): AWS region name
+            aws_access_key_id (str): AWS access key
+            aws_secret_access_key (str): AWS secret key
+            upload_bucket_name (str): Bucket name to upload files
+
+        Returns:
+            S3Client: S3Client instance
+        """
         return cls(
-            region_name=setting.s3_config.region_name,
-            aws_access_key_id=setting.s3_config.aws_access_key_id,
-            aws_secret_access_key=setting.s3_config.aws_secret_access_key,
-            upload_bucket_name=setting.upload_bucket_name,
+            region_name=region_name,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            upload_bucket_name=upload_bucket_name,
         )
 
     def test_connection(self):
@@ -123,6 +144,23 @@ class S3Client:
             self.client.upload_file(file_path, bucket_name, object_name)
             logger.info(f"Uploaded: {file_path} --> {bucket_name}/{object_name}")
 
+        except ClientError as e:
+            logging.error(e)
+            return False
+        return True
+
+    def check_bucket_exists(self, bucket_name: str) -> bool:
+        """
+        Check if bucket exists in Minio
+
+        Args:
+            bucket_name (str): Bucket name
+
+        Returns:
+            bool: True if bucket exists, False otherwise
+        """
+        try:
+            self.client.head_bucket(Bucket=bucket_name)
         except ClientError as e:
             logging.error(e)
             return False

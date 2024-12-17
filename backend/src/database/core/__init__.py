@@ -10,8 +10,9 @@ from .sql_model import (
     get_session_manager,
     get_instance_session,
 )
-from .minio import MinioClient, get_minio_client
+from .storage_service.minio import MinioClient, get_minio_client
 from .vector_database import BaseVectorDatabase, QdrantVectorDatabase, QdrantPayload
+from .storage_service import BaseStorageClient, load_storage_service
 
 
 __all__ = [
@@ -30,4 +31,6 @@ __all__ = [
     "QdrantPayload",
     "get_session_manager",
     "get_instance_session",
+    "BaseStorageClient",
+    "load_storage_service",
 ]

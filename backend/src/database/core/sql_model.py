@@ -311,7 +311,7 @@ class Documents(SQLModel, table=True):
         nullable=False,
         description="File Name of the Document",
     )
-    file_path_in_minio: str = Field(
+    file_path_in_storage_service: str = Field(
         nullable=False,
         description="Path of the Document",
     )
@@ -353,7 +353,7 @@ class Documents(SQLModel, table=True):
 
     @property
     def file_path(self):
-        return self.file_path_in_minio
+        return self.file_path_in_storage_service
 
 
 class DocumentChunks(SQLModel, table=True):

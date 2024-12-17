@@ -1,9 +1,10 @@
 import os
 import copy
 import uuid
+
 from pathlib import Path
 from collections import deque
-from typing import Annotated
+from typing import Annotated, Type
 from celery.result import AsyncResult
 from sqlmodel import Session, select, not_, col, or_, and_
 from fastapi.responses import JSONResponse, FileResponse
@@ -38,12 +39,12 @@ from src.database import (
     Assistants,
     DocumentChunks,
     get_session,
-    MinioClient,
     is_valid_uuid,
     get_db_manager,
     KnowledgeBases,
     DatabaseManager,
-    get_minio_client,
+    load_storage_service,
+    BaseStorageClient,
 )
 from src.celery import celery_app
 from src.tasks import parse_document
@@ -131,9 +132,12 @@ async def create_new_knowledge_base(
 async def upload_file(
     knowledge_base_id: str,
     file: Annotated[UploadFile, File(...)],
+    storage_client: Annotated[
+        Type[BaseStorageClient],
+        Depends(load_storage_service),
+    ],
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    minio_client: Annotated[MinioClient, Depends(get_minio_client)],
 ):
     """
     Upload file to knowledge base for the current user
@@ -189,7 +193,7 @@ async def upload_file(
 
         document = Documents(
             file_name=file.filename,
-            file_path_in_minio=f"{uuid.uuid4()}_{file.filename}",
+            file_path_in_storage_service=f"{uuid.uuid4()}_{file.filename}",
             file_type=Path(file.filename).suffix,
             status=FileStatus.UPLOADED,
             is_product_file=is_product_file(file_path),
@@ -202,9 +206,9 @@ async def upload_file(
         session.commit()
         session.refresh(document)
 
-        minio_client.upload_file(
-            bucket_name=default_settings.upload_bucket_name,
-            object_name=document.file_path_in_minio,
+        storage_client.upload_file(
+            bucket_name=storage_client.get_upload_bucket_name(),
+            object_name=document.file_path_in_storage_service,
             file_path=str(file_path),
         )
 
@@ -257,7 +261,7 @@ async def process_document(
         isContextualRAG = is_contextual_rag
 
         task = parse_document.delay(
-            document.file_path_in_minio,
+            document.file_path_in_storage_service,
             document.id,
             document.knowledge_base_id,
             isContextualRAG,
@@ -515,7 +519,10 @@ async def download_document(
     document_id: str,
     db_session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    minIoClient: Annotated[MinioClient, Depends(get_minio_client)],
+    storage_client: Annotated[
+        Type[BaseStorageClient],
+        Depends(load_storage_service),
+    ],
 ):
     """
     Download document
@@ -538,9 +545,9 @@ async def download_document(
 
         file_path = DOWNLOAD_FOLDER / (f"{uuid.uuid4()}_" + document.file_name)
 
-        minIoClient.download_file(
-            bucket_name=default_settings.upload_bucket_name,
-            object_name=document.file_path_in_minio,
+        storage_client.download_file(
+            bucket_name=storage_client.get_upload_bucket_name(),
+            object_name=document.file_path_in_storage_service,
             file_path=str(file_path),
         )
 
@@ -577,7 +584,7 @@ async def delete_document(
             )
 
         db_manager.delete_file(
-            object_name=document.file_path_in_minio,
+            object_name=document.file_path_in_storage_service,
             delete_to_retry=delete_document_request_body.delete_to_retry,
             document_id=document.id,
         )
@@ -717,7 +724,7 @@ async def delete_knowledge_base(
         ).all()
         for doc in documents:
             db_manager.delete_file(
-                object_name=doc.file_path_in_minio,
+                object_name=doc.file_path_in_storage_service,
                 document_id=doc.id,
                 delete_to_retry=False,
             )

@@ -29,7 +29,7 @@ load_dotenv()
 ALGORITHM = "HS256"
 SECRET_KEY = os.getenv("SECRET_KEY")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
-ADMIN_ACCESS_TOKEN = str(uuid.uuid4())
+ADMIN_ACCESS_TOKEN = os.getenv("ADMIN_ACCESS_TOKEN") or str(uuid.uuid4())
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/login")
@@ -229,7 +229,7 @@ def create_new_user(
     admin_access_token = userInfo.admin_access_token
 
     with db_session as session:
-        user = get_user(session, username, email)
+        user = get_user(session, username)
         if user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

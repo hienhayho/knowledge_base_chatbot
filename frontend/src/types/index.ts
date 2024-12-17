@@ -45,7 +45,7 @@ export interface SignUpFormValues {
     email: string;
     password: string;
     retypePassword: string;
-    admin_access_token: string;
+    admin_access_token?: string;
 }
 
 export interface SignUpResponse {

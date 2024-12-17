@@ -38,7 +38,7 @@ file_extractor = FileExtractor()
 @celery_app.task(bind=True)
 def parse_document(
     self: celery.Task,
-    file_path_in_minio: str,
+    file_path_in_storage_service: str,
     document_id: str,
     knowledge_base_id: str,
     is_contextual_rag: bool = True,
@@ -47,7 +47,7 @@ def parse_document(
     Parse a document.
 
     Args:
-        file_path_in_minio (str | Path): The file path in Minio.
+        file_path_in_storage_service (str | Path): The file path in Minio.
         document_id (str): The document ID from Documents table.
         knowledge_base_id (str): The knowledge base ID as collection name for vector database and also index name for elasticsearch.
         is_contextual_rag (bool): Whether to use contextual RAG or not (deprecated). Always set to `True`.
@@ -55,14 +55,14 @@ def parse_document(
     Returns:
         dict: The task ID and status.
     """
-    extension = Path(file_path_in_minio).suffix
+    extension = Path(file_path_in_storage_service).suffix
     file_path = Path("downloads") / f"{document_id}.{extension}"
 
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
-    db_manager.minio_client.download_file(
-        bucket_name=default_settings.upload_bucket_name,
-        object_name=file_path_in_minio,
+    db_manager.storage_client.download_file(
+        bucket_name=db_manager.storage_client.get_upload_bucket_name(),
+        object_name=file_path_in_storage_service,
         file_path=file_path,
     )
 

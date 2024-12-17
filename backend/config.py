@@ -1,6 +1,10 @@
-minio_config = dict(
-    upload_bucket_name="uploads",
-    secure=False,
+# minio_config = dict(
+#     upload_bucket_name="uploads",
+#     secure=False,
+# )
+
+storage_config = dict(
+    type="s3",
 )
 
 temp_folder = "uploads"
