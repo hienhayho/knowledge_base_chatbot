@@ -11,6 +11,7 @@ from api.models import (
     AssistantCreate,
     AssistantResponse,
     ChatMessage,
+    ChatMessageResponse,
     AssistantWithTotalCost,
     AsistantUpdatePhraseRequest,
     ConversationRenameRequest,
@@ -20,6 +21,7 @@ from .user_router import decode_user_token
 from fastapi import (
     APIRouter,
     Depends,
+    Body,
     HTTPException,
     status,
     WebSocket,
@@ -615,3 +617,28 @@ async def websocket_endpoint(
             {"error_message": error_message, "assistant_id": assistant_id},
         )
         ws_manager.disconnect(conversation_id)
+
+
+@assistant_router.post(
+    "/{assistant_id}/conversations/{conversation_id}/messages",
+    response_model=ChatMessageResponse,
+)
+async def send_message(
+    assistant_id: UUID,
+    conversation_id: UUID,
+    message: Annotated[ChatMessage, Body(...)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+    assistant_service: Annotated[AssistantService, Depends()],
+):
+    assistant_id = str(assistant_id)
+    conversation_id = str(conversation_id)
+
+    start_time = time.time()
+    result = assistant_service.chat_with_assistant(
+        conversation_id, current_user.id, message=message, start_time=start_time
+    )
+    return ChatMessageResponse(
+        assistant_message=result.assistant_message,
+        type="text",
+        metadata={"assistant_id": assistant_id},
+    )

@@ -137,9 +137,11 @@ class AgentConfig(BaseModel):
 
     Attributes:
         type (LLMCollection): LLM collection type
+        use_agent_memory (bool): Use agent memory or not
     """
 
     type: LLMCollection
+    use_agent_memory: bool = False
 
 
 class StorageConfig(BaseModel):
@@ -238,9 +240,11 @@ class GlobalSettings(BaseModel):
     agent_config: AgentConfig = Field(
         default=AgentConfig(
             type=config.agent_config.type,
+            use_agent_memory=config.agent_config.use_agent_memory,
         ),
         description="Agent configuration",
     )
+
     global_vector_db_collection_name: str = Field(
         default=config.global_vector_db_collection_name,
         description="Global vector database collection name",

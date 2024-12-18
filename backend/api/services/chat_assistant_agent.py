@@ -83,7 +83,7 @@ class ChatAssistant:
         )
 
         kb_task = Task(
-            description="Phản hồi câu hỏi: {query}.",
+            description="Phản hồi tin nhắn của người dùng: {query}.",
             expected_output="Một câu trả lời phù hợp nhất với câu hỏi được đưa ra.",
             agent=kb_agent,
             tools=[
@@ -98,6 +98,7 @@ class ChatAssistant:
             manager_llm=self.llm,
             verbose=True,
             conversation_id=self.configuration.conversation_id,
+            use_memory=default_settings.agent_config.use_agent_memory,
         )
 
     def _init_model(self, service, model_id):
@@ -113,7 +114,6 @@ class ChatAssistant:
         """
         logger.info(f"Loading Model: {model_id}")
         logger.info("This action can take a few minutes!")
-        # TODO: setup proper logging
 
         if service == "openai":
             logger.info(f"Loading OpenAI Model: {model_id}")

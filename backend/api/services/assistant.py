@@ -38,71 +38,98 @@ class AssistantService:
         self.db_manager = db_manager
 
     def chat_with_assistant(
-        self, conversation_id: UUID, user_id: int, message: ChatMessage
-    ) -> ChatResponse:
-        try:
-            with self.db_session as session:
-                query = select(Conversations).filter_by(
-                    id=conversation_id, user_id=user_id
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+        message: ChatMessage,
+        start_time: float,
+    ):
+        with self.db_session as session:
+            query = select(Conversations).where(
+                Conversations.id == conversation_id,
+                Conversations.user_id == user_id,
+            )
+
+            conversation = session.exec(query).first()
+
+            is_contextual_rag = True
+            assistant = session.exec(
+                select(Assistants).where(Assistants.id == conversation.assistant_id)
+            ).first()
+            configuration = assistant.configuration
+
+            if not conversation:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+
+            kb = session.exec(
+                select(KnowledgeBases).where(
+                    KnowledgeBases.id == assistant.knowledge_base_id
                 )
+            ).first()
 
-                conversation = session.exec(query).first()
+            kb_ids = copy.deepcopy(kb.parents)
+            kb_ids.append(kb.id)
 
-                if not conversation:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Conversation not found",
-                    )
+            message_history = self._get_message_history(conversation_id)
 
-                # Fetch message history
-                message_history = self._get_message_history(session, conversation_id)
+            file_product_path = self.db_manager.get_product_file_path(
+                knowledge_base_id=kb.id
+            )
 
-                # Save user message
-                user_message = Messages(
-                    conversation_id=conversation_id,
-                    sender_type=SenderType.USER,
-                    content=message.content,
-                )
-                session.add(user_message)
-                session.flush()  # Flush to get the ID of the new message
+            user_message = Messages(
+                conversation_id=conversation_id,
+                sender_type=SenderType.USER,
+                content=message.content,
+            )
+            session.add(user_message)
+            session.flush()
 
-                # Here we assume that the Assistant class has an on_message method
-                # In a real implementation, you might need to instantiate the assistant with its configuration
-                assistant = conversation.assistant
+            session_id = str(uuid.uuid4())
 
-                configuration = assistant.configuration
+            assistant_config = ChatAssistantConfig(
+                model=configuration["model"],
+                conversation_id=conversation_id,
+                service=configuration["service"],
+                temperature=configuration["temperature"],
+                embedding_service="openai",
+                embedding_model_name="text-embedding-3-small",
+                collection_name=default_settings.global_vector_db_collection_name,
+                kb_ids=kb_ids,
+                session_id=session_id,
+                tools=assistant.tools,
+                agent_backstory=assistant.agent_backstory,
+                is_contextual_rag=is_contextual_rag,
+                instruct_prompt=assistant.instruct_prompt,
+                file_product_path=file_product_path,
+            )
 
-                assistant_config = {
-                    "model": configuration["model"],
-                    "service": configuration["service"],
-                    "temperature": configuration["temperature"],
-                    "embedding_service": "openai",  # TODO: Let user choose embedding model,
-                    "embedding_model_name": "text-embedding-3-small",
-                    "collection_name": f"{assistant.knowledge_base_id}",
-                    "conversation_id": conversation_id,
-                }
+            assistant_instance = ChatAssistant(configuration=assistant_config)
 
-                assistant_instance = ChatAssistant(assistant_config)
-                response = assistant_instance.on_message(
-                    message.content, message_history
-                )
+            answer = assistant_instance.on_message(
+                message.content, message_history, session_id=session_id
+            )
 
-                # Save assistant message
-                assistant_message = Messages(
-                    conversation_id=conversation_id,
-                    sender_type=SenderType.ASSISTANT,
-                    content=response,
-                )
-                session.add(assistant_message)
+            response = {
+                "result": answer,
+                "is_chat_false": False,
+            }
 
-                session.commit()
+            langfuse_context.flush()
 
-                return ChatResponse(assistant_message=response)
+            assistant_message = Messages(
+                id=session_id,
+                conversation_id=conversation_id,
+                sender_type=SenderType.ASSISTANT,
+                content=answer,
+                response_time=time.time() - start_time,
+                is_chat_false=response["is_chat_false"],
+                cost=get_cost_from_session_id(session_id),
+            )
+            session.add(assistant_message)
+            session.commit()
 
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"An error occurred during the chat: {str(e)}",
+            return ChatResponse(
+                assistant_message=answer,
             )
 
     def stream_chat_with_assistant(

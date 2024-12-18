@@ -1,4 +1,6 @@
 import sys
+import copy
+from collections import deque
 from uuid import UUID
 from pathlib import Path
 from typing import Optional
@@ -17,6 +19,8 @@ from .core import (
     Documents,
     load_storage_service,
     BaseStorageClient,
+    DocumentChunks,
+    KnowledgeBases,
 )
 
 from src.utils import get_formatted_logger
@@ -281,6 +285,88 @@ class DatabaseManager:
 
             session.close()
         logger.info(f"Deleted assistant: {assistant_id}")
+
+    def delete_knowledge_base(self, knowledge_base_id: str | UUID):
+        """
+        Delete knowledge base and its associated data
+
+        Args:
+            knowledge_base_id (str | UUID): Knowledge base ID
+        """
+        with self.db_session as session:
+            kb = session.exec(
+                select(KnowledgeBases).where(KnowledgeBases.id == knowledge_base_id)
+            ).first()
+
+            documents = session.exec(
+                select(Documents).where(
+                    Documents.knowledge_base_id == knowledge_base_id
+                )
+            ).all()
+            for doc in documents:
+                self.delete_file(
+                    object_name=doc.file_path_in_storage_service,
+                    document_id=doc.id,
+                    delete_to_retry=False,
+                )
+
+                document_chunks = session.exec(
+                    select(DocumentChunks).where(DocumentChunks.document_id == doc.id)
+                ).all()
+
+                for chunk in document_chunks:
+                    session.delete(chunk)
+                    session.commit()
+
+                session.delete(doc)
+                session.commit()
+
+            # Delete the assistants associated with the knowledge base
+            assistants_ids = session.exec(
+                select(Assistants.id).where(
+                    Assistants.knowledge_base_id == knowledge_base_id
+                )
+            ).all()
+
+            for assistant_id in assistants_ids:
+                self.delete_assistant(assistant_id=assistant_id)
+
+            parents_copy = copy.deepcopy(kb.parents)
+            # Delete the knowledge base from the parents of this knowledge base. Mean that this deleted knowledge base is no longer inheriting its parents
+            for parent_id in kb.parents:
+                parent_kb = session.exec(
+                    select(KnowledgeBases).where(KnowledgeBases.id == parent_id)
+                ).first()
+
+                parent_kb_children = copy.deepcopy(parent_kb.children)
+                parent_kb_children = [
+                    child for child in parent_kb_children if child != kb.id
+                ]
+                parent_kb.children = list(set(parent_kb_children))
+
+                session.add(parent_kb)
+                session.commit()
+
+            # Delete the knowledge base from the children of its parents. Mean that the knowledge base is no longer inheriting its parents
+            queue = deque(kb.children)
+            parents_copy.append(kb.id)
+
+            while queue:
+                child_id = queue.popleft()
+                child_kb = session.exec(
+                    select(KnowledgeBases).where(KnowledgeBases.id == child_id)
+                ).first()
+
+                child_kb_parents = copy.deepcopy(child_kb.parents)
+                child_kb_parents = [
+                    parent for parent in child_kb_parents if parent not in parents_copy
+                ]
+                child_kb.parents = list(set(child_kb_parents))
+
+                session.add(child_kb)
+                session.commit()
+
+                queue.extend(child_kb.children)
 
 
 def get_db_manager(
