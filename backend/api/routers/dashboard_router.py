@@ -266,6 +266,12 @@ async def get_wordcloud_by_kb(
             )
         ).all()
 
+        if not text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Empty Knowledge Base",
+            )
+
         content = " ".join(text)
         wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
         image_path = (

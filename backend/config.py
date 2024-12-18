@@ -26,6 +26,4 @@ contextual_rag_config = dict(
     top_n=3,
 )
 
-agent_config = dict(
-    type="openai",
-)
+agent_config = dict(type="openai", use_agent_memory=False)

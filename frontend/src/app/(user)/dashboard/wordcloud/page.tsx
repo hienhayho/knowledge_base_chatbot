@@ -5,6 +5,7 @@ import { Select, Button, message } from "antd";
 import { Download, Rocket } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/auth";
+import Image from "next/image";
 
 interface SelectOption {
     value: string;
@@ -261,12 +262,15 @@ const WordcloudPage = () => {
                     </span>
                     {userUrl && (
                         <div>
-                            <img
-                                src={userUrl}
-                                alt="User's Wordcloud"
-                                width={800}
-                                height={400}
-                            />
+                            <div className="relative w-full h-[400px]">
+                                <Image
+                                    src={userUrl}
+                                    alt="User's Wordcloud"
+                                    fill
+                                    style={{ objectFit: "contain" }}
+                                    unoptimized // Since we're using blob URLs
+                                />
+                            </div>
                             <div className="flex justify-center mt-2">
                                 <Button icon={<Download size={16} />}>
                                     <a href={userUrl} download>
@@ -283,12 +287,15 @@ const WordcloudPage = () => {
                     </span>
                     {assistantUrl && (
                         <div>
-                            <img
-                                src={assistantUrl}
-                                alt="Assistant's Wordcloud"
-                                width={800}
-                                height={400}
-                            />
+                            <div className="relative w-full h-[400px]">
+                                <Image
+                                    src={assistantUrl}
+                                    alt="Assistant's Wordcloud"
+                                    fill
+                                    style={{ objectFit: "contain" }}
+                                    unoptimized // Since we're using blob URLs
+                                />
+                            </div>
                             <div className="flex justify-center mt-2">
                                 <Button icon={<Download size={16} />}>
                                     <a href={assistantUrl} download>

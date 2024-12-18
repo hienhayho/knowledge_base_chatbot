@@ -24,27 +24,6 @@ const ChatMainPage = () => {
     const [error, setError] = useState<string | null>(null);
     const redirectUrl = encodeURIComponent("/chat");
     const { token } = useAuth();
-
-    useEffect(() => {
-        fetchAssistants();
-    }, [token, redirectUrl, router]);
-
-    const successMessage = (content: string) => {
-        messageApi.open({
-            type: "success",
-            content: content,
-            duration: 1,
-        });
-    };
-
-    const errorMessage = (content: string) => {
-        messageApi.open({
-            type: "error",
-            content: content,
-            duration: 2,
-        });
-    };
-
     const fetchAssistants = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
@@ -70,6 +49,26 @@ const ChatMainPage = () => {
             setError(err instanceof Error ? err.message : "An error occurred");
             setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        fetchAssistants();
+    }, [token, redirectUrl, router]);
+
+    const successMessage = (content: string) => {
+        messageApi.open({
+            type: "success",
+            content: content,
+            duration: 1,
+        });
+    };
+
+    const errorMessage = (content: string) => {
+        messageApi.open({
+            type: "error",
+            content: content,
+            duration: 2,
+        });
     };
 
     const handleCreateAssistant = () => {

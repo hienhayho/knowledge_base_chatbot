@@ -3,7 +3,6 @@ import copy
 import uuid
 
 from pathlib import Path
-from collections import deque
 from typing import Annotated, Type
 from celery.result import AsyncResult
 from sqlmodel import Session, select, not_, col, or_, and_
@@ -36,7 +35,6 @@ from api.models import (
 from src.database import (
     Users,
     Documents,
-    Assistants,
     DocumentChunks,
     get_session,
     is_valid_uuid,
@@ -729,63 +727,7 @@ async def delete_knowledge_base(
                 delete_to_retry=False,
             )
 
-            document_chunks = session.exec(
-                select(DocumentChunks).where(DocumentChunks.document_id == doc.id)
-            ).all()
-
-            for chunk in document_chunks:
-                session.delete(chunk)
-                session.commit()
-
-            session.delete(doc)
-            session.commit()
-
-        # Delete the assistants associated with the knowledge base
-        assistants_ids = session.exec(
-            select(Assistants.id).where(
-                Assistants.knowledge_base_id == knowledge_base_id
-            )
-        ).all()
-
-        for assistant_id in assistants_ids:
-            db_manager.delete_assistant(assistant_id=assistant_id)
-
-        parents_copy = copy.deepcopy(kb.parents)
-        # Delete the knowledge base from the parents of this knowledge base. Mean that this deleted knowledge base is no longer inheriting its parents
-        for parent_id in kb.parents:
-            parent_kb = session.exec(
-                select(KnowledgeBases).where(KnowledgeBases.id == parent_id)
-            ).first()
-
-            parent_kb_children = copy.deepcopy(parent_kb.children)
-            parent_kb_children = [
-                child for child in parent_kb_children if child != kb.id
-            ]
-            parent_kb.children = list(set(parent_kb_children))
-
-            session.add(parent_kb)
-            session.commit()
-
-        # Delete the knowledge base from the children of its parents. Mean that the knowledge base is no longer inheriting its parents
-        queue = deque(kb.children)
-        parents_copy.append(kb.id)
-
-        while queue:
-            child_id = queue.popleft()
-            child_kb = session.exec(
-                select(KnowledgeBases).where(KnowledgeBases.id == child_id)
-            ).first()
-
-            child_kb_parents = copy.deepcopy(child_kb.parents)
-            child_kb_parents = [
-                parent for parent in child_kb_parents if parent not in parents_copy
-            ]
-            child_kb.parents = list(set(child_kb_parents))
-
-            session.add(child_kb)
-            session.commit()
-
-            queue.extend(child_kb.children)
+        db_manager.delete_knowledge_base(knowledge_base_id)
 
         # Finally, delete the knowledge base itself
         session.delete(kb)

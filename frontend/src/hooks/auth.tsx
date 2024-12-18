@@ -133,7 +133,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const data = await authApi.login(body);
 
             setCookie("access_token", data.access_token, {
-                maxAge: 30 * 60,
+                maxAge: 1440 * 60,
                 path: "/",
             });
 

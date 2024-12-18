@@ -28,7 +28,7 @@ load_dotenv()
 
 ALGORITHM = "HS256"
 SECRET_KEY = os.getenv("SECRET_KEY")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES") or 1440)
 ADMIN_ACCESS_TOKEN = os.getenv("ADMIN_ACCESS_TOKEN") or str(uuid.uuid4())
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

@@ -1,20 +1,29 @@
+import sys
 import polars as pl
 
 from pathlib import Path
 from thefuzz import process
 from llama_index.core.tools import FunctionTool
 
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from src.utils import get_formatted_logger
+
+logger = get_formatted_logger(__file__)
+
 
 def load_product_search_tool(
     file_product_path: str | Path, description: str = ""
 ) -> FunctionTool:
-    print(Path(file_product_path).suffix)
     assert Path(file_product_path).suffix == ".xlsx", "Only support xlsx file"
+
+    # Only read sheet "product"
     df_product = pl.read_excel(file_product_path, sheet_name="product")
 
     product_list = df_product["name"].to_list()
 
     def product_search(product_name: str) -> str:
+        logger.info(f"Searching for product: {product_name}")
+
         list_product_name_by_fuzzy = process.extract(
             product_name, product_list, limit=3
         )  # [(str, int)]
@@ -34,6 +43,8 @@ def load_product_search_tool(
                 url = product_info["url"].to_list()[0]
 
                 result_str += f"{index+1}- Sản phẩm: {name}, Giá: {price}, Mô tả: {description}, Link sản phẩm: {url} \n"
+
+        logger.info(f"Result: {result_str}")
 
         return result_str
 

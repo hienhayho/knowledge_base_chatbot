@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/chat/SideBar";
-import ChatArea from "@/components/chat/ChatArea";
+import WebSocketChatArea from "@/components/chat/WebSocketChatArea";
 import TopBar from "@/components/chat/TopBar";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { IAssistant, IConversation } from "@/types";
 import { useAuth } from "@/hooks/auth";
+import JsonChatArea from "@/components/chat/JsonChatArea";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -33,6 +34,8 @@ const ChatAssistantPage = () => {
     const { token } = useAuth();
     const redirectUrl = encodeURIComponent(`/chat/${params.assistant_id}`);
 
+    const useWebsocket = process.env.NEXT_PUBLIC_USE_WEB_SOCKET === "true";
+
     useEffect(() => {
         if (conversation_id && conversations.length > 0) {
             const conv = conversations.find((c) => c.id === conversation_id);
@@ -43,51 +46,51 @@ const ChatAssistantPage = () => {
     }, [conversation_id, conversations, redirectUrl, router, token]);
 
     useEffect(() => {
+        const fetchAssistant = async () => {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/assistant/${assistant_id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+                if (!response.ok) {
+                    throw new Error("Failed to fetch assistant");
+                }
+                const data = await response.json();
+                setSelectedAssistant(data);
+                setIsLoading(false);
+            } catch (err) {
+                setError((err as Error).message);
+                setIsLoading(false);
+            }
+        };
+
+        const fetchConversations = async () => {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/assistant/${assistant_id}/conversations`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+                if (!response.ok) {
+                    throw new Error("Failed to fetch conversations");
+                }
+                const data = await response.json();
+                setConversations(data);
+            } catch (err) {
+                setError((err as Error).message);
+            }
+        };
+
         fetchAssistant();
         fetchConversations();
-    }, [assistant_id]);
-
-    const fetchAssistant = async () => {
-        try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistant_id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-            if (!response.ok) {
-                throw new Error("Failed to fetch assistant");
-            }
-            const data = await response.json();
-            setSelectedAssistant(data);
-            setIsLoading(false);
-        } catch (err) {
-            setError((err as Error).message);
-            setIsLoading(false);
-        }
-    };
-
-    const fetchConversations = async () => {
-        try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistant_id}/conversations`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-            if (!response.ok) {
-                throw new Error("Failed to fetch conversations");
-            }
-            const data = await response.json();
-            setConversations(data);
-        } catch (err) {
-            setError((err as Error).message);
-        }
-    };
+    }, [assistant_id, token]);
 
     const handleConversationSelect = (conversation: IConversation | null) => {
         setSelectedConversation(conversation);
@@ -155,10 +158,17 @@ const ChatAssistantPage = () => {
                         showUpdateAssistantButton={true}
                     />
                     {selectedConversation && selectedAssistant ? (
-                        <ChatArea
-                            conversation={selectedConversation}
-                            assistantId={selectedAssistant.id}
-                        />
+                        useWebsocket ? (
+                            <WebSocketChatArea
+                                conversation={selectedConversation}
+                                assistantId={selectedAssistant.id}
+                            />
+                        ) : (
+                            <JsonChatArea
+                                conversation={selectedConversation}
+                                assistantId={selectedAssistant.id}
+                            />
+                        )
                     ) : (
                         <div className="flex-1 flex items-center justify-center text-gray-500">
                             Select a conversation or create a new one to start

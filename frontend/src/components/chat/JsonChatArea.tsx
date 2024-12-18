@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Send, User, Bot, Loader2, Link } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Send, User, Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
-import { getCookie } from "cookies-next";
-import { useRouter } from "next/navigation";
-import { Popover, message } from "antd";
 import remarkGfm from "remark-gfm";
+import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -17,138 +15,33 @@ interface IMessage {
     metadata?: Record<string, string>;
 }
 
-const ChatArea = ({
+const JsonChatArea = ({
     conversation,
     assistantId,
 }: {
     conversation: { id: string };
     assistantId: string;
 }) => {
-    const [messageApi, contextHolder] = message.useMessage();
-    const token = getCookie("access_token");
-    const router = useRouter();
-    const redirectUrl = encodeURIComponent(
-        `/chat/${assistantId}?conversation=${conversation.id}`
-    );
+    const { token } = useAuth();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [inputMessage, setInputMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [streamingMessage, setStreamingMessage] = useState<IMessage | null>(
-        null
-    );
-    const [isAssistantTyping, setIsAssistantTyping] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const websocketRef = useRef<WebSocket | null>(null);
-    const ws_url = `ws://${API_BASE_URL.replace(
-        /^https?:\/\//,
-        ""
-    )}/api/assistant/${assistantId}/conversations/${
-        conversation.id
-    }/${token}/ws`;
-    const content = <div>Copy WebSocket URL to clipboard</div>;
-
-    const connectWebSocket = useCallback(() => {
-        if (websocketRef.current) {
-            websocketRef.current.close();
-        }
-
-        const ws = new WebSocket(ws_url);
-
-        ws.onopen = () => console.log("WebSocket connected");
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-
-            switch (data.type) {
-                case "message":
-                    setIsAssistantTyping(false);
-                    if (data.media_type === "text") {
-                        setStreamingMessage((prev) => {
-                            if (prev === null) {
-                                return {
-                                    content: data.content,
-                                    type: "text",
-                                    sender_type: "assistant",
-                                };
-                            }
-                            return {
-                                ...prev,
-                                content: prev.content + data.content,
-                                type: "text",
-                            };
-                        });
-                    } else if (data.media_type === "video") {
-                        setStreamingMessage({
-                            content: data.content,
-                            type: "video",
-                            sender_type: "assistant",
-                        });
-                    }
-                    break;
-                case "status":
-                    console.log("Status update:", data.content);
-                    break;
-                case "error":
-                    console.error("Error:", data.content);
-                    break;
-                case "end":
-                    setIsAssistantTyping(false);
-                    console.log("END MESSAGE");
-
-                    const newMessage: IMessage = {
-                        sender_type: "assistant",
-                        media_type: "",
-                        content: "",
-                        metadata: {},
-                    };
-                    setStreamingMessage((prev) => {
-                        newMessage.type = prev?.type;
-                        newMessage.content = prev?.content || "";
-                        newMessage.metadata = prev?.metadata;
-                        return null;
-                    });
-
-                    setMessages((prevMessages) => [
-                        ...prevMessages,
-                        newMessage,
-                    ]);
-
-                    break;
-                default:
-                    console.log("Unknown message type:", data.type);
-            }
-        };
-
-        ws.onclose = () => console.log("WebSocket disconnected");
-
-        websocketRef.current = ws;
-    }, [assistantId, conversation.id]);
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectUrl}`);
-            return;
-        }
         if (conversation) {
             fetchConversationHistory();
-            connectWebSocket();
         }
         if (textareaRef.current) {
             textareaRef.current.focus();
         }
-
-        return () => {
-            if (websocketRef.current) {
-                websocketRef.current.close();
-            }
-        };
-    }, [conversation, assistantId, connectWebSocket]);
+    }, [conversation, assistantId]);
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, streamingMessage]);
+    }, [messages]);
 
     const fetchConversationHistory = async () => {
         try {
@@ -173,24 +66,41 @@ const ChatArea = ({
         e.preventDefault();
         if (!inputMessage.trim()) return;
 
-        const newMessage = {
+        const userMessage = {
             sender_type: "user",
             content: inputMessage,
             type: "text",
         };
-        setMessages((prevMessages) => [...prevMessages, newMessage]);
+        setMessages((prev) => [...prev, userMessage]);
         setInputMessage("");
         setIsLoading(true);
-        setIsAssistantTyping(true);
 
         try {
-            if (websocketRef.current?.readyState === WebSocket.OPEN) {
-                websocketRef.current.send(
-                    JSON.stringify({ content: inputMessage })
-                );
-            } else {
-                throw new Error("WebSocket is not connected");
-            }
+            const response = await fetch(
+                `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/messages`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ content: inputMessage }),
+                }
+            );
+
+            if (!response.ok) throw new Error("Failed to send message");
+
+            const assistantResponse = await response.json();
+
+            setMessages((prev) => [
+                ...prev,
+                {
+                    sender_type: "assistant",
+                    content: assistantResponse.assistant_message,
+                    type: assistantResponse.type || "text",
+                    metadata: assistantResponse.metadata,
+                },
+            ]);
         } catch (error) {
             console.error("Error sending message:", error);
         } finally {
@@ -269,8 +179,6 @@ const ChatArea = ({
 
     return (
         <div className="flex flex-col h-screen bg-white mt-12">
-            {" "}
-            {contextHolder}
             <div
                 className="flex-1 overflow-y-auto p-4"
                 style={{ maxHeight: "90vh" }}
@@ -308,27 +216,15 @@ const ChatArea = ({
                             </div>
                         </div>
                     ))}
-                    {isAssistantTyping && (
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                    )}
-                    {streamingMessage && (
+                    {isLoading && (
                         <div className="flex justify-start mb-4">
-                            <div className="max-w-[100%] p-3 rounded-lg bg-gray-200 text-gray-800">
-                                <div className="flex items-center mb-1">
-                                    <Bot size={16} className="mr-2" />
-                                    <span className="font-semibold">
-                                        Assistant
-                                    </span>
-                                </div>
-                                {renderMessage(streamingMessage)}
-                            </div>
+                            <Loader2 className="w-6 h-6 animate-spin" />
                         </div>
                     )}
                     <div ref={messagesEndRef} />
                 </div>
             </div>
             <div className="sticky bottom-0 w-full bg-white p-2 border-t border-gray-200">
-                {" "}
                 <form onSubmit={sendMessage} className="p-1">
                     <div className="max-w-4xl mx-auto">
                         <div className="flex items-end bg-white rounded-3xl shadow-lg border border-gray-300 shrink">
@@ -353,23 +249,6 @@ const ChatArea = ({
                             >
                                 <Send size={24} />
                             </button>
-                            <Popover content={content} className="">
-                                <button
-                                    type="button"
-                                    className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 mr-2"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(ws_url);
-                                        messageApi.open({
-                                            type: "success",
-                                            content:
-                                                "WebSocket URL copied to clipboard",
-                                            duration: 1.5,
-                                        });
-                                    }}
-                                >
-                                    <Link size={24} />
-                                </button>
-                            </Popover>
                         </div>
                     </div>
                 </form>
@@ -378,4 +257,4 @@ const ChatArea = ({
     );
 };
 
-export default ChatArea;
+export default JsonChatArea;

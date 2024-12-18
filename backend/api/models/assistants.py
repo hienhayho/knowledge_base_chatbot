@@ -83,6 +83,12 @@ class ChatResponse(BaseModel):
     assistant_message: str
 
 
+class ChatMessageResponse(BaseModel):
+    assistant_message: str
+    type: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class MessageResponse(BaseModel):
     id: UUID
     conversation_id: UUID
