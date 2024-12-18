@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { X, Info } from "lucide-react";
-import { getCookie } from "cookies-next";
 import { message, Input } from "antd";
+import { useAuth } from "@/hooks/auth";
 
 const { TextArea } = Input;
 
@@ -22,7 +21,6 @@ const CreateAssistantModal = ({
     onClose: () => void;
     onCreateSuccess: () => void;
 }) => {
-    const router = useRouter();
     const [isVisible, setIsVisible] = useState<boolean>(false);
     const [assistantName, setAssistantName] = useState<string>("");
     const [description, setDescription] = useState<string>("");
@@ -34,21 +32,16 @@ const CreateAssistantModal = ({
     const [model, setModel] = useState<string>("gpt-4o-mini");
     const [messageApi, contextHolder] = message.useMessage();
 
-    const token = getCookie("access_token");
-    const redirectURL = encodeURIComponent("/chat");
+    const { token } = useAuth();
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectURL}`);
-            return;
-        }
         if (isOpen) {
             setIsVisible(true);
             fetchKnowledgeBases();
         } else {
             setIsVisible(false);
         }
-    }, [isOpen]);
+    }, [isOpen, token]);
 
     const successMessage = (content: string) => {
         messageApi.open({
@@ -65,10 +58,6 @@ const CreateAssistantModal = ({
     };
 
     const fetchKnowledgeBases = async () => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectURL}`);
-            return;
-        }
         try {
             const response = await fetch(`${API_BASE_URL}/api/kb/get_all`, {
                 headers: {
@@ -94,11 +83,6 @@ const CreateAssistantModal = ({
     };
 
     const handleSubmit = async () => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectURL}`);
-            return;
-        }
-
         const payload = {
             name: assistantName,
             description: description,

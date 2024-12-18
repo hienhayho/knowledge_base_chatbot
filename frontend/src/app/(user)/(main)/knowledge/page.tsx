@@ -2,25 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, ArrowRightLeft } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import KnowledgeBaseCard from "@/components/knowledge_base/KnowledgeBaseCard";
 import KnowledgeBaseModal from "@/components/knowledge_base/KnowledgeBaseModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
-import { setCookie } from "cookies-next";
-import { message, Select } from "antd";
+import { message } from "antd";
 import { formatDate } from "@/utils/";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { adminApi, knowledgeBaseApi } from "@/api";
-import {
-    IAdminSwitchUserResponse,
-    IAdminUserSelect,
-    ICreateKnowledgeBase,
-    IKnowledgeBase,
-    IUser,
-} from "@/types";
+import { knowledgeBaseApi } from "@/api";
+import { ICreateKnowledgeBase, IKnowledgeBase } from "@/types";
 import { useAuth } from "@/hooks/auth";
-import GradientButton from "@/components/GradientButton";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -29,14 +21,12 @@ const KnowledgeBasePage: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [messageApi, contextHolder] = message.useMessage();
     const [error, setError] = useState<string | null>(null);
-    const [userOptions, setUserOptions] = useState<IAdminUserSelect[]>([]);
-    const [selectedUsername, setSelectedUsername] = useState<string>("");
 
     const redirectURL = encodeURIComponent("/knowledge");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
     const router = useRouter();
-    const { token, user, changeUser } = useAuth();
+    const { token } = useAuth();
 
     const successMessage = ({
         content,
@@ -66,10 +56,6 @@ const KnowledgeBasePage: React.FC = () => {
         });
     };
 
-    const onChangeUser = (value: string) => {
-        setSelectedUsername(value);
-    };
-
     useEffect(() => {
         const fetchKnowledgeBases = async () => {
             try {
@@ -90,29 +76,7 @@ const KnowledgeBasePage: React.FC = () => {
             }
         };
 
-        const getAllUsers = async (token: string) => {
-            if (user?.role !== "admin") {
-                return;
-            }
-            try {
-                const users = (await adminApi.getUsers(token)) as IUser[];
-                setUserOptions(
-                    users.map((user) => ({
-                        value: user.username,
-                        label: user.username,
-                    }))
-                );
-            } catch (err) {
-                console.error("Error fetching users:", err);
-                messageApi.error({
-                    content: (err as Error)?.message || "Failed to fetch users",
-                    duration: 2,
-                });
-            }
-        };
-
         fetchKnowledgeBases();
-        getAllUsers(token);
     }, [token, redirectURL, router]);
 
     const handleCreateKnowledgeBase = async (
@@ -180,37 +144,6 @@ const KnowledgeBasePage: React.FC = () => {
         router.push(`/knowledge/${encodeURIComponent(id)}`);
     };
 
-    const handleSwitchUser = async (username: string) => {
-        try {
-            messageApi.open({
-                type: "loading",
-                content: "Switching ...",
-                duration: 0,
-            });
-            const data = (await adminApi.switchUser(
-                token,
-                username
-            )) as IAdminSwitchUserResponse;
-
-            messageApi.destroy();
-
-            setCookie("access_token", data.access_token, {
-                maxAge: 30 * 60,
-                path: "/",
-            });
-            changeUser(data.user, data.access_token);
-
-            successMessage({
-                content: `Switch to: ${username}`,
-            });
-        } catch (err) {
-            console.error("Error switching user:", err);
-            errorMessage({
-                content: "Failed to switch user",
-            });
-        }
-    };
-
     if (isLoading) {
         return <LoadingSpinner />;
     }
@@ -238,32 +171,6 @@ const KnowledgeBasePage: React.FC = () => {
                     />
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
                 </div>
-                {user?.role === "admin" && (
-                    <div className="flex justify-center w-full sm:w-64 md:w-72 lg:w-96 xl:w-[32rem]">
-                        <div className="flex gap-4 items-center justify-between">
-                            <Select
-                                showSearch
-                                size="large"
-                                onChange={onChangeUser}
-                                style={{ width: "15rem", height: "3.5rem" }}
-                                placeholder="Choose user to switch"
-                                filterOption={(input, option) =>
-                                    (option?.label ?? "")
-                                        .toLowerCase()
-                                        .includes(input.toLowerCase())
-                                }
-                                options={userOptions}
-                            />
-                            <GradientButton
-                                icon={<ArrowRightLeft />}
-                                title="Switch User"
-                                onClick={() =>
-                                    handleSwitchUser(selectedUsername)
-                                }
-                            />
-                        </div>
-                    </div>
-                )}
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 sm:py-3 rounded-md flex items-center justify-center w-full sm:w-auto text-base sm:text-lg transition duration-300"

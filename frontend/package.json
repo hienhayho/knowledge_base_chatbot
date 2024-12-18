@@ -19,7 +19,10 @@
     "react": "^18",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18",
+    "react-draggable": "^4.4.6",
     "react-dropzone": "^14.2.9",
+    "react-highlight-words": "^0.20.0",
+    "react-icons": "^5.4.0",
     "react-markdown": "^9.0.1",
     "remark-gfm": "^4.0.0",
     "uuid": "^11.0.3"
@@ -28,6 +31,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/react-highlight-words": "^0.20.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.15",
     "postcss": "^8",

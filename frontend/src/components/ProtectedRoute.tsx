@@ -14,7 +14,12 @@ export default function ProtectedRoute<P extends object>(
         useEffect(() => {
             if (user) {
                 if (pathname.startsWith("/admin") && user.role !== "admin") {
-                    router.push("/");
+                    router.push("/knowledge");
+                } else if (
+                    !pathname.startsWith("/admin") &&
+                    user.role === "admin"
+                ) {
+                    router.push("/admin/users");
                 }
             }
             if (!loading) {

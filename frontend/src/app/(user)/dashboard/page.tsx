@@ -103,8 +103,8 @@ const DashBoardPage = () => {
         // Fetch data on first load
         fetchDashboardData();
 
-        // Fetch data each 4 minutes
-        const intervalId = setInterval(fetchDashboardData, 4 * 60 * 1000);
+        // Fetch data each 30 minutes
+        const intervalId = setInterval(fetchDashboardData, 30 * 60 * 1000);
 
         return () => {
             clearInterval(intervalId);

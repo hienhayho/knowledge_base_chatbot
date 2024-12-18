@@ -35,6 +35,10 @@ export const register = async (body: SignUpFormValues) => {
         success: result.ok,
         data: {
             username: data.username,
+            id: data.id,
+            role: data.role,
+            createdAt: data.created_at,
+            updatedAt: data.updated_at,
         },
         detail: data?.detail || "Done",
     };

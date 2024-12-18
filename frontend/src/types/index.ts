@@ -40,6 +40,14 @@ export interface IUser {
     updatedAt: string;
 }
 
+export interface IUserResponse {
+    id: string;
+    username: string;
+    role: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface SignUpFormValues {
     username: string;
     email: string;

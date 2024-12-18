@@ -15,6 +15,13 @@ export const userNavItems: INavItem[] = [
     },
 ];
 
+export const adminNavItems: INavItem[] = [
+    {
+        name: "Users",
+        path: "/admin/users",
+    },
+];
+
 export const dashboardNavItems: INavItem[] = [
     { name: "Statistic", path: "/dashboard" },
     { name: "Wordcloud", path: "/dashboard/wordcloud" },
