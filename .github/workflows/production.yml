@@ -29,7 +29,3 @@ jobs:
             - name: List all docker containers
               run: |
                   docker ps -as
-
-            - name: logs backend service
-              run: |
-                  docker logs backend
