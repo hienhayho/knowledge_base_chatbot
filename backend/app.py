@@ -1,7 +1,6 @@
 import os
 import asyncio
 from pathlib import Path
-from pprint import pprint
 from fastapi import status
 from fastapi import FastAPI
 from datetime import datetime
@@ -24,19 +23,7 @@ logger = get_formatted_logger(__file__)
 
 load_dotenv()
 
-BACKEND_PORT = int(os.getenv("BACKEND_PORT"))
-RELOAD = os.getenv("MODE") == "development"
 CLEAN_INTERVAL = int(os.getenv("CLEAN_INTERVAL") or 10)
-WORKERS = int(os.getenv("WORKERS") or 1)
-
-pprint(
-    {
-        "BACKEND_PORT": BACKEND_PORT,
-        "RELOAD": RELOAD,
-        "CLEAN_INTERVAL": CLEAN_INTERVAL,
-        "WORKERS": WORKERS,
-    }
-)
 
 
 async def delete_old_files():
@@ -100,9 +87,3 @@ app.include_router(assistant_router, tags=["assistant"], prefix="/api/assistant"
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(tool_router, tags=["tools"], prefix="/api/tools")
 app.include_router(admin_router, tags=["admin"], prefix="/api/admin")
-
-if __name__ == "__main__":
-    if RELOAD:
-        os.system(f"fastapi dev --reload --port {BACKEND_PORT}")
-    else:
-        os.system(f"fastapi run --port {BACKEND_PORT} --workers {WORKERS} app.py")

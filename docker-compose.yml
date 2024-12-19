@@ -57,7 +57,7 @@ services:
             - minio
             - redis
             - celery
-        command: ["python", "app.py"]
+        command: ["python", "run.py"]
         healthcheck:
             test: ["CMD", "curl", "-f", "http://backend:8000"]
             interval: 5s
