@@ -102,8 +102,7 @@ app.include_router(tool_router, tags=["tools"], prefix="/api/tools")
 app.include_router(admin_router, tags=["admin"], prefix="/api/admin")
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        "app:app", host="0.0.0.0", port=BACKEND_PORT, reload=RELOAD, workers=WORKERS
-    )
+    if RELOAD:
+        os.system(f"fastapi dev --reload --port {BACKEND_PORT}")
+    else:
+        os.system(f"fastapi run --port {BACKEND_PORT} --workers {WORKERS} app.py")
