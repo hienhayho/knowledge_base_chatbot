@@ -634,7 +634,7 @@ async def send_message(
     conversation_id = str(conversation_id)
 
     start_time = time.time()
-    result = assistant_service.chat_with_assistant(
+    result = await assistant_service.achat_with_assistant(
         conversation_id, current_user.id, message=message, start_time=start_time
     )
     return ChatMessageResponse(

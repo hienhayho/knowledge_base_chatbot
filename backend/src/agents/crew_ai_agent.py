@@ -103,3 +103,7 @@ class CrewAIAgent:
 
     def chat(self, inputs: Any, *args, **kwargs) -> Any:
         return self.crew.kickoff(inputs=inputs).raw
+
+    async def chat_async(self, inputs: Any, *args, **kwargs) -> Any:
+        output = await self.crew.kickoff_async(inputs=inputs)
+        return output.raw

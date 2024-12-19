@@ -44,6 +44,7 @@ class ChatAssistant:
         ).strip("\n")
 
         self.tools: list[FunctionTool] = []
+        return_as_answer_flags = []
 
         for tool_name in self.configuration.tools:
             logger.info(
@@ -60,6 +61,7 @@ class ChatAssistant:
                         description=self.configuration.tools[tool_name],
                     )
                 )
+                return_as_answer_flags.append(False)
             elif tool_name == ExistTools.PRODUCT_SEARCH:
                 if self.configuration.file_product_path is None:
                     logger.warning(
@@ -72,6 +74,7 @@ class ChatAssistant:
                         description=self.configuration.tools[tool_name],
                     )
                 )
+                return_as_answer_flags.append(True)
             else:
                 logger.warning(f"Tool {tool_name} is not supported yet!")
                 continue
@@ -88,10 +91,10 @@ class ChatAssistant:
             expected_output="Một câu trả lời phù hợp nhất với câu hỏi được đưa ra.",
             agent=kb_agent,
             tools=[
-                LlamaIndexTool.from_tool(
-                    tool, result_as_answer=False if idx == 0 else True
+                LlamaIndexTool.from_tool(tool, result_as_answer=return_as_answer_flag)
+                for tool, return_as_answer_flag in zip(
+                    self.tools, return_as_answer_flags
                 )
-                for idx, tool in enumerate(self.tools)
             ],
         )
 
@@ -148,6 +151,25 @@ class ChatAssistant:
             "query": message,
         }
         response = self.agent.chat(inputs, message_history)
+
+        return response
+
+    @observe()
+    async def aon_message(
+        self,
+        message: str,
+        message_history: list[MesssageHistory],
+        session_id: str | uuid.UUID,
+    ) -> str:
+        langfuse_callback_handler.set_trace_params(
+            name="aon_message",
+            session_id=str(session_id),
+        )
+
+        inputs = {
+            "query": message,
+        }
+        response = await self.agent.chat_async(inputs, message_history)
 
         return response
 
