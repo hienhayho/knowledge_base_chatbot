@@ -31,6 +31,10 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+const VERIFY_INTERVAL_MINUTES = parseInt(
+    process.env.NEXT_PUBLIC_VERIFY_INTERVAL_MINUTES || "30"
+);
+
 interface AuthProviderProps {
     children: ReactNode;
 }
@@ -71,7 +75,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         const intervalId = setInterval(() => {
             verifyToken();
-        }, 30000);
+        }, VERIFY_INTERVAL_MINUTES * 60 * 1000);
 
         return () => {
             clearInterval(intervalId);

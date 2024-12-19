@@ -4,8 +4,13 @@ import "@/styles/globals.css";
 import Header from "@/components/Header";
 import { userNavItems } from "@/constants";
 import { UserRound } from "lucide-react";
+import { Metadata } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+    title: "User",
+};
 
 export default function UserLayout({
     children,

@@ -3,6 +3,7 @@ import { Send, User, Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAuth } from "@/hooks/auth";
+import LoadingClipLoader from "@/components/LoadingClipLoader";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -26,12 +27,14 @@ const JsonChatArea = ({
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [inputMessage, setInputMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingPage, setIsLoadingPage] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (conversation) {
+            setIsLoadingPage(true);
             fetchConversationHistory();
         }
         if (textareaRef.current) {
@@ -59,6 +62,8 @@ const JsonChatArea = ({
             setMessages(data);
         } catch (error) {
             console.error("Error fetching conversation history:", error);
+        } finally {
+            setIsLoadingPage(false);
         }
     };
 
@@ -176,6 +181,10 @@ const JsonChatArea = ({
                 );
         }
     };
+
+    if (isLoadingPage) {
+        return <LoadingClipLoader />;
+    }
 
     return (
         <div className="flex flex-col h-screen bg-white mt-12">

@@ -132,6 +132,101 @@ class AssistantService:
                 assistant_message=answer,
             )
 
+    async def achat_with_assistant(
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+        message: ChatMessage,
+        start_time: float,
+    ):
+        with self.db_session as session:
+            query = select(Conversations).where(
+                Conversations.id == conversation_id,
+                Conversations.user_id == user_id,
+            )
+
+            conversation = session.exec(query).first()
+
+            is_contextual_rag = True
+            assistant = session.exec(
+                select(Assistants).where(Assistants.id == conversation.assistant_id)
+            ).first()
+            configuration = assistant.configuration
+
+            if not conversation:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+
+            kb = session.exec(
+                select(KnowledgeBases).where(
+                    KnowledgeBases.id == assistant.knowledge_base_id
+                )
+            ).first()
+
+            kb_ids = copy.deepcopy(kb.parents)
+            kb_ids.append(kb.id)
+
+            message_history = self._get_message_history(conversation_id)
+
+            file_product_path = self.db_manager.get_product_file_path(
+                knowledge_base_id=kb.id
+            )
+
+            user_message = Messages(
+                conversation_id=conversation_id,
+                sender_type=SenderType.USER,
+                content=message.content,
+            )
+            session.add(user_message)
+            session.flush()
+
+            session_id = str(uuid.uuid4())
+
+            assistant_config = ChatAssistantConfig(
+                model=configuration["model"],
+                conversation_id=conversation_id,
+                service=configuration["service"],
+                temperature=configuration["temperature"],
+                embedding_service="openai",
+                embedding_model_name="text-embedding-3-small",
+                collection_name=default_settings.global_vector_db_collection_name,
+                kb_ids=kb_ids,
+                session_id=session_id,
+                tools=assistant.tools,
+                agent_backstory=assistant.agent_backstory,
+                is_contextual_rag=is_contextual_rag,
+                instruct_prompt=assistant.instruct_prompt,
+                file_product_path=file_product_path,
+            )
+
+            assistant_instance = ChatAssistant(configuration=assistant_config)
+
+            answer = await assistant_instance.aon_message(
+                message.content, message_history, session_id=session_id
+            )
+
+            response = {
+                "result": answer,
+                "is_chat_false": False,
+            }
+
+            langfuse_context.flush()
+
+            assistant_message = Messages(
+                id=session_id,
+                conversation_id=conversation_id,
+                sender_type=SenderType.ASSISTANT,
+                content=answer,
+                response_time=time.time() - start_time,
+                is_chat_false=response["is_chat_false"],
+                cost=get_cost_from_session_id(session_id),
+            )
+            session.add(assistant_message)
+            session.commit()
+
+            return ChatResponse(
+                assistant_message=answer,
+            )
+
     def stream_chat_with_assistant(
         self, conversation_id: int, user_id: int, message: ChatMessage
     ) -> Generator[str, None, None]:

@@ -4,8 +4,13 @@ import { AuthProvider } from "@/hooks/auth";
 import { UserRound } from "lucide-react";
 import { dashboardNavItems } from "@/constants";
 import Header from "@/components/Header";
+import { Metadata } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+    title: "Dashboard",
+};
 
 export default function UserLayout({
     children,

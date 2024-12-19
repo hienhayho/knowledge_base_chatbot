@@ -4,6 +4,7 @@ import Markdown from "react-markdown";
 import { Popover, message } from "antd";
 import remarkGfm from "remark-gfm";
 import { useAuth } from "@/hooks/auth";
+import LoadingClipLoader from "@/components/LoadingClipLoader";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -32,6 +33,7 @@ const WebSocketChatArea = ({
         null
     );
     const [isAssistantTyping, setIsAssistantTyping] = useState(false);
+    const [isLoadingPage, setIsLoadingPage] = useState(true);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -123,6 +125,7 @@ const WebSocketChatArea = ({
 
     useEffect(() => {
         if (conversation) {
+            setIsLoadingPage(true);
             fetchConversationHistory();
             connectWebSocket();
         }
@@ -157,6 +160,8 @@ const WebSocketChatArea = ({
             setMessages(data);
         } catch (error) {
             console.error("Error fetching conversation history:", error);
+        } finally {
+            setIsLoadingPage(false);
         }
     };
 
@@ -257,6 +262,10 @@ const WebSocketChatArea = ({
                 );
         }
     };
+
+    if (isLoadingPage) {
+        return <LoadingClipLoader />;
+    }
 
     return (
         <div className="flex flex-col h-screen bg-white mt-12">

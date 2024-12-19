@@ -67,7 +67,7 @@ const AddToolsModal = ({
                 const choosenTools: Item[] = [];
                 if (assistantId) {
                     const response = await fetch(
-                        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/assistant/${assistantId}/`,
+                        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/assistant/${assistantId}`,
                         {
                             method: "GET",
                             headers: {

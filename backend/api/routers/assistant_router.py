@@ -51,7 +51,7 @@ logger = get_formatted_logger(__file__)
 assistant_router = APIRouter()
 
 
-@assistant_router.post("/", response_model=AssistantResponse)
+@assistant_router.post("", response_model=AssistantResponse)
 async def create_assistant(
     assistant: AssistantCreate,
     current_user: Annotated[Users, Depends(get_current_user)],
@@ -100,7 +100,7 @@ async def create_assistant(
         return new_assistant
 
 
-@assistant_router.get("/", response_model=list[AssistantResponse])
+@assistant_router.get("", response_model=list[AssistantResponse])
 async def get_all_assistants(
     current_user: Annotated[Users, Depends(get_current_user)],
     db_session: Annotated[Session, Depends(get_session)],
@@ -634,7 +634,7 @@ async def send_message(
     conversation_id = str(conversation_id)
 
     start_time = time.time()
-    result = assistant_service.chat_with_assistant(
+    result = await assistant_service.achat_with_assistant(
         conversation_id, current_user.id, message=message, start_time=start_time
     )
     return ChatMessageResponse(
