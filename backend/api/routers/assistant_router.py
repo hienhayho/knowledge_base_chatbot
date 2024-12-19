@@ -412,16 +412,40 @@ async def export_conversation(
     assistant_id: UUID,
     conversation_id: UUID,
     current_user: Annotated[Users, Depends(get_current_user)],
-    assistant_service: AssistantService = Depends(),
+    db_session: Annotated[Session, Depends(get_session)],
 ):
+    def get_conversation_history(conversation_id):
+        with db_session as session:
+            conv = session.exec(
+                select(Conversations).where(
+                    Conversations.id == conversation_id,
+                    Conversations.assistant_id == assistant_id,
+                    Conversations.user_id == current_user.id,
+                )
+            ).first()
+
+            if not conv:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Conversation not found",
+                )
+
+            query = (
+                select(Messages)
+                .where(Messages.conversation_id == conversation_id)
+                .order_by(Messages.created_at)
+            )
+
+            messages = session.exec(query).all()
+
+            return messages
+
     conversation = [
         {
             "sender": conv.sender_type,
             "content": conv.content,
         }
-        for conv in assistant_service.get_conversation_history(
-            assistant_id, conversation_id, current_user.id
-        )
+        for conv in get_conversation_history(conversation_id)
     ]
 
     with open(DOWNLOAD_FOLDER / f"{conversation_id}.json", "w") as f:
@@ -439,11 +463,29 @@ async def get_conversation_history(
     assistant_id: UUID,
     conversation_id: UUID,
     current_user: Annotated[Users, Depends(get_current_user)],
-    assistant_service: AssistantService = Depends(),
+    db_session: Annotated[Session, Depends(get_session)],
 ):
-    return assistant_service.get_conversation_history(
-        assistant_id, conversation_id, current_user.id
-    )
+    with db_session as session:
+        query = select(Conversations).where(
+            Conversations.assistant_id == assistant_id,
+            Conversations.id == conversation_id,
+            Conversations.user_id == current_user.id,
+        )
+
+        conversation = session.exec(query).first()
+
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        query = (
+            select(Messages)
+            .where(Messages.conversation_id == conversation_id)
+            .order_by(Messages.created_at)
+        )
+
+        messages = session.exec(query).all()
+
+        return messages
 
 
 @assistant_router.patch("/{assistant_id}/conversations/{conversation_id}/rename")

@@ -22,7 +22,6 @@ from src.database import (
 from api.models import (
     ChatMessage,
     ChatResponse,
-    MessageResponse,
 )
 from src.settings import default_settings
 from src.constants import SenderType, ChatAssistantConfig, MesssageHistory
@@ -402,36 +401,3 @@ class AssistantService:
                 MesssageHistory(content=msg.content, role=msg.sender_type)
                 for msg in messages
             ]
-
-    def get_conversation_history(
-        self, assistant_id: UUID, conversation_id: UUID, user_id: UUID
-    ) -> List[MessageResponse]:
-        try:
-            with self.db_session as session:
-                query = select(Conversations).where(
-                    Conversations.assistant_id == assistant_id,
-                    Conversations.id == conversation_id,
-                    Conversations.user_id == user_id,
-                )
-
-                conversation = session.exec(query).first()
-
-                if not conversation:
-                    raise HTTPException(
-                        status_code=404, detail="Conversation not found"
-                    )
-
-                query = (
-                    select(Messages)
-                    .where(Messages.conversation_id == conversation_id)
-                    .order_by(Messages.created_at)
-                )
-
-                messages = session.exec(query).all()
-
-                return [MessageResponse.model_validate(message) for message in messages]
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"An error occurred while fetching conversation history: {str(e)}",
-            )
