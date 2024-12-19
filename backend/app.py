@@ -25,7 +25,8 @@ load_dotenv()
 
 BACKEND_PORT = int(os.getenv("BACKEND_PORT"))
 RELOAD = os.getenv("MODE") == "development"
-CLEAN_INTERVAL = int(os.getenv("CLEAN_INTERVAL")) or 10
+CLEAN_INTERVAL = int(os.getenv("CLEAN_INTERVAL") or 10)
+WORKERS = int(os.getenv("WORKERS") or 1)
 
 
 async def delete_old_files():
@@ -93,4 +94,6 @@ app.include_router(admin_router, tags=["admin"], prefix="/api/admin")
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=BACKEND_PORT, reload=RELOAD)
+    uvicorn.run(
+        "app:app", host="0.0.0.0", port=BACKEND_PORT, reload=RELOAD, workers=WORKERS
+    )

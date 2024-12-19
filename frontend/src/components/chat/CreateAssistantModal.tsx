@@ -96,7 +96,7 @@ const CreateAssistantModal = ({
             },
         };
         try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
+            const response = await fetch(`${API_BASE_URL}/api/assistant`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

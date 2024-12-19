@@ -78,7 +78,7 @@ const DashBoardPage = () => {
         }
         const fetchDashboardData = async () => {
             try {
-                const response = await fetch(`${BASE_API_URL}/api/dashboard/`, {
+                const response = await fetch(`${BASE_API_URL}/api/dashboard`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },

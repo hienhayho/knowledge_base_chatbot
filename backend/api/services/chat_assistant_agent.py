@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from llama_index.core import Settings
 from langfuse.decorators import observe
 from langchain_openai import ChatOpenAI
+from llama_index.core.tools import FunctionTool
 from llama_index.core.callbacks import CallbackManager
 from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
@@ -42,7 +43,7 @@ class ChatAssistant:
             instruct_prompt=self.configuration.instruct_prompt,
         ).strip("\n")
 
-        self.tools = []
+        self.tools: list[FunctionTool] = []
 
         for tool_name in self.configuration.tools:
             logger.info(
@@ -87,8 +88,10 @@ class ChatAssistant:
             expected_output="Một câu trả lời phù hợp nhất với câu hỏi được đưa ra.",
             agent=kb_agent,
             tools=[
-                LlamaIndexTool.from_tool(tool, result_as_answer=True)
-                for tool in self.tools
+                LlamaIndexTool.from_tool(
+                    tool, result_as_answer=False if idx == 0 else True
+                )
+                for idx, tool in enumerate(self.tools)
             ],
         )
 

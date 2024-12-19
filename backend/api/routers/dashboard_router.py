@@ -36,7 +36,7 @@ from api.models import (
 dashboard_router = APIRouter()
 
 
-@dashboard_router.get("/", response_model=DashboardStaticsResponse)
+@dashboard_router.get("", response_model=DashboardStaticsResponse)
 async def get_dashboard(
     current_user: Annotated[Users, Depends(get_current_user)],
     db_session: Annotated[Session, Depends(get_session)],

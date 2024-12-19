@@ -1,5 +1,7 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
+import { message } from "antd";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/chat/SideBar";
 import WebSocketChatArea from "@/components/chat/WebSocketChatArea";
@@ -23,6 +25,7 @@ const ChatAssistantPage = () => {
     const conversation_id = searchParams.get("conversation");
 
     const [isSideView, setIsSideView] = useState(true);
+    const [messageApi, contextHolder] = message.useMessage();
     const [selectedAssistant, setSelectedAssistant] =
         useState<IAssistant | null>(null);
     const [selectedConversation, setSelectedConversation] =
@@ -32,7 +35,7 @@ const ChatAssistantPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { token } = useAuth();
-    const redirectUrl = encodeURIComponent(`/chat/${params.assistant_id}`);
+    const redirectUrl = encodeURIComponent(`/chat/${assistant_id}`);
 
     const useWebsocket = process.env.NEXT_PUBLIC_USE_WEB_SOCKET === "true";
 
@@ -82,8 +85,18 @@ const ChatAssistantPage = () => {
                     throw new Error("Failed to fetch conversations");
                 }
                 const data = await response.json();
+                messageApi.success({
+                    content: "Conversations loaded",
+                    duration: 1,
+                });
                 setConversations(data);
             } catch (err) {
+                messageApi.error({
+                    content:
+                        (err as Error).message ||
+                        "Failed to fetch conversations",
+                    duration: 1,
+                });
                 setError((err as Error).message);
             }
         };
@@ -119,12 +132,21 @@ const ChatAssistantPage = () => {
             }
 
             const newConversation = await response.json();
-            setConversations([...conversations, newConversation]);
+            messageApi.success({
+                content: "Conversation created successfully !",
+                duration: 1,
+            });
+            setConversations([newConversation, ...conversations]);
             setSelectedConversation(newConversation);
             router.push(
                 `/chat/${assistant_id}?conversation=${newConversation.id}`
             );
         } catch (err) {
+            messageApi.error({
+                content:
+                    (err as Error).message || "Failed to create conversation",
+                duration: 1,
+            });
             setError((err as Error).message);
         }
     };
@@ -134,6 +156,7 @@ const ChatAssistantPage = () => {
 
     return (
         <div className="flex h-[calc(100vh-4rem)] bg-gray-100">
+            {contextHolder}
             <Sidebar
                 isVisible={isSideView}
                 width={sidebarWidth}

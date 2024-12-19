@@ -268,7 +268,6 @@ async def login_for_access_token(
     """
     Endpoint to login and get access token
     """
-    print("form_data: ", form_data.username, form_data.password)
     user = authenticate_user(db_session, form_data.username, form_data.password)
     if not user:
         raise HTTPException(

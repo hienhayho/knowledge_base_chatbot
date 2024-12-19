@@ -5,6 +5,7 @@ import React, { useCallback, useRef, useState, useEffect } from "react";
 
 import ConversationCard from "./ConversationCard";
 import { IAssistant, IConversation } from "@/types";
+import { useAuth } from "@/hooks/auth";
 
 const Sidebar = ({
     isVisible,
@@ -28,7 +29,7 @@ const Sidebar = ({
     selectedAssistant: IAssistant | null;
     setSelectedAssistant: (assistant: IAssistant) => void;
 }) => {
-    const token = getCookie("access_token");
+    const { token } = useAuth();
     const sidebarRef = useRef<HTMLDivElement>(null);
     const [isResizing, setIsResizing] = useState<boolean>(false);
     const [messageApi, contextHolder] = message.useMessage();

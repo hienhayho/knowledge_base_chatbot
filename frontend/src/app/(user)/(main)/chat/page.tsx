@@ -24,9 +24,10 @@ const ChatMainPage = () => {
     const [error, setError] = useState<string | null>(null);
     const redirectUrl = encodeURIComponent("/chat");
     const { token } = useAuth();
+
     const fetchAssistants = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant/`, {
+            const response = await fetch(`${API_BASE_URL}/api/assistant`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -101,7 +102,6 @@ const ChatMainPage = () => {
                 `Assistant: ${assistantId} was deleted successfully!`
             );
 
-            // Remove the deleted assistant from the state
             setAssistants((prev) =>
                 prev.filter((assistant) => assistant.id !== assistantId)
             );
