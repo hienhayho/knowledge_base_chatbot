@@ -30,7 +30,7 @@ python-pptx==1.0.2
 Pillow==10.4.0
 qdrant_client==1.11.3
 fastapi==0.115.0
-uvicorn==0.31.0
+uvicorn==0.29.0
 sqlmodel==0.0.22
 psycopg2-binary==2.9.9
 pydantic[email]==2.9.2
