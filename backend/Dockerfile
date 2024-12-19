@@ -5,7 +5,8 @@ FROM python:${VERSION:-3.11}
 WORKDIR /app
 
 RUN mkdir downloads \
-    && mkdir uploads
+    && mkdir uploads \
+    && mkdir logs
 
 COPY requirements.txt .
 
