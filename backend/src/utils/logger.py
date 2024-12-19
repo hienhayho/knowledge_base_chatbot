@@ -1,5 +1,5 @@
 # This file contains the logger configuration for the application.
-
+import os
 import sys
 import click
 import logging
@@ -143,6 +143,7 @@ class DefaultFormatter(ColourizedFormatter):
             recordcopy.asctime = self.color_date(recordcopy)
 
         recordcopy.__dict__["levelprefix"] = levelname + seperator
+        recordcopy.__dict__["pid"] = os.getpid()
         return super().formatMessage(recordcopy)
 
 
@@ -183,7 +184,7 @@ def get_formatted_logger(
     if not logger.hasHandlers():
         stream_handler = logging.StreamHandler()
         stream_formatter = DefaultFormatter(
-            "%(asctime)s | %(levelprefix)s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
+            "%(asctime)s - %(pid)s | %(levelprefix)s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
             datefmt="%Y/%m/%d  %H:%M:%S",
         )
         stream_handler.setFormatter(stream_formatter)
