@@ -19,6 +19,6 @@ pprint(
 )
 
 if RELOAD:
-    os.system(f"fastapi dev --port {BACKEND_PORT} --workers {WORKERS} app.py")
+    os.system(f"fastapi dev --port {BACKEND_PORT} app.py")
 else:
     os.system(f"fastapi run --port {BACKEND_PORT} --workers {WORKERS} app.py")

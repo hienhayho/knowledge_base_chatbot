@@ -34,18 +34,18 @@ async def delete_old_files():
         current_time = datetime.now()
 
         for file in Path(DOWNLOAD_FOLDER).iterdir():
-            if file.is_file():
-                file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
-                age = (current_time - file_mod_time).total_seconds()
+            try:
+                if file.is_file():
+                    file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
+                    age = (current_time - file_mod_time).total_seconds()
 
-                if age > interval:
-                    try:
+                    if age > interval:
                         file.unlink()
                         logger.warning(f"Deleted file: {file}")
-                    except Exception as e:
-                        logger.error(f"Error deleting file {file}: {e}")
-                else:
-                    logger.info(f"Skipping file: {file}")
+                    else:
+                        logger.info(f"Skipping file: {file}")
+            except Exception as e:
+                logger.error(f"Error deleting file {file}: {e}")
 
         await asyncio.sleep(5 * 60)
 

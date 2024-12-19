@@ -242,6 +242,7 @@ const JsonChatArea = ({
                                 value={inputMessage}
                                 onChange={handleInputChange}
                                 onKeyDown={handleKeyDown}
+                                autoFocus
                                 placeholder="Message Assistant (Press Enter to send, Shift+Enter for new line)"
                                 className="flex-1 bg-transparent border-none rounded-3xl py-4 px-5 focus:outline-none resize-none text-gray-800"
                                 rows={1}
