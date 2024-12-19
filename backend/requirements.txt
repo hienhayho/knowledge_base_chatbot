@@ -30,7 +30,6 @@ python-pptx==1.0.2
 Pillow==10.4.0
 qdrant_client==1.11.3
 fastapi==0.115.0
-uvicorn==0.29.0
 sqlmodel==0.0.22
 psycopg2-binary==2.9.9
 pydantic[email]==2.9.2
@@ -42,7 +41,7 @@ passlib[bcryt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.12
 flower==2.0.1
-uvicorn[standard]==0.31.0
+uvicorn[standard]==0.29.0
 fastapi-utils==0.7.0
 langfuse==2.51.4
 tiktoken==0.7.0
