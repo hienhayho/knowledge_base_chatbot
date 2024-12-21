@@ -47,7 +47,7 @@ async def get_all_users(
         )
 
     with db_session as session:
-        query = select(Users)
+        query = select(Users).order_by(desc(Users.updated_at))
         users = session.exec(query).all()
         return users
 
@@ -167,7 +167,7 @@ async def get_all_tokens(
         )
 
     with db_session as session:
-        query = select(Tokens).order_by(desc(Tokens.created_at))
+        query = select(Tokens).order_by(desc(Tokens.updated_at))
         tokens = session.exec(query).all()
         return tokens
 

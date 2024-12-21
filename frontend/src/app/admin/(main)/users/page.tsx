@@ -31,6 +31,7 @@ import AddModal from "@/components/admin/AddModal";
 import { adminApi, authApi } from "@/api";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { setCookie } from "cookies-next";
+import { formatDate } from "@/utils";
 
 type DataIndex = keyof IUser;
 
@@ -76,8 +77,8 @@ const AdminUserPage = () => {
                         role: user.role,
                         username: user.username,
                         id: user.id,
-                        createdAt: user.created_at,
-                        updatedAt: user.updated_at,
+                        createdAt: formatDate(user.created_at),
+                        updatedAt: formatDate(user.updated_at),
                     }))
                 );
             } catch (error) {
@@ -302,6 +303,16 @@ const AdminUserPage = () => {
             }),
         },
         {
+            title: "Thời gian tạo",
+            dataIndex: "createdAt",
+            key: "createdAt",
+            render: (text: string) => (
+                <div className="flex items-center ml-2">
+                    <span className="text-gray-500 font-semibold">{text}</span>
+                </div>
+            ),
+        },
+        {
             title: "Thao tác",
             key: "action",
             render: (text: string, record: IUser) => (
@@ -438,8 +449,8 @@ const AdminUserPage = () => {
                     role: result.data.role,
                     username: result.data.username,
                     id: result.data.id,
-                    createdAt: result.data.createdAt,
-                    updatedAt: result.data.updatedAt,
+                    createdAt: formatDate(result.data.createdAt),
+                    updatedAt: formatDate(result.data.updatedAt),
                 },
             ]);
         } catch (error) {

@@ -5,8 +5,8 @@ import uuid
 from pathlib import Path
 from typing import Annotated, Type
 from celery.result import AsyncResult
-from sqlmodel import Session, select, not_, col, or_, and_
 from fastapi.responses import JSONResponse, FileResponse
+from sqlmodel import Session, select, not_, col, or_, and_, desc
 from fastapi import (
     Body,
     File,
@@ -403,7 +403,11 @@ async def get_all_knowledge_bases(
     Get all knowledge bases
     """
     with db_session as session:
-        query = select(KnowledgeBases).where(KnowledgeBases.user_id == current_user.id)
+        query = (
+            select(KnowledgeBases)
+            .where(KnowledgeBases.user_id == current_user.id)
+            .order_by(desc(KnowledgeBases.updated_at))
+        )
 
         knowledge_bases = session.exec(query).all()
 
