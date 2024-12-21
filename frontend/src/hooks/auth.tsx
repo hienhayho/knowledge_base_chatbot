@@ -14,10 +14,7 @@ import {
 interface AuthContextType {
     user: IUser | null;
     token: string;
-    login: (body: URLSearchParams) => Promise<{
-        access_token: string;
-        type?: string;
-    }>;
+    login: (body: URLSearchParams) => Promise<IUser>;
     logout: () => void;
     register: (body: SignUpFormValues) => Promise<{
         success: boolean;
@@ -31,6 +28,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+// Verify token interval in minutes - default 30 minutes
 const VERIFY_INTERVAL_MINUTES = parseInt(
     process.env.NEXT_PUBLIC_VERIFY_INTERVAL_MINUTES || "30"
 );
@@ -149,7 +147,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setLoading(false);
             setIsLoggedOut(false);
 
-            return data;
+            return userData;
         } catch (err) {
             console.error("Error in login: ", err);
             throw new Error("Something wrong happened");

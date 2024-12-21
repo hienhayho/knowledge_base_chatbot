@@ -32,7 +32,7 @@ services:
             context: ./backend
             dockerfile: Dockerfile
             args:
-                VERSION: 3.12
+                VERSION: 3.12.8
         env_file:
             - ./.env
         container_name: celery
@@ -46,7 +46,7 @@ services:
             context: ./backend
             dockerfile: Dockerfile
             args:
-                VERSION: 3.12
+                VERSION: 3.12.8
         env_file:
             - ./.env
         container_name: backend

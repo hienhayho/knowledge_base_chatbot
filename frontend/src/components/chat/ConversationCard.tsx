@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { getCookie } from "cookies-next";
-import { useRouter } from "next/navigation";
 import { FolderPen, Trash2, MessageSquare, Download } from "lucide-react";
 import { Popover, Row, Col, message, Input, Button } from "antd";
 import { IAssistant, IConversation } from "@/types";
+import { useAuth } from "@/hooks/auth";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -22,16 +21,13 @@ const ConversationCard = ({
     onConversationSelect: (conversation: IConversation | null) => void;
     setConversations: (conversations: IConversation[]) => void;
 }) => {
-    const token = getCookie("access_token");
+    const { token } = useAuth();
     const [newName, setNewName] = useState<string>(
         conversation.name || conversation.id
     );
     const [openRenamePopover, setOpenRenamePopover] = useState<boolean>(false);
     const [messageApi, contextHolder] = message.useMessage();
-    const router = useRouter();
-    const redirectUrl = encodeURIComponent(
-        `/chat/${selectedAssistant.id}?conversation=${conversation.id}`
-    );
+    const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
     const handleOpenRenamePopoverChange = (newOpen: boolean) => {
         setOpenRenamePopover(newOpen);
@@ -55,12 +51,6 @@ const ConversationCard = ({
 
     const handleRenameConversation = (conversationId: string) => async () => {
         try {
-            if (!token) {
-                errorMessage("You are not authenticated");
-                setTimeout(() => {
-                    router.push(`/login?redirect=${redirectUrl}`);
-                });
-            }
             const response = await fetch(
                 `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/conversations/${conversationId}/rename`,
                 {
@@ -101,6 +91,7 @@ const ConversationCard = ({
 
     const handleDeleteConversation = (conversationId: string) => async () => {
         try {
+            setIsDeleting(true);
             const response = await fetch(
                 `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/conversations/${conversationId}`,
                 {
@@ -126,6 +117,8 @@ const ConversationCard = ({
         } catch (error) {
             console.error(error);
             errorMessage(`Delete failed. Error: ${(error as Error).message}`);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -189,8 +182,8 @@ const ConversationCard = ({
                             <Popover
                                 placement="rightTop"
                                 title={
-                                    <span className="text-green-600">
-                                        Export this conversation?
+                                    <span className="text-green-600 font-bold">
+                                        Tải nội dung cuộc hội thoại này ?
                                     </span>
                                 }
                                 content={
@@ -222,14 +215,16 @@ const ConversationCard = ({
                                 open={openRenamePopover}
                                 placement="rightTop"
                                 title={
-                                    <span className="text-blue-300">
-                                        Rename this conversation?
+                                    <span className="text-blue-300 font-bold">
+                                        Đổi tên cuộc hội thoại này
                                     </span>
                                 }
                                 onOpenChange={handleOpenRenamePopoverChange}
                                 content={
                                     <div>
-                                        <label>New name:</label>
+                                        <label className="font-medium ml-2">
+                                            Tên mới:
+                                        </label>
                                         <Input
                                             placeholder="e.g Algebra"
                                             value={newName}
@@ -268,8 +263,8 @@ const ConversationCard = ({
                             <Popover
                                 placement="rightTop"
                                 title={
-                                    <span className="text-red-600">
-                                        Delete this conversation?
+                                    <span className="text-red-600 font-bold">
+                                        Xóa cuộc hội thoại này ?
                                     </span>
                                 }
                                 content={
@@ -280,6 +275,7 @@ const ConversationCard = ({
                                             alignItems: "center",
                                             marginLeft: "auto",
                                         }}
+                                        loading={isDeleting}
                                         type="primary"
                                         onClick={handleDeleteConversation(
                                             conversation.id

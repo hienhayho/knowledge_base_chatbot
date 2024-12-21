@@ -48,6 +48,31 @@ export interface IUserResponse {
     updated_at: string;
 }
 
+export interface IToken {
+    id: string;
+    user_id: string;
+    token: string;
+    createdAt: string;
+    updatedAt: string;
+    username: string;
+    role: string;
+}
+
+export interface ITokenResponse {
+    id: string;
+    user_id: string;
+    username: string;
+    role: string;
+    token: string;
+    created_at: string;
+    updated_at: string;
+    detail?: string;
+}
+
+export interface ITokenFormValues {
+    username: string;
+}
+
 export interface SignUpFormValues {
     username: string;
     email: string;

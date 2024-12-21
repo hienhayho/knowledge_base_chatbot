@@ -133,11 +133,18 @@ const WordcloudPage = () => {
             const userWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=true`;
             const assistantWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=false`;
 
-            const userResponse = await fetch(userWordCloudUrl, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            const [userResponse, assistantResponse] = await Promise.all([
+                fetch(userWordCloudUrl, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }),
+                fetch(assistantWordCloudUrl, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }),
+            ]);
 
             if (!userResponse.ok) {
                 const userData = await userResponse.json();
@@ -148,12 +155,6 @@ const WordcloudPage = () => {
             }
 
             const userBlob = await userResponse.blob();
-
-            const assistantResponse = await fetch(assistantWordCloudUrl, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
 
             if (!assistantResponse.ok) {
                 const assistantData = await assistantResponse.json();

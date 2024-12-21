@@ -20,10 +20,23 @@ export const adminNavItems: INavItem[] = [
         name: "Users",
         path: "/admin/users",
     },
+    {
+        name: "Tokens",
+        path: "/admin/tokens",
+    },
 ];
 
 export const dashboardNavItems: INavItem[] = [
-    { name: "Statistic", path: "/dashboard" },
-    { name: "Wordcloud", path: "/dashboard/wordcloud" },
-    { name: "Knowledge Base", path: "/knowledge" },
+    {
+        name: "Statistic",
+        path: "/dashboard",
+    },
+    {
+        name: "Wordcloud",
+        path: "/dashboard/wordcloud",
+    },
+    {
+        name: "Knowledge Base",
+        path: "/knowledge",
+    },
 ];

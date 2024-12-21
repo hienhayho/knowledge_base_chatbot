@@ -24,6 +24,7 @@ export default function UserLayout({
                     headerContent="User"
                     navItems={dashboardNavItems}
                     icon={<UserRound size={32} />}
+                    homePath="/dashboard"
                 />
                 <AuthProvider>
                     <div className="flex-grow">{children}</div>

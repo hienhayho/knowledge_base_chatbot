@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, User, Bot, Loader2 } from "lucide-react";
+import { Send, User, Bot, Loader2, Link } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAuth } from "@/hooks/auth";
 import LoadingClipLoader from "@/components/LoadingClipLoader";
+import { message, Popover } from "antd";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -28,6 +29,7 @@ const JsonChatArea = ({
     const [inputMessage, setInputMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingPage, setIsLoadingPage] = useState(false);
+    const [messageApi, contextHolder] = message.useMessage();
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -188,6 +190,7 @@ const JsonChatArea = ({
 
     return (
         <div className="flex flex-col h-screen bg-white mt-12">
+            {contextHolder}
             <div
                 className="flex-1 overflow-y-auto p-4"
                 style={{ maxHeight: "90vh" }}
@@ -252,13 +255,55 @@ const JsonChatArea = ({
                                 }}
                                 disabled={isLoading}
                             />
-                            <button
-                                type="submit"
-                                className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 mr-2"
-                                disabled={isLoading}
+                            <Popover
+                                content={<div>{"Nhấn để gửi"}</div>}
+                                className=""
                             >
-                                <Send size={24} />
-                            </button>
+                                <button
+                                    type="submit"
+                                    className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 mr-2"
+                                    disabled={isLoading}
+                                >
+                                    <Send size={24} />
+                                </button>
+                            </Popover>
+
+                            <Popover
+                                content={
+                                    <div>
+                                        {
+                                            "Nhấn để sao chép API url cho đoạn chat này"
+                                        }
+                                    </div>
+                                }
+                                className=""
+                            >
+                                <button
+                                    type="button"
+                                    className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 mr-2"
+                                    onClick={() => {
+                                        if (!conversation || !assistantId) {
+                                            messageApi.error({
+                                                content:
+                                                    "Something went wrong !!! Please try refreshing the page",
+                                                duration: 1.5,
+                                            });
+                                            return;
+                                        }
+                                        navigator.clipboard.writeText(
+                                            `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/messages`
+                                        );
+                                        messageApi.open({
+                                            type: "success",
+                                            content:
+                                                "API chat đã được sao chép vào clipboard !!!",
+                                            duration: 1.5,
+                                        });
+                                    }}
+                                >
+                                    <Link size={24} />
+                                </button>
+                            </Popover>
                         </div>
                     </div>
                 </form>

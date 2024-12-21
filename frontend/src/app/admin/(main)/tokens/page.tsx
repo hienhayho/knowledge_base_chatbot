@@ -1,13 +1,8 @@
 "use client";
 
-import { LockOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "@/hooks/auth";
-import {
-    IAdminSwitchUserResponse,
-    IUser,
-    IUserResponse,
-    SignUpFormValues,
-} from "@/types";
+import { IToken, ITokenResponse, ITokenFormValues } from "@/types";
 import {
     Button,
     Form,
@@ -26,18 +21,18 @@ import Highlighter from "react-highlight-words";
 import { useEffect, useRef, useState } from "react";
 import { FilterDropdownProps } from "antd/es/table/interface";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { Mail, Plus, Trash2, SendHorizontal } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import AddModal from "@/components/admin/AddModal";
-import { adminApi, authApi } from "@/api";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { setCookie } from "cookies-next";
+import { formatDate } from "@/utils";
+import TokenRender from "@/components/admin/TokenRender";
 
-type DataIndex = keyof IUser;
+type DataIndex = keyof IToken;
 
-const AdminUserPage = () => {
-    const { token, changeUser } = useAuth();
+const AdminTokenManagementPage = () => {
+    const { token } = useAuth();
     const [loadingPage, setLoadingPage] = useState(true);
-    const [users, setUsers] = useState<IUser[]>([]);
+    const [tokens, setTokens] = useState<IToken[]>([]);
     const [searchText, setSearchText] = useState("");
     const [searchedColumn, setSearchedColumn] = useState("");
     const searchInput = useRef<InputRef>(null);
@@ -50,10 +45,10 @@ const AdminUserPage = () => {
         if (!token) {
             return;
         }
-        const fetchAllUser = async () => {
+        const fetchAllTokens = async () => {
             try {
                 const respone = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/users`,
+                    `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/tokens`,
                     {
                         headers: {
                             "Content-Type": "application/json",
@@ -65,29 +60,31 @@ const AdminUserPage = () => {
                 const data = await respone.json();
 
                 if (!respone.ok) {
-                    throw new Error(data.detail || "Failed to fetch users");
+                    throw new Error(data.detail || "Failed to fetch tokens");
                 }
 
-                messageApi.success("Lấy thông tin người dùng thành công");
+                messageApi.success("Lấy thông tin tokens thành công !");
 
-                setUsers(
-                    data.map((user: IUserResponse) => ({
-                        key: user.id,
-                        role: user.role,
-                        username: user.username,
-                        id: user.id,
-                        createdAt: user.created_at,
-                        updatedAt: user.updated_at,
+                setTokens(
+                    data.map((token: ITokenResponse) => ({
+                        key: token.id,
+                        token: token.token,
+                        role: token.role,
+                        user_id: token.user_id,
+                        username: token.username,
+                        id: token.id,
+                        createdAt: formatDate(token.created_at),
+                        updatedAt: formatDate(token.updated_at),
                     }))
                 );
             } catch (error) {
-                console.error("Lấy thông tin người dùng thất bại", error);
+                console.error("Lấy thông tin tokens thất bại", error);
                 messageApi.error((error as Error).message);
             } finally {
                 setLoadingPage(false);
             }
         };
-        fetchAllUser();
+        fetchAllTokens();
     }, [token]);
 
     const handleSearch = (
@@ -105,10 +102,10 @@ const AdminUserPage = () => {
         setSearchText("");
     };
 
-    const deleteUser = async (id: string) => {
+    const deleteToken = async (id: string) => {
         try {
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/users/${id}`,
+                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/delete-token/${id}`,
                 {
                     method: "DELETE",
                     headers: {
@@ -120,52 +117,21 @@ const AdminUserPage = () => {
 
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.detail || "Failed to delete user");
+                throw new Error(data.detail || "Failed to delete token");
             }
 
-            messageApi.success("Xóa người dùng thành công");
-            setUsers(users.filter((user) => user.id !== id));
+            messageApi.success("Xóa token thành công !");
+            setTokens((prev) => prev.filter((token) => token.id !== id));
         } catch (error) {
             console.error("Xóa người dùng thất bại", error);
             messageApi.error((error as Error).message);
         }
     };
 
-    const handleSwitchUser = async (username: string) => {
-        try {
-            messageApi.open({
-                type: "loading",
-                content: "Switching ...",
-                duration: 0,
-            });
-            const data = (await adminApi.switchUser(
-                token,
-                username
-            )) as IAdminSwitchUserResponse;
-
-            messageApi.destroy();
-
-            setCookie("access_token", data.access_token, {
-                maxAge: 1440 * 60,
-                path: "/",
-            });
-            changeUser(data.user, data.access_token);
-
-            successMessage({
-                content: `Switch to: ${username}`,
-            });
-        } catch (err) {
-            console.error("Error switching user:", err);
-            errorMessage({
-                content: "Failed to switch user",
-            });
-        }
-    };
-
     const getColumnSearchProps = (
         dataIndex: DataIndex,
         renderFunction?: (text: string) => JSX.Element
-    ): TableColumnType<IUser> => ({
+    ): TableColumnType<IToken> => ({
         filterDropdown: ({
             setSelectedKeys,
             selectedKeys,
@@ -260,8 +226,22 @@ const AdminUserPage = () => {
             },
         },
 
-        render: (text) =>
-            searchedColumn === dataIndex ? (
+        render: (text) => {
+            if (dataIndex === "token") {
+                const initVisible =
+                    searchedColumn === "token" &&
+                    searchText !== "" &&
+                    text.includes(searchText);
+
+                return (
+                    <TokenRender
+                        token={text}
+                        initVisible={initVisible}
+                        searchText={searchText}
+                    />
+                );
+            }
+            return searchedColumn === dataIndex ? (
                 <Highlighter
                     highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
                     searchWords={[searchText]}
@@ -272,7 +252,8 @@ const AdminUserPage = () => {
                 renderFunction(text)
             ) : (
                 text
-            ),
+            );
+        },
     });
 
     const columns = [
@@ -286,7 +267,6 @@ const AdminUserPage = () => {
                 </div>
             )),
         },
-
         {
             title: "Quyền",
             dataIndex: "role",
@@ -302,55 +282,42 @@ const AdminUserPage = () => {
             }),
         },
         {
+            title: "Token",
+            dataIndex: "token",
+            key: "token",
+            width: 500,
+            ...getColumnSearchProps("token", (text: string) => (
+                <TokenRender token={text} />
+            )),
+        },
+        {
+            title: "Thời gian tạo",
+            dataIndex: "createdAt",
+            key: "createdAt",
+            render: (text: string) => (
+                <div className="flex items-center ml-2">
+                    <span className="text-yellow-400 font-semibold">
+                        {text}
+                    </span>
+                </div>
+            ),
+        },
+        {
             title: "Thao tác",
             key: "action",
-            render: (text: string, record: IUser) => (
+            render: (text: string, record: IToken) => (
                 <Space
                     size="large"
                     className="flex gap-4 justify-center items-center w-full"
                 >
                     <div className="cursor-pointer flex flex-row gap-4">
-                        <Tooltip title="Chuyển tài khoản">
+                        <Tooltip title={`Xóa token của: ${record.username}`}>
                             <Popconfirm
-                                title="Chuyển tài khoản"
-                                description={
-                                    <span>
-                                        Chuyển sang tài khoản:&nbsp;
-                                        <span className="text-red-400 font-medium">
-                                            {record.username}
-                                        </span>
-                                        &nbsp; ?
-                                    </span>
-                                }
+                                title="Xóa token ?"
+                                description={`Xóa token của: ${record.username} ?`}
                                 onConfirm={() =>
                                     new Promise(async (resolve) => {
-                                        await handleSwitchUser(record.username);
-                                        resolve(null);
-                                    })
-                                }
-                                okText="Chuyển"
-                                cancelText="Hủy"
-                            >
-                                <SendHorizontal size={16} color="green" />
-                            </Popconfirm>
-                        </Tooltip>
-                    </div>
-                    <div className="cursor-pointer flex flex-row gap-4">
-                        <Tooltip title={`Xóa: ${record.username}`}>
-                            <Popconfirm
-                                title="Xóa người dùng"
-                                description={
-                                    <span>
-                                        Xác nhận xóa:&nbsp;
-                                        <span className="text-red-400 font-medium">
-                                            {record.username}
-                                        </span>
-                                        &nbsp; ?
-                                    </span>
-                                }
-                                onConfirm={() =>
-                                    new Promise(async (resolve) => {
-                                        await deleteUser(record.id);
+                                        await deleteToken(record.id);
                                         resolve(null);
                                     })
                                 }
@@ -400,47 +367,52 @@ const AdminUserPage = () => {
     };
 
     const onFinish: FormProps["onFinish"] = async (
-        values: SignUpFormValues
+        values: ITokenFormValues
     ) => {
-        const { username, email, password, retypePassword } = values;
-
-        if (password !== retypePassword) {
-            errorMessage({
-                content: "Passwords do not match!",
-            });
-            return;
-        }
+        const { username } = values;
 
         try {
             setLoadingRegister(true);
-            const result = await authApi.register({
-                username: username,
-                email: email,
-                password: password,
-                retypePassword: retypePassword,
-            });
+            const result = await fetch(
+                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/create-token`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        username,
+                    }),
+                }
+            );
 
-            if (!result.success) {
+            const data = await result.json();
+
+            if (!result.ok) {
                 errorMessage({
-                    content: result?.detail || "An unexpected error occurred",
+                    content: data?.detail || "An unexpected error occurred",
                 });
                 return;
             }
 
             successMessage({
-                content: `Account created successfully for ${result.data.username}.`,
-                duration: 1.5,
+                content: `Tạo token cho ${username} thành công`,
+                duration: 1,
             });
-            setUsers((prev) => [
-                ...prev,
+
+            setTokens((prev) => [
                 {
-                    key: result.data.id,
-                    role: result.data.role,
-                    username: result.data.username,
-                    id: result.data.id,
-                    createdAt: result.data.createdAt,
-                    updatedAt: result.data.updatedAt,
+                    key: data.id,
+                    token: data.token,
+                    role: data.role,
+                    user_id: data.user_id,
+                    username: data.username,
+                    id: data.id,
+                    createdAt: formatDate(data.created_at),
+                    updatedAt: formatDate(data.updated_at),
                 },
+                ...prev,
             ]);
         } catch (error) {
             console.error(error);
@@ -474,83 +446,6 @@ const AdminUserPage = () => {
                     placeholder="Username"
                 />
             </Form.Item>
-
-            <Form.Item
-                name="email"
-                rules={[
-                    {
-                        required: true,
-                        message: "Please input your email!",
-                        type: "email",
-                    },
-                ]}
-                style={{
-                    width: "100%",
-                }}
-            >
-                <Input prefix={<Mail size={16} />} placeholder="Email" />
-            </Form.Item>
-
-            <Form.Item
-                name="password"
-                rules={[
-                    {
-                        required: true,
-                        message: "Please input your password!",
-                    },
-                    () => ({
-                        validator(_, value) {
-                            if (!value || value.length >= 6) {
-                                return Promise.resolve();
-                            }
-                            return Promise.reject(
-                                new Error(
-                                    "Password must be at least 6 characters!"
-                                )
-                            );
-                        },
-                    }),
-                ]}
-                style={{
-                    width: "100%",
-                }}
-            >
-                <Input.Password
-                    prefix={<LockOutlined />}
-                    type="password"
-                    placeholder="Password"
-                />
-            </Form.Item>
-
-            <Form.Item
-                name="retypePassword"
-                dependencies={["password"]}
-                rules={[
-                    {
-                        required: true,
-                        message: "Please retype your password!",
-                    },
-                    ({ getFieldValue }) => ({
-                        validator(_, value) {
-                            if (!value || getFieldValue("password") === value) {
-                                return Promise.resolve();
-                            }
-                            return Promise.reject(
-                                new Error("Passwords do not match!")
-                            );
-                        },
-                    }),
-                ]}
-                style={{
-                    width: "100%",
-                }}
-            >
-                <Input.Password
-                    prefix={<LockOutlined />}
-                    type="password"
-                    placeholder="Retype password"
-                />
-            </Form.Item>
         </>
     );
 
@@ -563,7 +458,7 @@ const AdminUserPage = () => {
             {contextHolder}
             <div className="flex justify-around my-5">
                 <span className="text-xl text-red-500 font-bold">
-                    Người dùng
+                    Quản lý token
                 </span>
                 <AddModal
                     open={open}
@@ -573,14 +468,14 @@ const AdminUserPage = () => {
                     form={form}
                     onFinishFailed={onFinishFailed}
                     buttonIcon={<Plus size={16} />}
-                    buttonContent="Thêm người dùng"
-                    formTitle="Thêm người dùng mới"
+                    buttonContent="Thêm token"
+                    formTitle="Tạo mới token"
                     formItems={formItems}
-                    submitButtonContent="Đăng ký người dùng"
+                    submitButtonContent="Tạo token !!!"
                 />
             </div>
-            <Table<IUser> dataSource={users} columns={columns} />
+            <Table<IToken> dataSource={tokens} columns={columns} />
         </div>
     );
 };
-export default ProtectedRoute(AdminUserPage);
+export default ProtectedRoute(AdminTokenManagementPage);
