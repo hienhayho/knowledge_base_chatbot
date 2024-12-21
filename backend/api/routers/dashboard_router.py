@@ -385,7 +385,9 @@ async def get_all_knowledge_bases(
 ):
     with db_session as session:
         knowledge_bases = session.exec(
-            select(KnowledgeBases).where(KnowledgeBases.user_id == current_user.id)
+            select(KnowledgeBases)
+            .where(KnowledgeBases.user_id == current_user.id)
+            .order_by(desc(KnowledgeBases.updated_at))
         ).all()
 
         return knowledge_bases
@@ -398,7 +400,9 @@ async def get_all_assistants(
 ):
     with db_session as session:
         assistants = session.exec(
-            select(Assistants).where(Assistants.user_id == current_user.id)
+            select(Assistants)
+            .where(Assistants.user_id == current_user.id)
+            .order_by(desc(Assistants.updated_at))
         ).all()
 
         return assistants
@@ -413,7 +417,7 @@ async def get_all_conversations(
         conversations = session.exec(
             select(Conversations)
             .where(Conversations.user_id == current_user.id)
-            .order_by(desc(Conversations.created_at))
+            .order_by(desc(Conversations.updated_at))
         ).all()
 
         return [

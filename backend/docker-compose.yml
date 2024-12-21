@@ -24,6 +24,7 @@ services:
             POSTGRES_USER: root
             POSTGRES_PASSWORD: 123456
             POSTGRES_DB: db
+            TZ: Asia/Ho_Chi_Minh
         ports:
             - "5432:5432"
         volumes:

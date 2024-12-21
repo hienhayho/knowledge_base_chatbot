@@ -15,9 +15,10 @@ from sqlalchemy.dialects.postgresql import ARRAY
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
+from src.utils import get_now
 from src.constants import FileStatus, SenderType, UserRole, ExistTools
-
 from src.settings import get_default_setting, GlobalSettings
+
 
 load_dotenv()
 
@@ -122,16 +123,16 @@ class Users(SQLModel, table=True):
     )
 
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
 
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
     max_size_mb: float = Field(
         default=5.0,
@@ -215,15 +216,15 @@ class Assistants(SQLModel, table=True):
         description="Tools name along with its description",
     )
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
 
     def total_cost(
@@ -273,15 +274,15 @@ class KnowledgeBases(SQLModel, table=True):
         description="List of KBs which are derived from this KB",
     )
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
 
     # @property
@@ -328,15 +329,15 @@ class Documents(SQLModel, table=True):
         description="Status of the Document",
     )
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
     task_id: str = Field(
         nullable=True,
@@ -382,15 +383,15 @@ class DocumentChunks(SQLModel, table=True):
         description="Vector ID of the Chunk from vector database",
     )
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
 
 
@@ -439,15 +440,15 @@ class Conversations(SQLModel, table=True):
     )
 
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
 
     def total_cost(self, messages: list["Messages"]) -> float:
@@ -488,15 +489,15 @@ class Messages(SQLModel, table=True):
         description="Content of the Message",
     )
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
 
     cost: float = Field(
@@ -544,15 +545,15 @@ class Tokens(SQLModel, table=True):
         description="Role of the User",
     )
     created_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Created At time",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=get_now,
         nullable=False,
         description="Updated At time",
-        sa_column_kwargs={"onupdate": datetime.now()},
+        sa_column_kwargs={"onupdate": get_now},
     )
 
 

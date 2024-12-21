@@ -106,7 +106,11 @@ async def get_all_assistants(
     db_session: Annotated[Session, Depends(get_session)],
 ):
     with db_session as session:
-        query = select(Assistants).where(Assistants.user_id == current_user.id)
+        query = (
+            select(Assistants)
+            .where(Assistants.user_id == current_user.id)
+            .order_by(desc(Assistants.updated_at))
+        )
         assistants = session.exec(query).all()
 
         session.close()
@@ -312,7 +316,7 @@ async def get_assistant_conversations(
         query = (
             select(Conversations)
             .where(Conversations.assistant_id == assistant.id)
-            .order_by(desc(Conversations.created_at))
+            .order_by(desc(Conversations.updated_at))
         )
         conversations = session.exec(query).all()
         return conversations
@@ -367,7 +371,7 @@ async def export_conversations(
                 Conversations.assistant_id == assistant_id,
                 Conversations.user_id == current_user.id,
             )
-            .order_by(desc(Conversations.created_at))
+            .order_by(desc(Conversations.updated_at))
         ).all()
 
         conversations_name = [
@@ -521,6 +525,7 @@ async def rename_conversation_name(
         conversation.name = conversation_rename_body.name
         session.add(conversation)
         session.commit()
+        session.refresh(conversation)
 
         return JSONResponse(
             status_code=status.HTTP_200_OK, content={"message": "Conversation renamed"}

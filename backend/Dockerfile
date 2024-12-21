@@ -4,6 +4,8 @@ FROM python:${VERSION:-3.11}
 
 WORKDIR /app
 
+ENV TZ=Asia/Ho_Chi_Minh
+
 RUN mkdir downloads \
     && mkdir uploads \
     && mkdir logs
