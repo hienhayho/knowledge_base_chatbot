@@ -1,8 +1,14 @@
 "use client";
 
-import { SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { SearchOutlined } from "@ant-design/icons";
 import { useAuth } from "@/hooks/auth";
-import { IToken, ITokenResponse, ITokenFormValues } from "@/types";
+import {
+    IToken,
+    ITokenResponse,
+    ITokenFormValues,
+    IAdminUserSelect,
+    IUserResponse,
+} from "@/types";
 import {
     Button,
     Form,
@@ -11,6 +17,7 @@ import {
     InputRef,
     message,
     Popconfirm,
+    Select,
     Space,
     Table,
     TableColumnType,
@@ -21,7 +28,7 @@ import Highlighter from "react-highlight-words";
 import { useEffect, useRef, useState } from "react";
 import { FilterDropdownProps } from "antd/es/table/interface";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { Plus, Trash2 } from "lucide-react";
+import { Copy, Plus, Trash2 } from "lucide-react";
 import AddModal from "@/components/admin/AddModal";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { formatDate } from "@/utils";
@@ -36,6 +43,7 @@ const AdminTokenManagementPage = () => {
     const [searchText, setSearchText] = useState("");
     const [searchedColumn, setSearchedColumn] = useState("");
     const searchInput = useRef<InputRef>(null);
+    const [usersSelect, setUsersSelect] = useState<IAdminUserSelect[]>([]);
     const [messageApi, contextHolder] = message.useMessage();
     const [open, setOpen] = useState<boolean>(false);
     const [loadingRegister, setLoadingRegister] = useState<boolean>(false);
@@ -45,28 +53,57 @@ const AdminTokenManagementPage = () => {
         if (!token) {
             return;
         }
-        const fetchAllTokens = async () => {
+        const fetchData = async () => {
             try {
-                const respone = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/tokens`,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
-                );
+                const [responeTokens, responseUsers] = await Promise.all([
+                    await fetch(
+                        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/tokens`,
+                        {
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                            },
+                        }
+                    ),
+                    await fetch(
+                        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/users`,
+                        {
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                            },
+                        }
+                    ),
+                ]);
 
-                const data = await respone.json();
+                const tokensData = await responeTokens.json();
 
-                if (!respone.ok) {
-                    throw new Error(data.detail || "Failed to fetch tokens");
+                if (!responeTokens.ok) {
+                    throw new Error(
+                        tokensData.detail || "Failed to fetch tokens"
+                    );
                 }
 
-                messageApi.success("Lấy thông tin tokens thành công !");
+                const usersData = await responseUsers.json();
+
+                if (!responseUsers.ok) {
+                    throw new Error(
+                        usersData.detail || "Failed to fetch users"
+                    );
+                }
+
+                messageApi.success("Lấy data thành công !");
+
+                setUsersSelect(
+                    usersData.map((user: IUserResponse) => ({
+                        key: user.id,
+                        value: user.username,
+                        label: user.username,
+                    }))
+                );
 
                 setTokens(
-                    data.map((token: ITokenResponse) => ({
+                    tokensData.map((token: ITokenResponse) => ({
                         key: token.id,
                         token: token.token,
                         role: token.role,
@@ -78,13 +115,13 @@ const AdminTokenManagementPage = () => {
                     }))
                 );
             } catch (error) {
-                console.error("Lấy thông tin tokens thất bại", error);
+                console.error("Lấy data thất bại", error);
                 messageApi.error((error as Error).message);
             } finally {
                 setLoadingPage(false);
             }
         };
-        fetchAllTokens();
+        fetchData();
     }, [token]);
 
     const handleSearch = (
@@ -296,9 +333,7 @@ const AdminTokenManagementPage = () => {
             key: "createdAt",
             render: (text: string) => (
                 <div className="flex items-center ml-2">
-                    <span className="text-yellow-400 font-semibold">
-                        {text}
-                    </span>
+                    <span className="text-gray-500 font-semibold">{text}</span>
                 </div>
             ),
         },
@@ -308,13 +343,37 @@ const AdminTokenManagementPage = () => {
             render: (text: string, record: IToken) => (
                 <Space
                     size="large"
-                    className="flex gap-4 justify-center items-center w-full"
+                    className="flex gap-2 justify-center items-center w-full"
                 >
+                    <Tooltip title={<div>{"Sao chép token"}</div>}>
+                        <button
+                            type="button"
+                            className="bg-transparent text-gray-500 p-4 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50"
+                            onClick={() => {
+                                navigator.clipboard.writeText(record.token);
+                                messageApi.open({
+                                    type: "success",
+                                    content: "Đã sao chép !",
+                                    duration: 1.5,
+                                });
+                            }}
+                        >
+                            <Copy size={16} />
+                        </button>
+                    </Tooltip>
                     <div className="cursor-pointer flex flex-row gap-4">
                         <Tooltip title={`Xóa token của: ${record.username}`}>
                             <Popconfirm
                                 title="Xóa token ?"
-                                description={`Xóa token của: ${record.username} ?`}
+                                description={
+                                    <span>
+                                        Xóa token của:&nbsp;
+                                        <span className="text-red-400 font-medium">
+                                            {record.username}
+                                        </span>
+                                        &nbsp; ?
+                                    </span>
+                                }
                                 onConfirm={() =>
                                     new Promise(async (resolve) => {
                                         await deleteToken(record.id);
@@ -440,10 +499,11 @@ const AdminTokenManagementPage = () => {
                     width: "100%",
                 }}
             >
-                <Input
-                    autoFocus
-                    prefix={<UserOutlined />}
-                    placeholder="Username"
+                <Select
+                    showSearch
+                    placeholder="Chọn user muốn tạo token"
+                    style={{ width: "100%" }}
+                    options={usersSelect}
                 />
             </Form.Item>
         </>

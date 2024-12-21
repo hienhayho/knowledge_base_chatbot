@@ -27,7 +27,7 @@ export default function UserLayout({
                         icon={<Settings size={32} />}
                         homePath="/admin"
                     />
-                    <div className="flex-grow">{children}</div>
+                    <div className="flex-grow mt-5">{children}</div>
                 </AuthProvider>
             </body>
         </html>

@@ -19,7 +19,7 @@ const TokenRender = ({
     }, [initVisible]);
 
     return (
-        <div className="flex items-center justify-around max-w-[80%]">
+        <div className="flex items-center justify-around">
             <div className="w-[80%]">
                 <span className="text-blue-400 font-semibold break-all whitespace">
                     {isVisible ? (
@@ -37,7 +37,7 @@ const TokenRender = ({
                             token
                         )
                     ) : (
-                        "••••••••••••••••"
+                        "••••••••••••••••••••••••"
                     )}
                 </span>
             </div>
@@ -47,9 +47,9 @@ const TokenRender = ({
                     className="cursor-pointer"
                 >
                     {isVisible ? (
-                        <EyeOff size={16} color="gray" />
+                        <Eye size={16} color="red" />
                     ) : (
-                        <Eye size={16} color="blue" />
+                        <EyeOff size={16} color="red" />
                     )}
                 </div>
             </Tooltip>
