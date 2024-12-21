@@ -1,5 +1,6 @@
 from .core import (
     Users,
+    Tokens,
     Messages,
     Documents,
     Assistants,
@@ -39,6 +40,7 @@ __all__ = [
     "BaseStorageClient",
     "get_minio_client",
     "Users",
+    "Tokens",
     "KnowledgeBases",
     "Conversations",
     "DocumentChunks",

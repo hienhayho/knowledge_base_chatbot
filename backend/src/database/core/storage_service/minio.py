@@ -54,6 +54,9 @@ class MinioClient(BaseStorageClient):
         logger.info("MinioClient initialized successfully !!!")
 
     def get_upload_bucket_name(self):
+        """
+        Get the upload bucket name
+        """
         return os.getenv("MINIO_UPLOAD_BUCKET_NAME")
 
     @classmethod

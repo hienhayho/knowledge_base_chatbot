@@ -1,5 +1,6 @@
 from .sql_model import (
     Users,
+    Tokens,
     KnowledgeBases,
     Conversations,
     DocumentChunks,
@@ -17,6 +18,7 @@ from .storage_service import BaseStorageClient, load_storage_service
 
 __all__ = [
     "Users",
+    "Tokens",
     "KnowledgeBases",
     "Conversations",
     "DocumentChunks",

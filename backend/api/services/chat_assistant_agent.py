@@ -21,7 +21,7 @@ from src.constants import (
     ExistTools,
 )
 
-logger = get_formatted_logger(__file__)
+logger = get_formatted_logger(__file__, "logs/chat_assistant_agent.log")
 load_dotenv()
 
 langfuse_callback_handler = LlamaIndexCallbackHandler()

@@ -6,11 +6,13 @@ from dotenv import load_dotenv
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
-from .minio import MinioClient, get_minio_client  # noqa: F401
-from .s3 import S3Client, get_s3_client  # noqa: F401
 from .base import BaseStorageClient
-from src.constants import StorageService
+from .s3 import S3Client, get_s3_client  # noqa: F401
+from .minio import MinioClient, get_minio_client  # noqa: F401
+
 from src.settings import config
+from src.constants import StorageService
+from src.utils import convert_boolean_env_var
 
 load_dotenv()
 
@@ -40,7 +42,7 @@ def load_storage_service(type: str | None = None) -> Type[BaseStorageClient]:
             url=os.getenv("MINIO_URL"),
             access_key=os.getenv("MINIO_ACCESS_KEY"),
             secret_key=os.getenv("MINIO_SECRET_KEY"),
-            secure=os.getenv("MINIO_SECURE"),
+            secure=convert_boolean_env_var("MINIO_SECURE"),
         )
     else:
         raise ValueError(f"Invalid storage service type: {type}")

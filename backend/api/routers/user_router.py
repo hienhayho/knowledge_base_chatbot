@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from src.constants import UserRole
-from src.database import get_session, Users
+from src.database import get_session, Users, Tokens
 from src.utils import get_formatted_logger
 
 logger = get_formatted_logger(__file__)
@@ -135,7 +135,9 @@ def authenticate_user(session: Session, username: str, password: str) -> Users |
     return user
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    data: dict, expires_delta: timedelta | None = None, long_term_token: bool = False
+) -> str:
     """
     Create access token
 
@@ -147,11 +149,14 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
         str: Encoded JWT token
     """
     to_encode = data.copy()
+    to_encode.update({"long_term_token": long_term_token})
+    to_encode.update({"created_at": str(datetime.now(timezone.utc))})
+
+    # Add expiry time if provided, if no provided, then token will never expire
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+        to_encode.update({"exp": expire})
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -187,7 +192,7 @@ async def decode_user_token(
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    session: Annotated[Session, Depends(get_session)],
+    db_session: Annotated[Session, Depends(get_session)],
 ):
     """
     Returns the current user
@@ -197,16 +202,32 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
+
+        long_term_token = payload.get("long_term_token")
+        if long_term_token:
+            with db_session as session:
+                query_token = select(Tokens).where(Tokens.token == token)
+                token = session.exec(query_token).first()
+
+                if not token:
+                    logger.warning("Token not found !!!")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid token!!!",
+                    )
+
         token_data = TokenData(username=username)
-    except InvalidTokenError:
+    except Exception as e:
+        logger.error("Error in get_current_user: %s", e)
         raise credentials_exception
 
-    user = get_user(session=session, username=token_data.username)
+    user = get_user(session=db_session, username=token_data.username)
 
     if user is None:
         raise credentials_exception

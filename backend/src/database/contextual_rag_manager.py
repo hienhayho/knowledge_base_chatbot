@@ -436,7 +436,6 @@ class ContextualRAG:
         Returns:
             str: The search results.
         """
-        print(kb_ids)
         start_time = time.time()
 
         langfuse_callback_handler.set_trace_params(

@@ -514,6 +514,48 @@ class Messages(SQLModel, table=True):
     )
 
 
+class Tokens(SQLModel, table=True):
+    __tablename__ = "tokens"
+    id: uuid_pkg.UUID = Field(
+        default_factory=uuid_pkg.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    token: str = Field(
+        nullable=False,
+        description="Access Token for the User",
+    )
+    token_type: str = Field(
+        nullable=False,
+        default="bearer",
+        description="Token Type. Default is `bearer`",
+    )
+    user_id: uuid_pkg.UUID = Field(
+        nullable=False,
+        description="User ID",
+    )
+    username: str = Field(
+        nullable=False,
+        description="Username",
+    )
+    role: UserRole = Field(
+        nullable=False,
+        description="Role of the User",
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        nullable=False,
+        description="Created At time",
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        nullable=False,
+        description="Updated At time",
+        sa_column_kwargs={"onupdate": datetime.now()},
+    )
+
+
 def init_db():
     sql_url = os.getenv("SQL_DB_URL")
     assert sql_url, "SQL_DB_URL is not set"
