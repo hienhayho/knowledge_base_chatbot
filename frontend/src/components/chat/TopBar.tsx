@@ -1,9 +1,10 @@
 import React from "react";
-import { Layout, Plus, Settings, Wrench } from "lucide-react";
+import { Info, Layout, Plus, Settings, Wrench } from "lucide-react";
 import { IAssistant } from "@/types";
 import { Button, message, Modal, Input } from "antd";
 import { getCookie } from "cookies-next";
 import AddToolsModal from "./AddToolsModal";
+import DetailToolTip from "../DetailToolTip";
 
 const { TextArea } = Input;
 
@@ -152,12 +153,12 @@ const TopBar = ({
                             borderColor: "gray",
                         }}
                     >
-                        Cập nhật trợ lý của bạn
+                        {"Cập nhật trợ lý của bạn"}
                     </Button>
                     <Modal
                         title={
                             <div className="flex justify-center items-center text-red-500 font-bold mb-4">
-                                <span>Cập nhật trợ lý của bạn</span>
+                                <span>{"Cập nhật trợ lý của bạn"}</span>
                             </div>
                         }
                         open={isModalOpen}
@@ -165,20 +166,32 @@ const TopBar = ({
                         onOk={handleOk}
                         onCancel={handleCancel}
                     >
-                        <label className="block text-sm font-bold text-gray-700 my-3">
-                            {"Những lưu ý cho trợ lý khi trả lời:"}
-                        </label>
+                        <div className="flex gap-2 items-center">
+                            <label className="block text-sm font-bold text-gray-700 my-3">
+                                {"Những lưu ý cho trợ lý khi trả lời:"}
+                            </label>
+                            <DetailToolTip
+                                title="Sẽ được thêm vào system prompt của RAG's final answer."
+                                icon={<Info size={16} />}
+                            />
+                        </div>
                         <TextArea
-                            rows={3}
+                            rows={4}
                             value={instructPrompt}
                             placeholder="Nhập vào những lưu ý cho trợ lý khi trả lời trong phạm vi knowledge base này"
                             onChange={(e) => setInstructPrompt(e.target.value)}
                         />
-                        <label className="block text-sm font-bold text-gray-700 my-3">
-                            {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}
-                        </label>
+                        <div className="flex gap-2 items-center">
+                            <label className="block text-sm font-bold text-gray-700 my-3">
+                                {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}
+                            </label>
+                            <DetailToolTip
+                                title="Đây là phần sẽ được đưa vào backstory của crewAI agent."
+                                icon={<Info size={16} />}
+                            />
+                        </div>
                         <TextArea
-                            rows={9}
+                            rows={12}
                             value={agentBackstory}
                             placeholder="Nhập vào nhiệm vụ bạn muốn trợ lý của mình thực hiện"
                             onChange={(e) => setAgentBackstory(e.target.value)}

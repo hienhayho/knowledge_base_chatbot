@@ -5,7 +5,7 @@ import pandas as pd
 from uuid import UUID
 from src.database import is_valid_uuid
 from typing import Annotated
-from sqlmodel import Session, select
+from sqlmodel import Session, select, desc
 from api.routers.user_router import get_current_user
 from api.models import (
     AssistantCreate,
@@ -309,7 +309,11 @@ async def get_assistant_conversations(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
             )
 
-        query = select(Conversations).where(Conversations.assistant_id == assistant.id)
+        query = (
+            select(Conversations)
+            .where(Conversations.assistant_id == assistant.id)
+            .order_by(desc(Conversations.created_at))
+        )
         conversations = session.exec(query).all()
         return conversations
 
@@ -358,10 +362,12 @@ async def export_conversations(
 ):
     with db_session as session:
         conversations = session.exec(
-            select(Conversations).where(
+            select(Conversations)
+            .where(
                 Conversations.assistant_id == assistant_id,
                 Conversations.user_id == current_user.id,
             )
+            .order_by(desc(Conversations.created_at))
         ).all()
 
         conversations_name = [
@@ -513,6 +519,7 @@ async def rename_conversation_name(
             )
 
         conversation.name = conversation_rename_body.name
+        session.add(conversation)
         session.commit()
 
         return JSONResponse(

@@ -1,12 +1,12 @@
 import sys
 import copy
-from collections import deque
 from uuid import UUID
 from pathlib import Path
-from typing import Optional
-from fastapi import Depends, HTTPException, status
+from collections import deque
+from typing import Optional, Type
 from sqlmodel import Session, select
 from llama_index.core import Document
+from fastapi import Depends, HTTPException, status
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -48,7 +48,7 @@ class DatabaseManager:
         else:
             self.db_session = db_session
 
-        self.storage_client: BaseStorageClient = load_storage_service(
+        self.storage_client: Type[BaseStorageClient] = load_storage_service(
             setting.storage_config.type
         )
         self.contextual_rag_client = ContextualRAG.from_setting(setting)
@@ -62,7 +62,7 @@ class DatabaseManager:
 
         Args:
             setting (GlobalSettings): Global settings
-
+            db_session (Session, optional): Database session. Defaults to `None`.
         Returns:
             DatabaseManager: Database manager instance
         """

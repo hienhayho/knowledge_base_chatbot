@@ -2,10 +2,9 @@
 
 import sys
 from pathlib import Path
+from typing import Dict, Type
 from dotenv import load_dotenv
-
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
+from llama_index.core.readers.base import BaseReader
 from llama_index.readers.json import JSONReader
 from llama_index.readers.file import (
     PptxReader,  # noqa
@@ -19,6 +18,7 @@ from llama_index.readers.file import (
     RTFReader,
 )
 
+sys.path.append(str(Path(__file__).parent.parent.parent))
 from .kotaemon import (
     DocxReader,
     TxtReader,
@@ -78,7 +78,7 @@ def get_files_from_folder_or_file_paths(files_or_folders: list[str]) -> list[str
     return files
 
 
-def get_extractor():
+def get_extractor() -> Dict[str, Type[BaseReader]]:
     return {
         # ".pdf": LlamaParse(
         #     result_type="markdown",

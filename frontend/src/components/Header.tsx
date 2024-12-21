@@ -13,10 +13,12 @@ const Header = ({
     icon,
     headerContent,
     navItems,
+    homePath,
 }: {
     icon: React.ReactNode;
     headerContent: string;
     navItems: INavItem[];
+    homePath: string;
 }) => {
     const [messageApi, contextHolder] = message.useMessage();
     const router = useRouter();
@@ -73,7 +75,10 @@ const Header = ({
             {contextHolder}
             <header className="bg-white shadow-sm h-16">
                 <div className="container mx-auto px-4 h-full flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+                    <div
+                        className="flex items-center space-x-4 hover:cursor-pointer"
+                        onClick={() => router.push(homePath)}
+                    >
                         {icon}
                         <span className="font-bold text-xl">
                             {headerContent}
@@ -94,7 +99,7 @@ const Header = ({
                             </Link>
                         ))}
                     </nav>
-                    <div className="flex items-center space-x-10">
+                    <div className="flex items-center space-x-5">
                         <Button
                             className="ml-auto border-3 text-red-500 shadow-md border-red-300"
                             onClick={handleLogout}

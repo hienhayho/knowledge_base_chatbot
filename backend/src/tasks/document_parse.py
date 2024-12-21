@@ -1,8 +1,10 @@
 import sys
 import math
 import celery
+from typing import Type
 from pathlib import Path
 from llama_index.core import Document
+from llama_index.core.readers.base import BaseReader
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -25,7 +27,18 @@ class FileExtractor:
     def __init__(self) -> None:
         self.extractor = get_extractor()
 
-    def get_extractor_for_file(self, file_path: str | Path) -> dict[str, str]:
+    def get_extractor_for_file(
+        self, file_path: str | Path
+    ) -> dict[str, Type[BaseReader]]:
+        """
+        Get specific reader for file
+
+        Args:
+            file_path (str): file path to extract content
+
+        Return:
+            dict[str, Type[BaseReader]]: Specific reader for the file
+        """
         file_suffix = Path(file_path).suffix
         return {
             file_suffix: self.extractor[file_suffix],

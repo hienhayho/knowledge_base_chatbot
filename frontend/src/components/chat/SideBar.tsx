@@ -97,9 +97,7 @@ const Sidebar = ({
                     {!selectedAssistant ? (
                         <div className="flex flex-col items-center justify-center h-full text-gray-500">
                             <HelpCircle size={48} className="mb-2" />
-                            <p className="text-center px-4">
-                                Choose an Assistant to continue
-                            </p>
+                            <p className="text-center px-4">Chọn trợ lý</p>
                         </div>
                     ) : conversations.length > 0 ? (
                         conversations.map((conversation) => (
@@ -115,7 +113,7 @@ const Sidebar = ({
                         ))
                     ) : (
                         <p className="text-sm text-gray-500">
-                            No conversations yet.
+                            Không có cuộc hội thoại nào
                         </p>
                     )}
                 </div>
@@ -130,7 +128,7 @@ const Sidebar = ({
                         disabled={!selectedAssistant}
                     >
                         <Plus size={16} className="mr-2" />
-                        New Conversation
+                        {"Tạo hội thoại mới"}
                     </button>
                 </div>
             </aside>

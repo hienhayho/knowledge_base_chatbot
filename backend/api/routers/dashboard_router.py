@@ -8,7 +8,7 @@ from uuid import UUID
 from pathlib import Path
 from typing import Annotated
 from wordcloud import WordCloud
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, desc
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -411,7 +411,9 @@ async def get_all_conversations(
 ):
     with db_session as session:
         conversations = session.exec(
-            select(Conversations).where(Conversations.user_id == current_user.id)
+            select(Conversations)
+            .where(Conversations.user_id == current_user.id)
+            .order_by(desc(Conversations.created_at))
         ).all()
 
         return [

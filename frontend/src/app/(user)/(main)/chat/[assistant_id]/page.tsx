@@ -194,8 +194,7 @@ const ChatAssistantPage = () => {
                         )
                     ) : (
                         <div className="flex-1 flex items-center justify-center text-gray-500">
-                            Select a conversation or create a new one to start
-                            chatting.
+                            {"Chọn cuộc hội thoại có sẵn hoặc tạo mới."}
                         </div>
                     )}
                 </div>

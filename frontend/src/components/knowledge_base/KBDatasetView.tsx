@@ -158,7 +158,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
             }
         };
 
-        const intervalId = setInterval(checkProcessingDocuments, 1000);
+        const intervalId = setInterval(checkProcessingDocuments, 10000);
 
         return () => clearInterval(intervalId);
     }, [documents, token, redirectURL]);

@@ -41,6 +41,7 @@ const AddToolsModal = ({
         alreadyChoosenTools || []
     );
     const [messageApi, contextHolder] = message.useMessage();
+    const [isUpdatingTools, setIsUpdatingTools] = useState<boolean>(false);
 
     useEffect(() => {
         const fetchTools = async () => {
@@ -174,6 +175,7 @@ const AddToolsModal = ({
             };
         });
         try {
+            setIsUpdatingTools(true);
             const response = await fetch(
                 `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/assistant/${assistantId}/tools`,
                 {
@@ -205,6 +207,7 @@ const AddToolsModal = ({
             console.error(error);
         } finally {
             setIsModalOpen(false);
+            setIsUpdatingTools(false);
         }
     };
 
@@ -263,6 +266,7 @@ const AddToolsModal = ({
                             </Button>
                         </Dropdown>
                         <Button
+                            loading={isUpdatingTools}
                             icon={<Rocket size={16} />}
                             onClick={(e) => {
                                 e.stopPropagation();

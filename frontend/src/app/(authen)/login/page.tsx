@@ -89,7 +89,7 @@ const SignInContent: React.FC = () => {
 
         try {
             setLoading(true);
-            await login(body);
+            const userData = await login(body);
 
             successMessage({
                 content: `Login successful`,
@@ -97,6 +97,10 @@ const SignInContent: React.FC = () => {
             });
 
             setTimeout(() => {
+                if (userData.role === "admin") {
+                    router.push("/admin");
+                    return;
+                }
                 router.push(redirectPath);
             }, 1000);
         } catch (error) {
