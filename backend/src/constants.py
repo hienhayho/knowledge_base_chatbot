@@ -1,10 +1,12 @@
 import enum
 from uuid import UUID
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Any
 from llama_index.core.bridge.pydantic import BaseModel
 
 DOWNLOAD_FOLDER = Path("downloads")
+
+LOG_FOLDER = Path("logs")
 
 SUPPORTED_FILE_EXTENSIONS = [
     ".pdf",
@@ -122,7 +124,7 @@ class ChatAssistantConfig(BaseModel):
     collection_name: str
     kb_ids: list[str | UUID]
     session_id: str
-    tools: Dict[str, str]
+    tools: Dict[str, Dict[str, Any]]
     agent_backstory: str
     is_contextual_rag: bool
     instruct_prompt: str

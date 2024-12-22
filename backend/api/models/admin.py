@@ -28,3 +28,4 @@ class AdminSwitchUserResponse(BaseModel):
     user: UserResponse
     access_token: str
     type: str
+    expires: datetime

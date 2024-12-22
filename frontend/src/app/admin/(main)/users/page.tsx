@@ -147,7 +147,7 @@ const AdminUserPage = () => {
             messageApi.destroy();
 
             setCookie("access_token", data.access_token, {
-                maxAge: 1440 * 60,
+                expires: new Date(data.expires),
                 path: "/",
             });
             changeUser(data.user, data.access_token);

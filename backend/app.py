@@ -6,10 +6,12 @@ from fastapi import status
 from fastapi import FastAPI
 from datetime import datetime
 from dotenv import load_dotenv
-from src.utils import get_formatted_logger
-from src.constants import DOWNLOAD_FOLDER
+from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+from src.utils import get_formatted_logger
+from src.constants import DOWNLOAD_FOLDER, LOG_FOLDER
 from api.routers import (
     user_router,
     kb_router,
@@ -18,7 +20,6 @@ from api.routers import (
     dashboard_router,
     admin_router,
 )
-from contextlib import asynccontextmanager
 
 logger = get_formatted_logger(__file__)
 
@@ -61,7 +62,33 @@ async def delete_old_files():
             except Exception as e:
                 logger.error(f"Error deleting file {file}: {e}")
 
-        await asyncio.sleep(5 * 60)
+        await asyncio.sleep(CLEAN_INTERVAL * 60)
+
+
+async def delete_log_files():
+    while True:
+        logger.warning("Cleaning up log folder ...")
+
+        # 2 days
+        interval = 2 * 24 * 60 * 60
+        current_time = datetime.now()
+
+        for file in Path(LOG_FOLDER).rglob("*"):
+            try:
+                if file.is_file():
+                    file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
+                    age = (current_time - file_mod_time).total_seconds()
+
+                    if age > interval:
+                        file.unlink()
+                        logger.warning(f"Deleted file: {file}")
+                    else:
+                        logger.debug(f"Skipping file: {file}")
+            except Exception as e:
+                logger.error(f"Error deleting file {file}: {e}")
+
+        # 1 day check interval
+        await asyncio.sleep(24 * 60 * 60)
 
 
 @asynccontextmanager
@@ -69,6 +96,8 @@ async def lifespan(app: FastAPI):
     logger.info("Starting application ...")
     logger.debug(f"Cleaning up download folder every {CLEAN_INTERVAL} minutes ...")
     asyncio.create_task(delete_old_files())
+    logger.debug("Cleaning up log folder every 24 hours ...")
+    asyncio.create_task(delete_log_files())
     yield
 
     logger.info("Shutting down application ...")

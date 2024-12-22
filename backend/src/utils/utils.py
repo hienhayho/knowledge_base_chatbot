@@ -24,3 +24,12 @@ def get_now():
     timezone = pytz.timezone(tz)
     current_time = datetime.now(timezone)
     return current_time
+
+
+def get_date_format():
+    """
+    Get the current date in the format "dd_mm_yyyy"
+    """
+    current_time = get_now()
+    formatted_date = current_time.strftime("%d_%m_%Y")
+    return formatted_date

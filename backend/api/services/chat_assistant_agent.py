@@ -21,7 +21,7 @@ from src.constants import (
     ExistTools,
 )
 
-logger = get_formatted_logger(__file__, "logs/chat_assistant_agent.log")
+logger = get_formatted_logger(__file__, file_path="logs/chat_assistant/log.log")
 load_dotenv()
 
 langfuse_callback_handler = LlamaIndexCallbackHandler()
@@ -44,12 +44,20 @@ class ChatAssistant:
         ).strip("\n")
 
         self.tools: list[FunctionTool] = []
-        return_as_answer_flags = []
+        return_as_answer_flags: list[bool] = []
 
         for tool_name in self.configuration.tools:
+            description = self.configuration.tools[tool_name]["description"]
+            return_as_answer = self.configuration.tools[tool_name]["return_as_answer"]
+
             logger.info(
-                f"Loading {tool_name}, description: {self.configuration.tools[tool_name]}"
+                {
+                    "tool_name": tool_name,
+                    "return_as_answer": return_as_answer,
+                    "description": description,
+                },
             )
+
             if tool_name == ExistTools.KNOWLEDGE_BASE_QUERY:
                 self.tools.append(
                     load_llama_index_kb_tool(
@@ -58,10 +66,9 @@ class ChatAssistant:
                         session_id=self.configuration.session_id,
                         is_contextual_rag=self.configuration.is_contextual_rag,
                         system_prompt=system_prompt,
-                        description=self.configuration.tools[tool_name],
+                        description=description,
                     )
                 )
-                return_as_answer_flags.append(False)
             elif tool_name == ExistTools.PRODUCT_SEARCH:
                 if self.configuration.file_product_path is None:
                     logger.warning(
@@ -71,13 +78,14 @@ class ChatAssistant:
                 self.tools.append(
                     load_product_search_tool(
                         file_product_path=self.configuration.file_product_path,
-                        description=self.configuration.tools[tool_name],
+                        description=description,
                     )
                 )
-                return_as_answer_flags.append(True)
             else:
                 logger.warning(f"Tool {tool_name} is not supported yet!")
                 continue
+
+            return_as_answer_flags.append(return_as_answer)
 
         kb_agent = Agent(
             role="Assistant",
@@ -170,6 +178,10 @@ class ChatAssistant:
             "query": message,
         }
         response = await self.agent.chat_async(inputs, message_history)
+
+        logger.debug(f"message: {message}")
+        logger.debug(f"response: {response}")
+        logger.debug("=" * 50)
 
         return response
 
