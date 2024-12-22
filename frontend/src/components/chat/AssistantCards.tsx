@@ -7,12 +7,13 @@ import {
     Trash2,
     // LoaderCircle,
     Download,
+    IdCard,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { IAssistant, IKnowledgeBase } from "@/types";
 import AddToolsModal from "./AddToolsModal";
 import { Settings } from "lucide-react";
-import { Tooltip } from "antd";
+import { Button, Popover, Tooltip, message } from "antd";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -62,6 +63,7 @@ const AssistantCard = ({
         null
     );
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [messageApi, contextHolder] = message.useMessage();
     // const [cost, setCost] = useState<number | null>(null);
     const randomGradient = useMemo(() => getRandomGradient(), []);
     const redirectUrl = encodeURIComponent("/chat");
@@ -186,6 +188,7 @@ const AssistantCard = ({
             className="bg-white shadow-lg rounded-2xl overflow-hidden cursor-pointer hover:shadow-xl transition-shadow relative"
             onClick={() => onSelect(assistant)}
         >
+            {contextHolder}
             <div className="relative">
                 <div
                     className="w-full h-32 rounded-t-2xl"
@@ -211,20 +214,25 @@ const AssistantCard = ({
                     </Tooltip>
                 </div>
                 <div className="flex items-center flex-col text-gray-700 text-sm mt-2 gap-4">
-                    {/* <button
-                        type="button"
-                        className="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center justify-center min-w-[120px] h-[40px]"
-                        onClick={handleGetTotalCost}
-                        disabled={isLoading}
+                    <Popover
+                        content={<div>{"Sao chép AssistantID"}</div>}
+                        className=""
                     >
-                        {isLoading ? (
-                            <LoaderCircle className="animate-spin" size={20} />
-                        ) : cost === null ? (
-                            "Get Total Cost"
-                        ) : (
-                            `$${cost.toFixed(6)}`
-                        )}
-                    </button> */}
+                        <Button
+                            className="w-full border-gray-500"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(assistant.id);
+                                messageApi.success({
+                                    content: "Copied AssistantID",
+                                    duration: 1,
+                                });
+                            }}
+                            icon={<IdCard size={16} />}
+                        >
+                            <span className="font-medium">{"AssistantID"}</span>
+                        </Button>
+                    </Popover>
 
                     <div>
                         <AddToolsModal

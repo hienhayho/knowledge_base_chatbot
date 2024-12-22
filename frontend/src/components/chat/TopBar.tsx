@@ -1,10 +1,10 @@
 import React from "react";
 import { Info, Layout, Plus, Settings, Wrench } from "lucide-react";
 import { IAssistant } from "@/types";
-import { Button, message, Modal, Input } from "antd";
-import { getCookie } from "cookies-next";
+import { Button, message, Modal, Input, Popover } from "antd";
 import AddToolsModal from "./AddToolsModal";
 import DetailToolTip from "../DetailToolTip";
+import { useAuth } from "@/hooks/auth";
 
 const { TextArea } = Input;
 
@@ -29,7 +29,8 @@ const TopBar = ({
     showCreateAssistantButton?: boolean;
     showUpdateAssistantButton?: boolean;
 }) => {
-    const token = getCookie("access_token");
+    const { token } = useAuth();
+    const [isUpdatingPrompt, setIsUpdatingPrompt] = React.useState(false);
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [instructPrompt, setInstructPrompt] = React.useState<string>(
@@ -66,6 +67,7 @@ const TopBar = ({
                 setIsModalOpen(false);
                 return;
             }
+            setIsUpdatingPrompt(true);
             const response = await fetch(
                 `${BASE_API_URL}/api/assistant/${selectedAssistant.id}/update`,
                 {
@@ -102,6 +104,8 @@ const TopBar = ({
             console.error(error);
             errorMessage(`Update failed. Error: ${(error as Error).message}`);
             setIsModalOpen(false);
+        } finally {
+            setIsUpdatingPrompt(false);
         }
     };
 
@@ -142,19 +146,26 @@ const TopBar = ({
                         modalTitle={`Chọn tools cho trợ lý: ${selectedAssistant?.name}`}
                         assistantId={selectedAssistant?.id}
                     />
-                    <Button
-                        onClick={showModal}
-                        icon={<Settings size={16} />}
-                        style={{
-                            width: "100%",
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            borderColor: "gray",
-                        }}
+                    <Popover
+                        content={<div>{"Cập nhật prompt cho trợ lý !!!"}</div>}
+                        className=""
                     >
-                        {"Cập nhật trợ lý của bạn"}
-                    </Button>
+                        <Button
+                            onClick={showModal}
+                            icon={<Settings size={16} />}
+                            style={{
+                                width: "100%",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                borderColor: "gray",
+                            }}
+                        >
+                            <span className="font-medium">
+                                {"Cập nhật trợ lý của bạn"}
+                            </span>
+                        </Button>
+                    </Popover>
                     <Modal
                         title={
                             <div className="flex justify-center items-center text-red-500 font-bold mb-4">
@@ -165,6 +176,7 @@ const TopBar = ({
                         width={"80%"}
                         onOk={handleOk}
                         onCancel={handleCancel}
+                        confirmLoading={isUpdatingPrompt}
                     >
                         <div className="flex gap-2 items-center">
                             <label className="block text-sm font-bold text-gray-700 my-3">
