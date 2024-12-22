@@ -443,7 +443,6 @@ const AdminUserPage = () => {
                 duration: 1.5,
             });
             setUsers((prev) => [
-                ...prev,
                 {
                     key: result.data.id,
                     role: result.data.role,
@@ -452,6 +451,7 @@ const AdminUserPage = () => {
                     createdAt: formatDate(result.data.createdAt),
                     updatedAt: formatDate(result.data.updatedAt),
                 },
+                ...prev,
             ]);
         } catch (error) {
             console.error(error);

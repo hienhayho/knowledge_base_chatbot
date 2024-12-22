@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, ChangeEvent } from "react";
 import { DownOutlined } from "@ant-design/icons";
-import { Button, Dropdown, Modal, Tooltip, message } from "antd";
+import { Button, Dropdown, Modal, Popover, Tooltip, message } from "antd";
 import { v4 as uuidv4 } from "uuid";
 import { Rocket, MoveRight } from "lucide-react";
 
@@ -214,18 +214,25 @@ const AddToolsModal = ({
     return (
         <div onClick={(e) => e.stopPropagation()}>
             {contextHolder}
-            <Button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setIsModalOpen(true);
-                }}
-                icon={icon}
-                style={{
-                    borderColor: "gray",
-                }}
+            <Popover
+                content={<div>{"Chỉnh tool cho trợ lý"}</div>}
+                className=""
             >
-                {buttonTitle || "Thêm tools"}
-            </Button>
+                <Button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModalOpen(true);
+                    }}
+                    icon={icon}
+                    style={{
+                        borderColor: "gray",
+                    }}
+                >
+                    <span className="font-medium">
+                        {buttonTitle || "Thêm tools"}
+                    </span>
+                </Button>
+            </Popover>
             <Modal
                 title={
                     <div className="flex justify-center items-center text-red-500 font-bold mb-4">

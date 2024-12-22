@@ -42,7 +42,7 @@ services:
         restart: always
         depends_on:
             - redis
-        command: celery -A src worker -E --loglevel=info
+        command: celery -A src worker -E --loglevel=info --concurrency=2
 
     backend:
         build:
