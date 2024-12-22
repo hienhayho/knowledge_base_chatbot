@@ -2,6 +2,8 @@ export type IApiResponse<T> = T | { detail: string };
 export interface INavItem {
     name: string;
     path: string;
+    description: string;
+    feature?: string;
 }
 
 export interface ILoginFormValues {
@@ -117,4 +119,5 @@ export interface IAdminSwitchUserResponse {
     user: IUser;
     access_token: string;
     type: string;
+    expires: string;
 }
