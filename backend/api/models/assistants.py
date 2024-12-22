@@ -21,7 +21,7 @@ class AssistantResponse(BaseModel):
     description: Optional[str]
     instruct_prompt: str
     agent_backstory: str
-    tools: Dict[str, str]
+    tools: Dict[str, Dict[str, Any]]
     knowledge_base_id: UUID
     configuration: Dict[str, str]
     created_at: datetime
@@ -41,6 +41,7 @@ class AsistantUpdatePhraseRequest(BaseModel):
 class ToolUpdateRequest(BaseModel):
     name: str
     description: str
+    return_as_answer: bool
 
 
 class AssistantUpdateToolsRequest(BaseModel):

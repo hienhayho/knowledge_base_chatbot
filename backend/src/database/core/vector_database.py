@@ -112,7 +112,7 @@ class QdrantVectorDatabase(BaseVectorDatabase):
         self.distance = distance
         self.test_connection()
 
-        logger.info("Qdrant client initialized successfully !!!")
+        logger.info("QdrantVectorDatabase initialized successfully !!!")
 
     def test_connection(self):
         """

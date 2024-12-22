@@ -1,14 +1,25 @@
 "use client";
 import { useState, useEffect, ChangeEvent } from "react";
 import { DownOutlined } from "@ant-design/icons";
-import { Button, Dropdown, Modal, Popover, Tooltip, message } from "antd";
+import {
+    Button,
+    Checkbox,
+    Divider,
+    Dropdown,
+    Modal,
+    Popover,
+    Tooltip,
+    message,
+} from "antd";
 import { v4 as uuidv4 } from "uuid";
-import { Rocket, MoveRight } from "lucide-react";
+import { Rocket, MoveRight, Info } from "lucide-react";
+import DetailToolTip from "../DetailToolTip";
 
 interface Item {
     id: string;
     name: string;
     description: string;
+    return_as_answer: boolean;
 }
 
 interface Tool {
@@ -89,10 +100,14 @@ const AddToolsModal = ({
                                 tools.find((t) => t.name === tool)?.id ||
                                 uuidv4(),
                             name: tool,
-                            description: dataAssistant.tools[tool],
+                            description:
+                                dataAssistant.tools[tool]["description"],
+                            return_as_answer:
+                                dataAssistant.tools[tool]["return_as_answer"],
                         });
                     });
                 }
+                console.log(choosenTools);
                 const choosableTools = tools.map((tool) => {
                     if (choosenTools.some((t) => t.name === tool.name)) {
                         return null;
@@ -120,6 +135,7 @@ const AddToolsModal = ({
             id: addItemId || uuidv4(),
             name,
             description: "",
+            return_as_answer: false,
         };
 
         const updatedChoosenTools = [...choosenTools, newItem];
@@ -172,6 +188,7 @@ const AddToolsModal = ({
             return {
                 name: tool.name,
                 description: tool.description,
+                return_as_answer: tool.return_as_answer,
             };
         });
         try {
@@ -240,7 +257,7 @@ const AddToolsModal = ({
                     </div>
                 }
                 open={isModalOpen}
-                width={"80%"}
+                width={"85%"}
                 footer={null}
                 onCancel={(e) => {
                     e.stopPropagation();
@@ -300,7 +317,35 @@ const AddToolsModal = ({
                                             className="text-red-500 font-medium text-center px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent truncate"
                                         />
                                     </Tooltip>
-
+                                    <Divider
+                                        type="vertical"
+                                        style={{ borderColor: "#7cb305" }}
+                                    />
+                                    <div className="flex gap-1 items-center">
+                                        <Checkbox
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                updateItem(
+                                                    item.id,
+                                                    "return_as_answer",
+                                                    e.target.checked
+                                                );
+                                            }}
+                                            defaultChecked={
+                                                item.return_as_answer
+                                            }
+                                        >
+                                            Return Direct ?
+                                        </Checkbox>
+                                        <DetailToolTip
+                                            title="Nếu chọn, kết quả từ tool sẽ được trả về trực tiếp mà không được rewrite lại."
+                                            icon={<Info size={16} />}
+                                        />
+                                    </div>
+                                    <Divider
+                                        type="vertical"
+                                        style={{ borderColor: "#7cb305" }}
+                                    />
                                     <MoveRight size={24} />
                                     <textarea
                                         value={item.description}
@@ -313,7 +358,6 @@ const AddToolsModal = ({
                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none h-20 overflow-y-auto"
                                         rows={4}
                                     />
-
                                     <Tooltip title="Xóa tool này">
                                         <button
                                             onClick={(e) => {

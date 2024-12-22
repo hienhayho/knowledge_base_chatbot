@@ -198,7 +198,11 @@ async def update_assistant_tool(
             )
 
         tool_configurations = {
-            tool.name: tool.description for tool in assistant_phrases.tools
+            tool.name: {
+                "description": tool.description,
+                "return_as_answer": tool.return_as_answer,
+            }
+            for tool in assistant_phrases.tools
         }
 
         assistant.tools = tool_configurations
