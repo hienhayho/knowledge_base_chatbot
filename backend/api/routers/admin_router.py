@@ -223,6 +223,7 @@ async def create_user_token(
         session.refresh(added_token)
 
         return AdminCreateTokenResponse(
+            id=added_token.id,
             user_id=user.id,
             username=added_token.username,
             role=added_token.role,

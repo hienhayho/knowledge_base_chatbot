@@ -14,6 +14,7 @@ class AdminCreateTokenRequest(BaseModel):
 
 
 class AdminCreateTokenResponse(BaseModel):
+    id: UUID
     user_id: UUID
     username: str
     role: UserRole
