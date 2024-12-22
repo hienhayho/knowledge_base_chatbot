@@ -81,7 +81,7 @@ async def switch_user(
             )
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
+        access_token, expires = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         )
 
@@ -95,6 +95,7 @@ async def switch_user(
             ),
             access_token=access_token,
             type="bearer",
+            expires=expires,
         )
 
 

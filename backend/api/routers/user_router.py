@@ -4,10 +4,10 @@ import uuid
 from typing import Annotated
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from datetime import timedelta, datetime
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 from jwt.exceptions import InvalidTokenError
-from datetime import datetime, timedelta, timezone
 from api.models import (
     UserResponse,
     UserRequest,
@@ -20,7 +20,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from src.constants import UserRole
 from src.database import get_session, Users, Tokens
-from src.utils import get_formatted_logger
+from src.utils import get_formatted_logger, get_now
 
 logger = get_formatted_logger(__file__)
 
@@ -51,6 +51,7 @@ class Token(BaseModel):
 
     access_token: str
     token_type: str
+    expires: datetime
 
 
 class TokenData(BaseModel):
@@ -150,14 +151,18 @@ def create_access_token(
     """
     to_encode = data.copy()
     to_encode.update({"long_term_token": long_term_token})
-    to_encode.update({"created_at": str(datetime.now(timezone.utc))})
+    to_encode.update({"created_at": str(get_now())})
 
     # Add expiry time if provided, if no provided, then token will never expire
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = get_now() + expires_delta
         to_encode.update({"exp": expire})
 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    if expires_delta:
+        return encoded_jwt, expire
+
     return encoded_jwt
 
 
@@ -298,11 +303,11 @@ async def login_for_access_token(
         )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
+    access_token, expires = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "expires": expires}
 
 
 @user_router.get("/me", response_model=UserResponse)
