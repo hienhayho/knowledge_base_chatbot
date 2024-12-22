@@ -7,6 +7,8 @@ from copy import copy
 from pathlib import Path
 from typing import Literal
 
+from .utils import get_date_format
+
 TRACE_LOG_LEVEL = 5
 
 
@@ -180,36 +182,46 @@ def get_formatted_logger(
     """
     logger = logging.getLogger(name=name)
     logger.setLevel(TRACE_LOG_LEVEL)
+    logger.propagate = False
 
-    if not logger.hasHandlers():
-        stream_handler = logging.StreamHandler()
-        stream_formatter = DefaultFormatter(
-            "%(asctime)s - %(pid)s | %(levelprefix)s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
-            datefmt="%Y/%m/%d  %H:%M:%S",
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    stream_handler = logging.StreamHandler()
+    stream_formatter = DefaultFormatter(
+        "%(asctime)s - %(pid)s | %(levelprefix)s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
+        datefmt="%Y/%m/%d  %H:%M:%S",
+    )
+    stream_handler.setFormatter(stream_formatter)
+    logger.addHandler(stream_handler)
+
+    if file_path:
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+
+        # Add current date to the file name
+        file_name = Path(file_path).name
+
+        if file_name.endswith(".log"):
+            file_name = file_name[:-4]
+            file_name += f"_{get_date_format()}.log"
+
+        file_handler = logging.FileHandler(f"{Path(file_path).parent}/{file_name}")
+        file_formatter = FileFormater(
+            "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
+            datefmt="%Y/%m/%d - %H:%M:%S",
         )
-        stream_handler.setFormatter(stream_formatter)
-        logger.addHandler(stream_handler)
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
 
-        if file_path:
-            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+    if global_file_log:
+        Path("logs").mkdir(parents=True, exist_ok=True)
 
-            file_handler = logging.FileHandler(file_path)
-            file_formatter = FileFormater(
-                "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
-                datefmt="%Y/%m/%d - %H:%M:%S",
-            )
-            file_handler.setFormatter(file_formatter)
-            logger.addHandler(file_handler)
-
-        if global_file_log:
-            Path("logs").mkdir(parents=True, exist_ok=True)
-
-            global_file = logging.FileHandler("logs/global.log")
-            file_formatter = FileFormater(
-                "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
-                datefmt="%Y/%m/%d - %H:%M:%S",
-            )
-            global_file.setFormatter(file_formatter)
-            logger.addHandler(global_file)
+        global_file = logging.FileHandler("logs/global.log")
+        file_formatter = FileFormater(
+            "%(asctime)s | %(levelname)-8s - [%(relpathname)s %(funcName)s(%(lineno)d)] - %(message)s",
+            datefmt="%Y/%m/%d - %H:%M:%S",
+        )
+        global_file.setFormatter(file_formatter)
+        logger.addHandler(global_file)
 
     return logger
