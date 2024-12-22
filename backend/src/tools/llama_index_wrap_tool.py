@@ -20,8 +20,10 @@ class LlamaIndexTool(BaseTool):
 
         tool = cast(LlamaBaseTool, self.llama_index_tool)
 
+        if self.result_as_answer:
+            return tool(*args, **kwargs).content
         # DONE: return content of ToolOutput class to fix return_as_answer issue
-        return tool(*args, **kwargs).content
+        return tool(*args, **kwargs)
 
     @classmethod
     def from_tool(cls, tool: Any, **kwargs: Any) -> "LlamaIndexTool":
