@@ -7,3 +7,5 @@ postgres-data/
 old_frontend/
 qdrant_data/
 docker-compose-dev.yaml
+.vscode/
+logs/

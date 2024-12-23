@@ -181,7 +181,7 @@ class ChatAssistant:
 
         logger.debug(f"message: {message}")
         logger.debug(f"response: {response}")
-        logger.debug("=" * 50)
+        logger.debug(f"\n{"=" * 100}\n")
 
         return response
 

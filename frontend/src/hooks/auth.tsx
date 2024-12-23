@@ -133,7 +133,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const login = async (body: URLSearchParams) => {
         try {
             const data = await authApi.login(body);
-            console.log(data);
 
             setCookie("access_token", data.access_token, {
                 expires: new Date(data.expires),
@@ -151,7 +150,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             return userData;
         } catch (err) {
             console.error("Error in login: ", err);
-            throw new Error("Something wrong happened");
+            throw new Error(
+                (err as Error).message || "Something wrong happened !!!"
+            );
         }
     };
 
