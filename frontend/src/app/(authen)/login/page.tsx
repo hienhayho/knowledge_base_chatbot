@@ -106,7 +106,9 @@ const SignInContent: React.FC = () => {
         } catch (error) {
             console.error("Login error:", error);
             errorMessage({
-                content: "An unexpected error occurred. Please try again.",
+                content:
+                    (error as Error).message ||
+                    "An unexpected error occurred. Please try again.",
                 duration: 1,
             });
         } finally {
