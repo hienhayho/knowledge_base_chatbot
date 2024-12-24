@@ -8,7 +8,9 @@ from llama_index.core.tools import FunctionTool
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.utils import get_formatted_logger
 
-logger = get_formatted_logger(__file__)
+logger = get_formatted_logger(
+    __file__, file_path="logs/llama_index_tools/product_search_tool.log"
+)
 
 
 def load_product_search_tool(
@@ -22,11 +24,11 @@ def load_product_search_tool(
     product_list = df_product["name"].to_list()
 
     def product_search(product_name: str) -> str:
-        logger.info(f"Searching for product: {product_name}")
+        logger.debug(f"Searching for product: {product_name}")
 
         list_product_name_by_fuzzy = process.extract(
             product_name, product_list, limit=3
-        )  # [(str, int)]
+        )
 
         result_str = f"Một số sản phẩm liên quan đến {product_name} gồm: \n"
 
@@ -41,10 +43,13 @@ def load_product_search_tool(
                 price = product_info["price"].to_list()[0]
                 description = product_info["description"].to_list()[0]
                 url = product_info["url"].to_list()[0]
+                image_urls = product_info["image_urls"].to_list()[0]
+                code = product_info["code"].to_list()[0]
 
-                result_str += f"{index+1}- Sản phẩm: {name}, Giá: {price}, Mô tả: {description}, Link sản phẩm: {url} \n"
+                result_str += f"{index+1}- Sản phẩm: {name}, Giá: {price}, Mô tả: {description}, Link sản phẩm: {url}, Mã sản phẩm: {code}, Hình ảnh: {image_urls}\n"
 
-        logger.info(f"Result: {result_str}")
+        logger.debug(f"Result: {result_str}")
+        logger.debug(f"\n {'=' * 100} \n")
 
         return result_str
 

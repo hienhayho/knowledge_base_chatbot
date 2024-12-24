@@ -2,12 +2,11 @@ import os
 import asyncio
 from pathlib import Path
 from pprint import pprint
-from fastapi import status
-from fastapi import FastAPI
 from datetime import datetime
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
+from fastapi import status, Request, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.utils import get_formatted_logger
@@ -116,6 +115,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def process_cookie_request(request: Request, call_next):
+    cookie_values = request.cookies.get("CHATBOT_SSO")
+    url = request.url.path
+
+    if cookie_values:
+        logger.debug(f"url: {url}, cookie_values: {cookie_values}")
+
+        request.headers.__dict__["_list"].append(
+            (
+                "authorization".encode(),
+                f"Bearer {cookie_values}".encode(),
+            )
+        )
+
+    response = await call_next(request)
+    return response
 
 
 @app.get("/", tags=["health_check"], status_code=status.HTTP_200_OK)

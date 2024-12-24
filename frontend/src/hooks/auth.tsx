@@ -138,6 +138,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 expires: new Date(data.expires),
                 path: "/",
             });
+            setCookie("CHATBOT_SSO", data.access_token, {
+                expires: new Date(data.expires),
+                path: "/",
+            });
 
             const userData = await authApi.me(data.access_token);
 

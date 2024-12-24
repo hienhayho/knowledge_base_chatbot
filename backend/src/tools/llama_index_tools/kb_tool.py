@@ -7,6 +7,9 @@ from llama_index.core.tools import FunctionTool
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.database import ContextualRAG
 from src.settings import GlobalSettings
+from src.utils import get_formatted_logger
+
+logger = get_formatted_logger(__file__, file_path="logs/llama_index_tools/kb_tool.log")
 
 
 def load_llama_index_kb_tool(
@@ -29,7 +32,8 @@ def load_llama_index_kb_tool(
         Returns:
             str: Response from the contextual RAG
         """
-        return contextual_rag.search(
+        logger.debug(f"query: {user_question}")
+        result = contextual_rag.search(
             session_id=session_id,
             is_contextual_rag=is_contextual_rag,
             kb_ids=[str(kb_id) for kb_id in kb_ids],
@@ -37,6 +41,9 @@ def load_llama_index_kb_tool(
             top_k=setting.contextual_rag_config.top_k,
             system_prompt=system_prompt,
         )
+        logger.debug(f"result: {result}")
+        logger.debug(f"\n {'=' * 100} \n")
+        return result
 
     return FunctionTool.from_defaults(
         fn=knowledge_base_query,

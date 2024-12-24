@@ -3,12 +3,13 @@ import uuid
 import copy
 
 from uuid import UUID
-from typing import List, Generator
 from sqlmodel import Session, select
 from langfuse.decorators import langfuse_context
 from fastapi import Depends, HTTPException, status
+from typing import List, Generator, Dict, Any, Union
 
 from .chat_assistant_agent import ChatAssistant
+from .output_parser import OutputParser, get_default_output_parser
 from src.utils import get_cost_from_session_id
 from src.database import (
     get_session,
@@ -32,9 +33,11 @@ class AssistantService:
         self,
         db_session: Session = Depends(get_session),
         db_manager: DatabaseManager = Depends(get_db_manager),
+        output_parser: OutputParser = Depends(get_default_output_parser),
     ):
         self.db_session = db_session
         self.db_manager = db_manager
+        self.output_parser = output_parser
 
     def chat_with_assistant(
         self,
@@ -137,7 +140,22 @@ class AssistantService:
         user_id: UUID,
         message: ChatMessage,
         start_time: float,
-    ):
+        use_parser: bool = False,
+    ) -> Union[ChatResponse, Dict[str, Any]]:
+        """
+        Chat with assistant.
+
+        Args:
+            conversation_id (UUID): Conversation ID.
+            user_id (UUID): User ID.
+            message (ChatMessage): Chat message.
+            start_time (float): Start time.
+            use_parser (bool): Use output parser flag before returning to FE.
+
+        Returns:
+            Union[ChatResponse, Dict[str, Any]]: Chat response. When use_parser is True, it returns parsed json output.
+        """
+
         with self.db_session as session:
             query = select(Conversations).where(
                 Conversations.id == conversation_id,
@@ -221,6 +239,10 @@ class AssistantService:
             )
             session.add(assistant_message)
             session.commit()
+
+            if use_parser:
+                result = self.output_parser._parse_output(answer)
+                return result
 
             return ChatResponse(
                 assistant_message=answer,

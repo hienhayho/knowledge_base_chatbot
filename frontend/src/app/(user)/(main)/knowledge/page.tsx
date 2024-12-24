@@ -59,7 +59,7 @@ const KnowledgeBasePage: React.FC = () => {
     useEffect(() => {
         const fetchKnowledgeBases = async () => {
             try {
-                const data = await knowledgeBaseApi.fetchKnowledgeBases();
+                const data = await knowledgeBaseApi.fetchKnowledgeBases(token);
 
                 successMessage({
                     content: "Knowledge bases fetched successfully",
@@ -84,14 +84,15 @@ const KnowledgeBasePage: React.FC = () => {
     ) => {
         try {
             const newKnowledgeBase = await knowledgeBaseApi.createKnowledgeBase(
-                formData
+                formData,
+                token
             );
 
             successMessage({
                 content: "Knowledge base created successfully",
             });
 
-            setKnowledgeBases([...knowledgeBases, newKnowledgeBase]);
+            setKnowledgeBases([newKnowledgeBase, ...knowledgeBases]);
         } catch (err) {
             console.error("Error creating knowledge base:", err);
             errorMessage({

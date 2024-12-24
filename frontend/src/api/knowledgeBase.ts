@@ -1,9 +1,7 @@
 import { knowledgeBaseEndpoints } from "@/endpoints";
 import { ICreateKnowledgeBase } from "@/types";
-import { getCookie } from "cookies-next";
 
-export const fetchKnowledgeBases = async () => {
-    const token = getCookie("access_token");
+export const fetchKnowledgeBases = async (token: string) => {
     const response = await fetch(knowledgeBaseEndpoints.fetchKnowledgeBases, {
         headers: {
             Authorization: `Bearer ${token}`,
@@ -18,8 +16,10 @@ export const fetchKnowledgeBases = async () => {
     return data;
 };
 
-export const createKnowledgeBase = async (body: ICreateKnowledgeBase) => {
-    const token = getCookie("access_token");
+export const createKnowledgeBase = async (
+    body: ICreateKnowledgeBase,
+    token: string
+) => {
     const response = await fetch(knowledgeBaseEndpoints.createKnowledgeBase, {
         method: "POST",
         headers: {

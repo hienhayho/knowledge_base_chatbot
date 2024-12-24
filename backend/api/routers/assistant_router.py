@@ -41,9 +41,9 @@ from src.database import (
     DatabaseManager,
     get_db_manager,
 )
-from src.constants import DOWNLOAD_FOLDER
 from src.utils import get_formatted_logger
 from api.services import AssistantService
+from src.constants import DOWNLOAD_FOLDER, ApiResponse
 from fastapi.responses import JSONResponse, FileResponse
 
 logger = get_formatted_logger(__file__)
@@ -699,4 +699,38 @@ async def send_message(
         assistant_message=result.assistant_message,
         type="text",
         metadata={"assistant_id": assistant_id},
+    )
+
+
+@assistant_router.post(
+    "/{assistant_id}/conversations/{conversation_id}/production_messages",
+    response_model=ApiResponse,
+)
+async def production_send_message(
+    assistant_id: UUID,
+    conversation_id: UUID,
+    message: Annotated[ChatMessage, Body(...)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+    assistant_service: Annotated[AssistantService, Depends()],
+):
+    assistant_id = str(assistant_id)
+    conversation_id = str(conversation_id)
+
+    start_time = time.time()
+    result = await assistant_service.achat_with_assistant(
+        conversation_id,
+        current_user.id,
+        message=message,
+        start_time=start_time,
+        use_parser=True,
+    )
+
+    return ApiResponse(
+        data=result,
+        status_message="Successfully!",
+        http_code=status.HTTP_200_OK,
+        status_code=0,
+        extra_info={
+            "respone_time": time.time() - start_time,
+        },
     )
