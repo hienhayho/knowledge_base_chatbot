@@ -168,6 +168,23 @@ async def upload_file(
 
         documents = session.exec(query_documents).all()
 
+        documents_in_kb = session.exec(
+            select(Documents).where(
+                Documents.knowledge_base_id == knowledge_base_id,
+                Documents.is_product_file,
+            )
+        ).all()
+
+        if len(documents_in_kb) >= 1 and is_product_file(file_path):
+            logger.debug(
+                "Deleting the file from local as product file already exists in the Knowledge Base"
+            )
+            Path(file_path).unlink()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"File products already exists in the Knowledge Base. File product's name: {documents_in_kb[0].file_name}",
+            )
+
         if not kb:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base not found"
@@ -256,13 +273,11 @@ async def process_document(
 
         is_contextual_rag = kb.is_contextual_rag
 
-        isContextualRAG = is_contextual_rag
-
         task = parse_document.delay(
             document.file_path_in_storage_service,
             document.id,
             document.knowledge_base_id,
-            isContextualRAG,
+            is_contextual_rag,
         )
 
         document.task_id = task.id

@@ -19,14 +19,6 @@ SUPPORTED_FILE_EXTENSIONS = [
     # ".pptx",
 ]
 
-# CONTEXTUAL_PROMPT = """<document>
-# {WHOLE_DOCUMENT}
-# </document>
-# Here is the chunk we want to situate within the whole document
-# <chunk>
-# {CHUNK_CONTENT}
-# </chunk>
-# Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else. Please answer in the source language of the document."""
 CONTEXTUAL_PROMPT = """<document>
 {WHOLE_DOCUMENT}
 </document>
@@ -48,6 +40,37 @@ Please ONLY return in json format like this:
     "is_chat_false": ### You must decide if the answer is true with the context and question provided
 }}
 """
+
+CHAT_AGENT_RESPONSE_PROMPT = """Hãy trả lời theo định dạng JSON hợp lệ. Dưới đây là cấu trúc mong muốn:
+{{
+    "text": "<nội dung phản hồi từ nội dung đưa vào>",
+    "products": [{
+        "url": "<url sản phẩm>",
+        "name": "<tên sản phẩm>",
+        "code": "<mã sản phẩm>",
+        "price": "<giá sản phẩm>",
+        "image_urls": [<danh sách hình ảnh>],
+        "description": "<mô tả sản phẩm>"
+
+    },...]
+}}
+
+Lưu ý:
+- `text`: là nội dung phản hồi dưới dạng chuỗi (luôn luôn phải đặt phản hồi của bạn trong định dạng này).
+- Đảm bảo tất cả khóa và giá trị chuỗi phải có dấu ngoặc kép.
+- Nếu không có thông tin nào hợp lý, hãy trả về chuỗi rỗng.
+- Nếu không có sản phẩm nào, hãy trả về toàn bộ nội dung trong `text`.
+- Trả về JSON hợp lệ và không thêm thông tin khác ngoài JSON."""
+
+# CHAT_AGENT_RESPONSE_PROMPT = """Hãy trả lời theo định dạng JSON hợp lệ. Dưới đây là cấu trúc mong muốn:
+# {json_schema}
+
+# Lưu ý:
+# - `text`: là nội dung phản hồi dưới dạng chuỗi (luôn luôn phải đặt phản hồi của bạn trong định dạng này).
+# - Đảm bảo tất cả khóa và giá trị chuỗi phải có dấu ngoặc kép.
+# - Nếu không có thông tin nào hợp lý, hãy trả về chuỗi rỗng.
+# - Nếu không có sản phẩm nào, hãy trả về toàn bộ nội dung trong `text`.
+# - Trả về JSON hợp lệ và không thêm thông tin khác ngoài JSON."""
 
 ASSISTANT_SYSTEM_PROMPT = """
 You are an advanced AI agent designed to assist users by searching through a diverse knowledge base
@@ -293,3 +316,20 @@ class ExistTools(str, enum.Enum):
 
     KNOWLEDGE_BASE_QUERY = "knowledge_base_query"
     PRODUCT_SEARCH = "product_search"
+
+
+class ResponseType(str, enum.Enum):
+    TEXT = "text"
+    URL = "url"
+    PRODUCTS = "products"
+    IMAGE = "image"
+    LIST = "list"
+    OTHER = "other"
+
+
+class ApiResponse(BaseModel):
+    status_code: int = 0
+    status_message: str = ""
+    http_code: int = 200
+    data: Any = []
+    extra_info: Any = None

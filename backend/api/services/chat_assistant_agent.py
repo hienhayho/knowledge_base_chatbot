@@ -9,7 +9,6 @@ from llama_index.core.callbacks import CallbackManager
 from langfuse.llama_index import LlamaIndexCallbackHandler
 from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
 
-
 from src.agents import CrewAIAgent
 from src.settings import default_settings
 from src.utils import get_formatted_logger
@@ -29,11 +28,19 @@ Settings.callback_manager = CallbackManager([langfuse_callback_handler])
 
 
 class ChatAssistant:
+    """
+    Main ChatAssistant class to handle the chat with user.
+    """
+
     def __init__(self, configuration: ChatAssistantConfig):
         self.configuration = configuration
         self._init_agent()
 
     def _init_agent(self):
+        """
+        Initialize the agent with the given configuration.
+        """
+
         model_name = self.configuration.model
         service = self.configuration.service
 
@@ -92,6 +99,7 @@ class ChatAssistant:
             goal="Trả lời câu hỏi của người dùng",
             backstory=self.configuration.agent_backstory,
             llm=self.llm,
+            max_execution_time=40,
         )
 
         kb_task = Task(
@@ -131,14 +139,12 @@ class ChatAssistant:
 
         if service == "openai":
             logger.info(f"Loading OpenAI Model: {model_id}")
-            # return OpenAI(
-            #     model=model_id,
-            #     temperature=self.configuration.temperature,
-            # )
+
             return ChatOpenAI(
                 model=model_id,
                 temperature=self.configuration.temperature,
             )
+
         else:
             raise NotImplementedError(
                 "The implementation for other types of LLMs are not ready yet!"

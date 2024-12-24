@@ -291,7 +291,7 @@ const JsonChatArea = ({
                                             return;
                                         }
                                         navigator.clipboard.writeText(
-                                            `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/messages`
+                                            `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/production_messages`
                                         );
                                         messageApi.open({
                                             type: "success",
