@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Select, Button, message } from "antd";
 import { Download, Rocket } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useAuth } from "@/hooks/auth";
 import Image from "next/image";
 
 interface SelectOption {
@@ -19,7 +18,6 @@ const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 const WordcloudPage = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [messageApi, contextHolder] = message.useMessage();
-    const { token } = useAuth();
 
     const wordCloudSource = ["Knowledge Base", "Assistant", "Conversation"];
     const wordCloudSourceMap: Record<WordCloudSource, string> = {
@@ -81,9 +79,7 @@ const WordcloudPage = () => {
             const response = await fetch(
                 `${BASE_API_URL}/api/dashboard/${wordCloudSourceMap[source]}`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
             const data = await response.json();
@@ -135,14 +131,10 @@ const WordcloudPage = () => {
 
             const [userResponse, assistantResponse] = await Promise.all([
                 fetch(userWordCloudUrl, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }),
                 fetch(assistantWordCloudUrl, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }),
             ]);
 

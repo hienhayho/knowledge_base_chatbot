@@ -1,10 +1,8 @@
-import { message } from "antd";
 import { Plus, HelpCircle } from "lucide-react";
 import React, { useCallback, useRef, useState, useEffect } from "react";
 
 import ConversationCard from "./ConversationCard";
 import { IAssistant, IConversation } from "@/types";
-import { useAuth } from "@/hooks/auth";
 
 const Sidebar = ({
     isVisible,
@@ -28,10 +26,8 @@ const Sidebar = ({
     selectedAssistant: IAssistant | null;
     setSelectedAssistant: (assistant: IAssistant) => void;
 }) => {
-    const { token } = useAuth();
     const sidebarRef = useRef<HTMLDivElement>(null);
     const [isResizing, setIsResizing] = useState<boolean>(false);
-    const [messageApi, contextHolder] = message.useMessage();
 
     const startResizing = useCallback(
         (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
@@ -59,19 +55,7 @@ const Sidebar = ({
         [isResizing, setWidth]
     );
 
-    const errorMessage = (content: string, duration: number = 1) => {
-        messageApi.open({
-            type: "error",
-            content: content,
-            duration: duration,
-        });
-    };
-
     useEffect(() => {
-        if (!token) {
-            errorMessage("Session expired. Please login again.");
-            return;
-        }
         window.addEventListener("mousemove", resize);
         window.addEventListener("mouseup", stopResizing);
         return () => {
@@ -84,7 +68,6 @@ const Sidebar = ({
 
     return (
         <>
-            {contextHolder}
             <aside
                 ref={sidebarRef}
                 className="bg-white shadow-md relative flex flex-col"

@@ -19,7 +19,6 @@ import ErrorComponent from "@/components/Error";
 import { useRouter } from "next/navigation";
 import { message, Popconfirm, Tooltip } from "antd";
 import { formatDate } from "@/utils";
-import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -79,7 +78,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
     const [messageApi, contextHolder] = message.useMessage();
     const router = useRouter();
-    const { token } = useAuth();
     const redirectURL = encodeURIComponent(`/knowledge/${knowledgeBaseID}`);
 
     useEffect(() => {
@@ -88,9 +86,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 const response = await fetch(
                     `${API_BASE_URL}/api/kb/get_kb/${knowledgeBaseID}`,
                     {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
+                        credentials: "include",
                     }
                 );
                 const data: KnowledgeBase = await response.json();
@@ -109,20 +105,10 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
         };
 
         fetchKnowledgeBase();
-    }, [knowledgeBaseID, token, router, redirectURL]);
+    }, [knowledgeBaseID, router, redirectURL]);
 
     useEffect(() => {
         const checkProcessingDocuments = async () => {
-            if (!token) {
-                errorMessage({
-                    content: "Session expired. Please login again.",
-                    duration: 3,
-                });
-                setTimeout(() => {
-                    router.push(`/login?redirect=${redirectURL}`);
-                }, 3000);
-                return;
-            }
             const processingDocs = documents.filter(
                 (doc) => doc.status === "processing"
             );
@@ -133,8 +119,9 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                             `${API_BASE_URL}/api/kb/document_status/${doc.id}`,
                             {
                                 headers: {
-                                    Authorization: `Bearer ${token}`,
+                                    "Content-Type": "application/json",
                                 },
+                                credentials: "include",
                             }
                         );
                         const status = await response.json();
@@ -161,7 +148,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
         const intervalId = setInterval(checkProcessingDocuments, 10000);
 
         return () => clearInterval(intervalId);
-    }, [documents, token, redirectURL]);
+    }, [documents, redirectURL]);
 
     const successMessage = ({
         content,
@@ -192,10 +179,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     };
 
     const handleUpload = async (files: FileList) => {
-        if (!token) {
-            window.location.href = `/login?redirect=${redirectURL}`;
-            return;
-        }
         for (const file of files) {
             const fileExtension =
                 "." + file.name.split(".").pop()?.toLowerCase();
@@ -217,9 +200,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                     {
                         method: "POST",
                         body: formData,
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
+                        credentials: "include",
                     }
                 );
 
@@ -263,17 +244,11 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
         documentId: string,
         fileName: string
     ) => {
-        if (!token) {
-            window.location.href = `/login?redirect=${redirectURL}`;
-            return;
-        }
         try {
             const response = await fetch(
                 `${API_BASE_URL}/api/kb/download/${documentId}`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
             if (!response.ok) {
@@ -312,8 +287,8 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                     method: "DELETE",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                     body: JSON.stringify({ delete_to_retry: false }),
                 }
             );
@@ -342,21 +317,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     };
 
     const handleProcessDocument = async (documentId: string) => {
-        if (!token) {
-            const redirectURL = encodeURIComponent(
-                `/knowledge/${knowledgeBaseID}`
-            );
-            router.push(`/login?redirect=${redirectURL}`);
-            return;
-        }
         try {
             const response = await fetch(
                 `${API_BASE_URL}/api/kb/process/${documentId}`,
                 {
                     method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
 
@@ -387,21 +353,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     };
 
     const handleStopProcessingDocument = async (documentId: string) => {
-        if (!token) {
-            const redirectURL = encodeURIComponent(
-                `/knowledge/${knowledgeBaseID}`
-            );
-            router.push(`/login?redirect=${redirectURL}`);
-            return;
-        }
         try {
             const response = await fetch(
                 `${API_BASE_URL}/api/kb/stop_processing/${documentId}`,
                 {
                     method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
 
@@ -454,13 +411,6 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     };
 
     const handleRetryProcessingDocument = async (documentId: string) => {
-        if (!token) {
-            const redirectURL = encodeURIComponent(
-                `/knowledge/${knowledgeBaseID}`
-            );
-            router.push(`/login?redirect=${redirectURL}`);
-            return;
-        }
         try {
             const deleteResponse = await fetch(
                 `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
@@ -468,8 +418,8 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                     method: "DELETE",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                     body: JSON.stringify({ delete_to_retry: true }),
                 }
             );
@@ -487,9 +437,7 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 `${API_BASE_URL}/api/kb/process/${documentId}`,
                 {
                     method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
 

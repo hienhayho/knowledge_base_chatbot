@@ -4,7 +4,6 @@ import { IAssistant } from "@/types";
 import { Button, message, Modal, Input, Popover } from "antd";
 import AddToolsModal from "./AddToolsModal";
 import DetailToolTip from "../DetailToolTip";
-import { useAuth } from "@/hooks/auth";
 
 const { TextArea } = Input;
 
@@ -29,7 +28,6 @@ const TopBar = ({
     showCreateAssistantButton?: boolean;
     showUpdateAssistantButton?: boolean;
 }) => {
-    const { token } = useAuth();
     const [isUpdatingPrompt, setIsUpdatingPrompt] = React.useState(false);
     const [messageApi, contextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -74,8 +72,8 @@ const TopBar = ({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                     body: JSON.stringify({
                         instruct_prompt: instructPrompt,
                         agent_backstory: agentBackstory,
@@ -140,7 +138,6 @@ const TopBar = ({
             {showUpdateAssistantButton && (
                 <div className="flex flex-row item-center justify-around flex-shrink-0 gap-10 p-4">
                     <AddToolsModal
-                        token={token as string}
                         icon={<Wrench size={16} />}
                         buttonTitle="Chỉnh tools"
                         modalTitle={`Chọn tools cho trợ lý: ${selectedAssistant?.name}`}

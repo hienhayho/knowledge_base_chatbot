@@ -3,8 +3,8 @@ import { Send, User, Bot, Loader2, Link } from "lucide-react";
 import Markdown from "react-markdown";
 import { Popover, message } from "antd";
 import remarkGfm from "remark-gfm";
-import { useAuth } from "@/hooks/auth";
 import LoadingClipLoader from "@/components/LoadingClipLoader";
+import { getCookie } from "cookies-next";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -24,7 +24,7 @@ const WebSocketChatArea = ({
     conversation: { id: string };
     assistantId: string;
 }) => {
-    const { token } = useAuth();
+    const token = getCookie("CHATBOT_SSO");
     const [messageApi, contextHolder] = message.useMessage();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [inputMessage, setInputMessage] = useState("");
@@ -150,8 +150,9 @@ const WebSocketChatArea = ({
                 `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/history`,
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
                     },
+                    credentials: "include",
                 }
             );
             if (!response.ok)

@@ -10,7 +10,6 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorComponent from "@/components/Error";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { IAssistant, IConversation } from "@/types";
-import { useAuth } from "@/hooks/auth";
 import JsonChatArea from "@/components/chat/JsonChatArea";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
@@ -34,7 +33,6 @@ const ChatAssistantPage = () => {
     const [conversations, setConversations] = useState<IConversation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { token } = useAuth();
     const redirectUrl = encodeURIComponent(`/chat/${assistant_id}`);
 
     const useWebsocket = process.env.NEXT_PUBLIC_USE_WEB_SOCKET === "true";
@@ -46,7 +44,7 @@ const ChatAssistantPage = () => {
                 setSelectedConversation(conv);
             }
         }
-    }, [conversation_id, conversations, redirectUrl, router, token]);
+    }, [conversation_id, conversations, redirectUrl, router]);
 
     useEffect(() => {
         const fetchAssistant = async () => {
@@ -55,8 +53,9 @@ const ChatAssistantPage = () => {
                     `${API_BASE_URL}/api/assistant/${assistant_id}`,
                     {
                         headers: {
-                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
                         },
+                        credentials: "include",
                     }
                 );
                 if (!response.ok) {
@@ -77,8 +76,9 @@ const ChatAssistantPage = () => {
                     `${API_BASE_URL}/api/assistant/${assistant_id}/conversations`,
                     {
                         headers: {
-                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
                         },
+                        credentials: "include",
                     }
                 );
                 if (!response.ok) {
@@ -103,7 +103,7 @@ const ChatAssistantPage = () => {
 
         fetchAssistant();
         fetchConversations();
-    }, [assistant_id, token]);
+    }, [assistant_id, redirectUrl, router]);
 
     const handleConversationSelect = (conversation: IConversation | null) => {
         setSelectedConversation(conversation);
@@ -122,8 +122,8 @@ const ChatAssistantPage = () => {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                 }
             );
 

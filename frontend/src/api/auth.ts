@@ -44,13 +44,13 @@ export const register = async (body: SignUpFormValues) => {
     };
 };
 
-export const me = async (token: string) => {
+export const me = async () => {
     const response = await fetch(authEndpoints.me, {
         method: "GET",
         headers: {
             "Content-type": "application/json",
-            Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
     });
 
     const data = await response.json();

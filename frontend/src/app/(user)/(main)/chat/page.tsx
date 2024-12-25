@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { message } from "antd";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { IAssistant } from "@/types";
-import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -23,14 +22,14 @@ const ChatMainPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const redirectUrl = encodeURIComponent("/chat");
-    const { token } = useAuth();
 
     const fetchAssistants = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/assistant`, {
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
                 },
+                credentials: "include",
             });
             if (!response.ok) {
                 throw new Error("Failed to fetch assistants");
@@ -54,7 +53,7 @@ const ChatMainPage = () => {
 
     useEffect(() => {
         fetchAssistants();
-    }, [token, redirectUrl, router]);
+    }, [redirectUrl, router]);
 
     const successMessage = (content: string) => {
         messageApi.open({
@@ -87,9 +86,7 @@ const ChatMainPage = () => {
                 `${API_BASE_URL}/api/assistant/${assistantId}`,
                 {
                     method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
 
@@ -133,7 +130,6 @@ const ChatMainPage = () => {
                         Your Assistants
                     </h1>
                     <AssistantCards
-                        token={token as string}
                         assistants={assistants}
                         onSelect={handleAssistantSelect}
                         onDelete={handleDeleteAssistant}

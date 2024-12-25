@@ -59,7 +59,7 @@ const Header = ({
 
     const handleLogout = async () => {
         try {
-            setCookie("access_token", "", { expires: new Date(0) });
+            setCookie("CHATBOT_SSO", "", { expires: new Date(0) });
             successMessage({ content: "Logout successfully!" });
             setTimeout(() => {
                 router.push("/login");

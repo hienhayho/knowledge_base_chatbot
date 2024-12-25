@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FileText, MoreVertical, Trash2, Combine } from "lucide-react";
 import { Modal, Select, message } from "antd";
-import { useAuth } from "@/hooks/auth";
 
 interface IMergeableKnowledgeBase {
     id: string;
@@ -33,7 +32,6 @@ const KnowledgeBaseCard = ({
     onClick: () => void;
     onDelete: () => void;
 }) => {
-    const { token } = useAuth();
     const [messageApi, contextHolder] = message.useMessage();
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -80,9 +78,7 @@ const KnowledgeBaseCard = ({
                 `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/kb/get_kb/${kb_id}`,
                 {
                     method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
 
@@ -116,8 +112,8 @@ const KnowledgeBaseCard = ({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                     body: JSON.stringify({
                         source_knowledge_base_id: selectedKbId,
                         target_knowledge_base_id: kb_id,

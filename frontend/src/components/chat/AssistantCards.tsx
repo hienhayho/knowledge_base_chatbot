@@ -9,7 +9,6 @@ import {
     Download,
     IdCard,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { IAssistant, IKnowledgeBase } from "@/types";
 import AddToolsModal from "./AddToolsModal";
 import { Settings } from "lucide-react";
@@ -47,17 +46,14 @@ const getBadgeText = (createdAt: string, updatedAt: string) => {
 };
 
 const AssistantCard = ({
-    token,
     assistant,
     onSelect,
     onDelete,
 }: {
-    token: string;
     assistant: IAssistant;
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
 }) => {
-    const router = useRouter();
     const menuRef = useRef<HTMLDivElement>(null);
     const [knowledgeBase, setKnowledgeBase] = useState<IKnowledgeBase | null>(
         null
@@ -66,22 +62,18 @@ const AssistantCard = ({
     const [messageApi, contextHolder] = message.useMessage();
     // const [cost, setCost] = useState<number | null>(null);
     const randomGradient = useMemo(() => getRandomGradient(), []);
-    const redirectUrl = encodeURIComponent("/chat");
     const badgeText = getBadgeText(assistant.created_at, assistant.updated_at);
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectUrl}`);
-            return;
-        }
         const fetchKnowledgeBase = async () => {
             try {
                 const response = await fetch(
                     `${API_BASE_URL}/api/kb/get_kb/${assistant.knowledge_base_id}`,
                     {
                         headers: {
-                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
                         },
+                        credentials: "include",
                     }
                 );
                 if (!response.ok) {
@@ -98,10 +90,6 @@ const AssistantCard = ({
     }, [assistant.knowledge_base_id]);
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectUrl}`);
-            return;
-        }
         const handleClickOutside = (event: MouseEvent) => {
             if (
                 menuRef.current &&
@@ -163,9 +151,7 @@ const AssistantCard = ({
             const response = await fetch(
                 `${API_BASE_URL}/api/assistant/${assistant.id}/export_conversations`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
             if (!response.ok) {
@@ -236,7 +222,6 @@ const AssistantCard = ({
 
                     <div>
                         <AddToolsModal
-                            token={token}
                             icon={<Settings size={16} />}
                             buttonTitle="Chỉnh tools"
                             modalTitle={`Chọn tools cho trợ lý: ${assistant.name}`}
@@ -294,12 +279,10 @@ const AssistantCard = ({
 };
 
 const AssistantCards = ({
-    token,
     assistants,
     onSelect,
     onDelete,
 }: {
-    token: string;
     assistants: IAssistant[];
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
@@ -308,7 +291,6 @@ const AssistantCards = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {assistants.map((assistant) => (
                 <AssistantCard
-                    token={token}
                     key={assistant.id}
                     assistant={assistant}
                     onSelect={onSelect}

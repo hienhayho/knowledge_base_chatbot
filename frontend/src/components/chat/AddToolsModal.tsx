@@ -28,14 +28,12 @@ interface Tool {
 }
 
 const AddToolsModal = ({
-    token,
     icon,
     buttonTitle,
     modalTitle,
     alreadyChoosenTools,
     assistantId,
 }: {
-    token: string;
     icon?: React.ReactNode;
     buttonTitle?: string;
     modalTitle?: string;
@@ -63,8 +61,8 @@ const AddToolsModal = ({
                         method: "GET",
                         headers: {
                             "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
                         },
+                        credentials: "include",
                     }
                 );
                 if (!response.ok) {
@@ -84,8 +82,8 @@ const AddToolsModal = ({
                             method: "GET",
                             headers: {
                                 "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
                             },
+                            credentials: "include",
                         }
                     );
                     if (!response.ok) {
@@ -126,7 +124,7 @@ const AddToolsModal = ({
             }
         };
         fetchTools();
-    }, [token]);
+    }, []);
 
     const addItem = (name: string) => {
         const addItemId = existTools.find((tool) => tool.name === name)?.id;
@@ -199,8 +197,8 @@ const AddToolsModal = ({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                     body: JSON.stringify({
                         tools: updatedTools,
                     }),
