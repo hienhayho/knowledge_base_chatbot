@@ -20,6 +20,7 @@ class UserResponse(BaseModel):
     id: UUID = Field(..., description="User ID")
     username: str = Field(..., description="Username")
     role: str = Field(..., description="Role")
+    access_token: Optional[str] = Field(None, description="Access token")
     created_at: datetime = Field(..., description="Created at")
     updated_at: datetime = Field(..., description="Updated at")
 

@@ -15,6 +15,7 @@ from api.routers import (
     user_router,
     kb_router,
     assistant_router,
+    assistant_v2_router,
     tool_router,
     dashboard_router,
     admin_router,
@@ -123,7 +124,7 @@ async def process_cookie_request(request: Request, call_next):
     url = request.url.path
 
     if cookie_values:
-        logger.debug(f"url: {url}, cookie_values: {cookie_values}")
+        logger.debug(f"url: {url}, cookie: {cookie_values}")
 
         request.headers.__dict__["_list"].append(
             (
@@ -145,6 +146,9 @@ def health_check():
 app.include_router(user_router, tags=["user"], prefix="/api/users")
 app.include_router(kb_router, tags=["knowledge_base"], prefix="/api/kb")
 app.include_router(assistant_router, tags=["assistant"], prefix="/api/assistant")
+app.include_router(
+    assistant_v2_router, tags=["assistant_v2"], prefix="/api/assistant_v2"
+)
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(tool_router, tags=["tools"], prefix="/api/tools")
 app.include_router(admin_router, tags=["admin"], prefix="/api/admin")
