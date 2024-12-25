@@ -2,7 +2,6 @@ import { useState } from "react";
 import { FolderPen, Trash2, MessageSquare, Download } from "lucide-react";
 import { Popover, Row, Col, message, Input, Button } from "antd";
 import { IAssistant, IConversation } from "@/types";
-import { useAuth } from "@/hooks/auth";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -21,7 +20,6 @@ const ConversationCard = ({
     onConversationSelect: (conversation: IConversation | null) => void;
     setConversations: (conversations: IConversation[]) => void;
 }) => {
-    const { token } = useAuth();
     const [newName, setNewName] = useState<string>(
         conversation.name || conversation.id
     );
@@ -56,9 +54,9 @@ const ConversationCard = ({
                 {
                     method: "PATCH",
                     headers: {
-                        Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
                     },
+                    credentials: "include",
                     body: JSON.stringify({ name: newName }),
                 }
             );
@@ -96,9 +94,7 @@ const ConversationCard = ({
                 `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/conversations/${conversationId}`,
                 {
                     method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
             if (response.ok) {
@@ -128,9 +124,7 @@ const ConversationCard = ({
                 `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/export/${conversationId}`,
                 {
                     method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
             if (response.ok) {

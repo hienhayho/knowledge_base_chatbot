@@ -1,13 +1,13 @@
 import { adminEndpoints } from "@/endpoints";
 import { IAdminSwitchUserResponse, IApiResponse, IUser } from "@/types";
 
-export const getUsers = async (token: string) => {
+export const getUsers = async () => {
     const response = await fetch(adminEndpoints.getUsers, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
     });
 
     const data: IApiResponse<IUser[]> = await response.json();
@@ -25,13 +25,13 @@ export const getUsers = async (token: string) => {
     return data;
 };
 
-export const switchUser = async (token: string, username: string) => {
+export const switchUser = async (username: string) => {
     const response = await fetch(adminEndpoints.switchUser, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ username_to_switch: username }),
     });
 

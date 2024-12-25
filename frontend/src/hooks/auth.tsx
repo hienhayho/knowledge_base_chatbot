@@ -1,7 +1,7 @@
 "use client";
 import { authApi } from "@/api";
 import { IUser, SignUpFormValues, SignUpResponse } from "@/types";
-import { getCookie, setCookie } from "cookies-next";
+import { setCookie } from "cookies-next";
 import { usePathname, useRouter } from "next/navigation";
 import {
     useState,
@@ -13,7 +13,6 @@ import {
 
 interface AuthContextType {
     user: IUser | null;
-    token: string;
     login: (body: URLSearchParams) => Promise<IUser>;
     logout: () => void;
     register: (body: SignUpFormValues) => Promise<{
@@ -23,7 +22,7 @@ interface AuthContextType {
     }>;
     loading: boolean;
     isAuthenticated: boolean;
-    changeUser: (user: IUser | null, token: string) => void;
+    changeUser: (user: IUser | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -40,7 +39,6 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [user, setUser] = useState<IUser | null>(null);
     const [loading, setLoading] = useState(true);
-    const [token, setToken] = useState("");
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoggedOut, setIsLoggedOut] = useState(false);
     const router = useRouter();
@@ -48,37 +46,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const redirectURL = encodeURIComponent(pathname);
 
     useEffect(() => {
-        const verifyToken = async () => {
+        const verify = async () => {
             try {
-                const user_access_token = getCookie("access_token") as string;
-                if (!user_access_token) {
-                    setUser(null);
-                    setIsAuthenticated(false);
-                    setIsLoggedOut(true);
-                    return;
-                }
-                // Optionally, call an endpoint to verify the token's validity
-                const userData = await authApi.me(user_access_token);
+                const userData = await authApi.me();
                 setUser(userData);
-                setToken(user_access_token);
                 setIsAuthenticated(true);
             } catch (error) {
-                console.error("Token verification failed:", error);
+                console.error("Failed to verify token:", error);
                 setUser(null);
-                setToken("");
                 setIsAuthenticated(false);
                 setIsLoggedOut(true);
             }
         };
 
         const intervalId = setInterval(() => {
-            verifyToken();
+            verify();
         }, VERIFY_INTERVAL_MINUTES * 60 * 1000);
 
         return () => {
             clearInterval(intervalId);
         };
-    }, [router, pathname, token]);
+    }, [router, pathname]);
 
     useEffect(() => {
         if (
@@ -87,34 +75,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             pathname !== "/register" &&
             pathname !== "/admin/register"
         ) {
+            console.log("pathname", pathname);
             router.push(`/login?redirect=${redirectURL}`);
             setIsLoggedOut(true);
         }
     }, [isLoggedOut, pathname, router, redirectURL]);
 
-    const changeUser = (user: IUser | null, token: string) => {
+    const changeUser = (user: IUser | null) => {
         setUser(user);
-        setToken(token);
         setIsAuthenticated(!!user);
         setIsLoggedOut(false);
     };
 
     useEffect(() => {
-        async function loadUserFromToken() {
+        async function loadUser() {
             try {
-                const user_access_token = getCookie("access_token") as string;
+                const userData = await authApi.me();
 
-                if (!user_access_token) {
-                    setIsAuthenticated(false);
-                    setUser(null);
-                    setIsLoggedOut(true);
-                    setLoading(false);
-                    return;
-                }
-
-                const userData = await authApi.me(user_access_token);
-
-                setToken(user_access_token);
                 setUser(userData);
                 setIsAuthenticated(true);
                 setIsLoggedOut(false);
@@ -122,27 +99,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 console.error("Failed to verify token:", error);
                 setIsAuthenticated(false);
                 setUser(null);
-                setToken("");
                 setIsLoggedOut(true);
             }
             setLoading(false);
         }
-        loadUserFromToken();
-    }, [token]);
+        loadUser();
+    }, [isAuthenticated]);
 
     const login = async (body: URLSearchParams) => {
         try {
             const data = await authApi.login(body);
 
-            setCookie("access_token", data.access_token, {
+            setCookie("CHATBOT_SSO", data.access_token, {
                 expires: new Date(data.expires),
                 path: "/",
             });
 
-            const userData = await authApi.me(data.access_token);
+            const userData = await authApi.me();
 
             setUser(userData);
-            setToken(data.access_token);
             setIsAuthenticated(true);
             setLoading(false);
             setIsLoggedOut(false);
@@ -158,10 +133,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     const logout = () => {
         setUser(null);
-        setToken("");
         setIsAuthenticated(false);
         setIsLoggedOut(true);
-        setCookie("access_token", "", { maxAge: -1, path: "/" });
+        setCookie("CHATBOT_SSO", "", { maxAge: -1, path: "/" });
     };
 
     const register = async (body: SignUpFormValues) => {
@@ -184,7 +158,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         <AuthContext.Provider
             value={{
                 user,
-                token,
                 login,
                 logout,
                 register,

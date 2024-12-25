@@ -1,7 +1,6 @@
 "use client";
 
 import { SearchOutlined } from "@ant-design/icons";
-import { useAuth } from "@/hooks/auth";
 import {
     IToken,
     ITokenResponse,
@@ -37,7 +36,6 @@ import TokenRender from "@/components/admin/TokenRender";
 type DataIndex = keyof IToken;
 
 const AdminTokenManagementPage = () => {
-    const { token } = useAuth();
     const [loadingPage, setLoadingPage] = useState(true);
     const [tokens, setTokens] = useState<IToken[]>([]);
     const [searchText, setSearchText] = useState("");
@@ -50,9 +48,6 @@ const AdminTokenManagementPage = () => {
     const [form] = Form.useForm();
 
     useEffect(() => {
-        if (!token) {
-            return;
-        }
         const fetchData = async () => {
             try {
                 const [responeTokens, responseUsers] = await Promise.all([
@@ -61,8 +56,8 @@ const AdminTokenManagementPage = () => {
                         {
                             headers: {
                                 "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
                             },
+                            credentials: "include",
                         }
                     ),
                     await fetch(
@@ -70,8 +65,8 @@ const AdminTokenManagementPage = () => {
                         {
                             headers: {
                                 "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
                             },
+                            credentials: "include",
                         }
                     ),
                 ]);
@@ -122,7 +117,7 @@ const AdminTokenManagementPage = () => {
             }
         };
         fetchData();
-    }, [token]);
+    }, []);
 
     const handleSearch = (
         selectedKeys: string[],
@@ -147,8 +142,8 @@ const AdminTokenManagementPage = () => {
                     method: "DELETE",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                 }
             );
 
@@ -438,8 +433,8 @@ const AdminTokenManagementPage = () => {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                     body: JSON.stringify({
                         username,
                     }),

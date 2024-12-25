@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Send, User, Bot, Loader2, Link } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useAuth } from "@/hooks/auth";
 import LoadingClipLoader from "@/components/LoadingClipLoader";
 import { message, Popover } from "antd";
 
@@ -24,7 +23,6 @@ const JsonChatArea = ({
     conversation: { id: string };
     assistantId: string;
 }) => {
-    const { token } = useAuth();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [inputMessage, setInputMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -54,8 +52,9 @@ const JsonChatArea = ({
                 `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/history`,
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
                     },
+                    credentials: "include",
                 }
             );
             if (!response.ok)
@@ -88,9 +87,9 @@ const JsonChatArea = ({
                 {
                     method: "POST",
                     headers: {
-                        Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
                     },
+                    credentials: "include",
                     body: JSON.stringify({ content: inputMessage }),
                 }
             );

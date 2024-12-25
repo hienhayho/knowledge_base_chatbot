@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Info } from "lucide-react";
 import { message, Input } from "antd";
-import { useAuth } from "@/hooks/auth";
 
 const { TextArea } = Input;
 
@@ -32,8 +31,6 @@ const CreateAssistantModal = ({
     const [model, setModel] = useState<string>("gpt-4o-mini");
     const [messageApi, contextHolder] = message.useMessage();
 
-    const { token } = useAuth();
-
     useEffect(() => {
         if (isOpen) {
             setIsVisible(true);
@@ -41,7 +38,7 @@ const CreateAssistantModal = ({
         } else {
             setIsVisible(false);
         }
-    }, [isOpen, token]);
+    }, [isOpen]);
 
     const successMessage = (content: string) => {
         messageApi.open({
@@ -60,9 +57,7 @@ const CreateAssistantModal = ({
     const fetchKnowledgeBases = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/kb/get_all`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                credentials: "include",
             });
             if (response.ok) {
                 const data = await response.json();
@@ -100,8 +95,8 @@ const CreateAssistantModal = ({
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
+                credentials: "include",
                 body: JSON.stringify(payload),
             });
 

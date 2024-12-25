@@ -1,11 +1,12 @@
 import { knowledgeBaseEndpoints } from "@/endpoints";
 import { ICreateKnowledgeBase } from "@/types";
 
-export const fetchKnowledgeBases = async (token: string) => {
+export const fetchKnowledgeBases = async () => {
     const response = await fetch(knowledgeBaseEndpoints.fetchKnowledgeBases, {
         headers: {
-            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
         },
+        credentials: "include",
     });
     const data = await response.json();
 
@@ -16,16 +17,13 @@ export const fetchKnowledgeBases = async (token: string) => {
     return data;
 };
 
-export const createKnowledgeBase = async (
-    body: ICreateKnowledgeBase,
-    token: string
-) => {
+export const createKnowledgeBase = async (body: ICreateKnowledgeBase) => {
     const response = await fetch(knowledgeBaseEndpoints.createKnowledgeBase, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify(body),
     });
 

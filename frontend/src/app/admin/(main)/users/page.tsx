@@ -36,7 +36,7 @@ import { formatDate } from "@/utils";
 type DataIndex = keyof IUser;
 
 const AdminUserPage = () => {
-    const { token, changeUser } = useAuth();
+    const { changeUser } = useAuth();
     const [loadingPage, setLoadingPage] = useState(true);
     const [users, setUsers] = useState<IUser[]>([]);
     const [searchText, setSearchText] = useState("");
@@ -48,9 +48,6 @@ const AdminUserPage = () => {
     const [form] = Form.useForm();
 
     useEffect(() => {
-        if (!token) {
-            return;
-        }
         const fetchAllUser = async () => {
             try {
                 const respone = await fetch(
@@ -58,8 +55,8 @@ const AdminUserPage = () => {
                     {
                         headers: {
                             "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
                         },
+                        credentials: "include",
                     }
                 );
 
@@ -89,7 +86,7 @@ const AdminUserPage = () => {
             }
         };
         fetchAllUser();
-    }, [token]);
+    }, []);
 
     const handleSearch = (
         selectedKeys: string[],
@@ -114,8 +111,8 @@ const AdminUserPage = () => {
                     method: "DELETE",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
+                    credentials: "include",
                 }
             );
 
@@ -140,17 +137,16 @@ const AdminUserPage = () => {
                 duration: 0,
             });
             const data = (await adminApi.switchUser(
-                token,
                 username
             )) as IAdminSwitchUserResponse;
 
             messageApi.destroy();
 
-            setCookie("access_token", data.access_token, {
+            setCookie("CHATBOT_SSO", data.access_token, {
                 expires: new Date(data.expires),
                 path: "/",
             });
-            changeUser(data.user, data.access_token);
+            changeUser(data.user);
 
             successMessage({
                 content: `Switch to: ${username}`,

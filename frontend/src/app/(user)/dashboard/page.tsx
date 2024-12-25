@@ -1,7 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getCookie } from "cookies-next";
-import { useRouter } from "next/navigation";
 import { Button, Divider, message } from "antd";
 import AssistantStatisticsChart from "@/components/dashboard/AssistantStatisticsChart";
 import KnowledgeBaseStatisticsChart from "@/components/dashboard/KnowledgeBaseStatisticsChart";
@@ -36,10 +34,7 @@ interface IDashBoardResponse {
 }
 
 const DashBoardPage = () => {
-    const router = useRouter();
-    const token = getCookie("access_token");
     const [messageApi, contextHolder] = message.useMessage();
-    const redirectUrl = encodeURIComponent("/dashboard");
     const [dashboardData, setDashboardData] =
         useState<IDashBoardResponse | null>(null);
 
@@ -72,16 +67,13 @@ const DashBoardPage = () => {
     };
 
     useEffect(() => {
-        if (!token) {
-            router.push(`/login?redirect=${redirectUrl}`);
-            return;
-        }
         const fetchDashboardData = async () => {
             try {
                 const response = await fetch(`${BASE_API_URL}/api/dashboard`, {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
                     },
+                    credentials: "include",
                 });
                 const data: IDashBoardResponse = await response.json();
                 if (!response.ok) {
@@ -109,16 +101,14 @@ const DashBoardPage = () => {
         return () => {
             clearInterval(intervalId);
         };
-    }, [token, router, redirectUrl]);
+    }, []);
 
     const handleExport = async (file_name: string) => {
         try {
             const response = await fetch(
                 `${BASE_API_URL}/api/dashboard/export/${file_name}`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
             if (response.ok) {

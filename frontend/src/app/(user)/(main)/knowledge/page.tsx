@@ -12,7 +12,6 @@ import { formatDate } from "@/utils/";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { knowledgeBaseApi } from "@/api";
 import { ICreateKnowledgeBase, IKnowledgeBase } from "@/types";
-import { useAuth } from "@/hooks/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
 
@@ -26,7 +25,6 @@ const KnowledgeBasePage: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
     const router = useRouter();
-    const { token } = useAuth();
 
     const successMessage = ({
         content,
@@ -59,7 +57,7 @@ const KnowledgeBasePage: React.FC = () => {
     useEffect(() => {
         const fetchKnowledgeBases = async () => {
             try {
-                const data = await knowledgeBaseApi.fetchKnowledgeBases(token);
+                const data = await knowledgeBaseApi.fetchKnowledgeBases();
 
                 successMessage({
                     content: "Knowledge bases fetched successfully",
@@ -77,15 +75,14 @@ const KnowledgeBasePage: React.FC = () => {
         };
 
         fetchKnowledgeBases();
-    }, [token, redirectURL, router]);
+    }, [redirectURL, router]);
 
     const handleCreateKnowledgeBase = async (
         formData: ICreateKnowledgeBase
     ) => {
         try {
             const newKnowledgeBase = await knowledgeBaseApi.createKnowledgeBase(
-                formData,
-                token
+                formData
             );
 
             successMessage({
@@ -113,9 +110,7 @@ const KnowledgeBasePage: React.FC = () => {
                 `${API_BASE_URL}/api/kb/delete_kb/${id}`,
                 {
                     method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    credentials: "include",
                 }
             );
 
