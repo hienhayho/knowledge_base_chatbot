@@ -60,6 +60,7 @@ Lưu ý:
 - Đảm bảo tất cả khóa và giá trị chuỗi phải có dấu ngoặc kép.
 - Nếu không có thông tin nào hợp lý, hãy trả về chuỗi rỗng.
 - Nếu không có sản phẩm nào, hãy trả về toàn bộ nội dung trong `text`.
+- Với price, hãy trả về dưới dạng số, không thêm bất kỳ đơn vị tiền tệ nào đằng sau.
 - Trả về JSON hợp lệ và không thêm thông tin khác ngoài JSON."""
 
 # CHAT_AGENT_RESPONSE_PROMPT = """Hãy trả lời theo định dạng JSON hợp lệ. Dưới đây là cấu trúc mong muốn:
