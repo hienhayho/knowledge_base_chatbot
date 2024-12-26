@@ -9,10 +9,15 @@ class UserLogin(BaseModel):
     password: str = Field(..., min_length=6, description="Password")
 
 
+class UpdateUserOrganizationRequest(BaseModel):
+    organization: str = Field(..., description="Organization")
+
+
 class UserRequest(BaseModel):
     username: str = Field(..., min_length=4, max_length=20, description="Username")
     email: Optional[EmailStr] = Field(None, description="Email")
     password: str = Field(..., min_length=6, description="Password")
+    organization: Optional[str] = Field(..., description="Organization")
     admin_access_token: Optional[str] = Field(None, description="Admin access token")
 
 
@@ -20,6 +25,7 @@ class UserResponse(BaseModel):
     id: UUID = Field(..., description="User ID")
     username: str = Field(..., description="Username")
     role: str = Field(..., description="Role")
+    organization: Optional[str] = Field(None, description="Organization")
     access_token: Optional[str] = Field(None, description="Access token")
     created_at: datetime = Field(..., description="Created at")
     updated_at: datetime = Field(..., description="Updated at")

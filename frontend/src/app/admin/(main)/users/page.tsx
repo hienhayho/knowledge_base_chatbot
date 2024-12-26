@@ -26,12 +26,21 @@ import Highlighter from "react-highlight-words";
 import { useEffect, useRef, useState } from "react";
 import { FilterDropdownProps } from "antd/es/table/interface";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { Mail, Plus, Trash2, SendHorizontal } from "lucide-react";
+import {
+    Mail,
+    Plus,
+    Trash2,
+    SendHorizontal,
+    Info,
+    PenLine,
+} from "lucide-react";
 import AddModal from "@/components/admin/AddModal";
 import { adminApi, authApi } from "@/api";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { setCookie } from "cookies-next";
 import { formatDate } from "@/utils";
+import DetailToolTip from "@/components/DetailToolTip";
+import EditUserModal from "@/components/admin/EditUser";
 
 type DataIndex = keyof IUser;
 
@@ -66,6 +75,8 @@ const AdminUserPage = () => {
                     throw new Error(data.detail || "Failed to fetch users");
                 }
 
+                console.log(data);
+
                 messageApi.success("Lấy thông tin người dùng thành công");
 
                 setUsers(
@@ -73,6 +84,7 @@ const AdminUserPage = () => {
                         key: user.id,
                         role: user.role,
                         username: user.username,
+                        organization: user.organization,
                         id: user.id,
                         createdAt: formatDate(user.created_at),
                         updatedAt: formatDate(user.updated_at),
@@ -283,7 +295,16 @@ const AdminUserPage = () => {
                 </div>
             )),
         },
-
+        {
+            title: "Organization",
+            dataIndex: "organization",
+            key: "organization",
+            render: (text: string) => (
+                <div className="flex items-center ml-2">
+                    <span className="text-cyan-500 font-semibold">{text}</span>
+                </div>
+            ),
+        },
         {
             title: "Quyền",
             dataIndex: "role",
@@ -368,6 +389,15 @@ const AdminUserPage = () => {
                             </Popconfirm>
                         </Tooltip>
                     </div>
+                    <div className="cursor-pointer">
+                        <EditUserModal
+                            key={record.id}
+                            icon={<PenLine size={16} />}
+                            user={record}
+                            allUsers={users}
+                            setUsers={setUsers}
+                        />
+                    </div>
                 </Space>
             ),
         },
@@ -409,7 +439,8 @@ const AdminUserPage = () => {
     const onFinish: FormProps["onFinish"] = async (
         values: SignUpFormValues
     ) => {
-        const { username, email, password, retypePassword } = values;
+        const { username, email, password, retypePassword, organization } =
+            values;
 
         if (password !== retypePassword) {
             errorMessage({
@@ -425,6 +456,7 @@ const AdminUserPage = () => {
                 email: email,
                 password: password,
                 retypePassword: retypePassword,
+                organization: organization,
             });
 
             if (!result.success) {
@@ -443,6 +475,7 @@ const AdminUserPage = () => {
                     key: result.data.id,
                     role: result.data.role,
                     username: result.data.username,
+                    organization: result.data.organization,
                     id: result.data.id,
                     createdAt: formatDate(result.data.createdAt),
                     updatedAt: formatDate(result.data.updatedAt),
@@ -558,6 +591,29 @@ const AdminUserPage = () => {
                     placeholder="Retype password"
                 />
             </Form.Item>
+
+            <div className="flex items-center gap-4 justify-center">
+                <div className="w-[95%]">
+                    <Form.Item
+                        name="organization"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Please input your organization!",
+                            },
+                        ]}
+                        style={{
+                            width: "100%",
+                        }}
+                    >
+                        <Input autoFocus placeholder="Organization" />
+                    </Form.Item>
+                </div>
+                <DetailToolTip
+                    title="Sẽ được đưa vào câu chào mừng lúc tạo conversation mới (VNDC sẽ được xử lý riêng) ==> Xin chào anh/chị. Em là nhân viên hỗ trợ tư vấn của {organization}. Anh/chị cần giúp đỡ hoặc có câu hỏi gì không ạ ?"
+                    icon={<Info size={16} />}
+                />
+            </div>
         </>
     );
 

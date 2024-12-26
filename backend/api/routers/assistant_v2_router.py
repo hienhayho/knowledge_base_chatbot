@@ -4,16 +4,11 @@ from typing import Annotated
 from sqlmodel import Session, select, desc
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 
-from .user_router import get_current_user
-from src.database import (
-    get_session,
-    Users,
-    Assistants,
-    Conversations,
-)
-from src.constants import ApiResponse
-from api.services import AssistantService
 from api.models import ChatMessage
+from .user_router import get_current_user
+from api.services import AssistantService
+from src.constants import ApiResponse, SenderType
+from src.database import get_session, Users, Assistants, Conversations, Messages
 
 assistant_v2_router = APIRouter()
 
@@ -28,6 +23,8 @@ async def create_conversation(
             select(Assistants).where(Assistants.user_id == current_user.id)
         ).first()
 
+        print(current_user)
+
         if not assistant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
@@ -38,7 +35,36 @@ async def create_conversation(
         )
         session.add(new_conversation)
         session.commit()
-        return new_conversation
+        session.refresh(new_conversation)
+
+        welcome_message_template = "Xin chào anh/chị. Em là nhân viên hỗ trợ tư vấn của {organization}. Anh/chị cần giúp đỡ hoặc có câu hỏi gì không ạ ?"
+
+        welcome_message = welcome_message_template.format(
+            organization=current_user.organization
+        )
+
+        if "vndc" in current_user.organization.lower():
+            welcome_message = "Xin chào bạn, tôi là Chương, trợ lý ảo từ công ty VNDC, xin hỏi tôi có thể giúp gì cho bạn?"
+
+        new_message = Messages(
+            conversation_id=new_conversation.id,
+            content=welcome_message,
+            sender_type=SenderType.ASSISTANT,
+        )
+
+        session.add(new_message)
+        session.commit()
+        session.refresh(new_message)
+
+        return ApiResponse(
+            status_code=0,
+            status_message="Successfully!",
+            http_code=status.HTTP_200_OK,
+            data={
+                **new_conversation.model_dump(),
+                "text": welcome_message,
+            },
+        )
 
 
 @assistant_v2_router.get("/conversations")

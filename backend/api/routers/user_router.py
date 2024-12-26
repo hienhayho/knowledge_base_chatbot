@@ -277,6 +277,7 @@ def create_new_user(
             email=email,
             hashed_password=get_password_hash(password),
             role=role,
+            organization=userInfo.organization,
         )
         session.add(new_user)
         session.commit()
