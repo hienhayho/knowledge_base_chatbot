@@ -39,6 +39,7 @@ export const register = async (body: SignUpFormValues) => {
             role: data.role,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
+            organization: data.organization || "",
         },
         detail: data?.detail || "Done",
     };
@@ -64,6 +65,7 @@ export const me = async () => {
         id: data.id,
         username: data.username,
         role: data.role,
+        organization: data.organization,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
     };

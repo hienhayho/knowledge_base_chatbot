@@ -38,14 +38,20 @@ export interface IUser {
     id: string;
     username: string;
     role: string;
+    organization: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface IUserUpdateFormValues {
+    organization: string;
 }
 
 export interface IUserResponse {
     id: string;
     username: string;
     role: string;
+    organization: string;
     created_at: string;
     updated_at: string;
 }
@@ -81,6 +87,7 @@ export interface SignUpFormValues {
     password: string;
     retypePassword: string;
     admin_access_token?: string;
+    organization?: string;
 }
 
 export interface SignUpResponse {

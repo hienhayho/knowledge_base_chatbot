@@ -22,6 +22,7 @@ from .user_router import (
 from api.models import (
     UserResponse,
     AdminSwitchUserResponse,
+    UpdateUserOrganizationRequest,
     AdminSwitchUserRequest,
     AdminCreateTokenRequest,
     AdminCreateTokenResponse,
@@ -50,6 +51,48 @@ async def get_all_users(
         query = select(Users).order_by(desc(Users.updated_at))
         users = session.exec(query).all()
         return users
+
+
+@admin_router.put("/users/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: UUID,
+    user_request: Annotated[UpdateUserOrganizationRequest, Body(...)],
+    current_user: Annotated[Users, Depends(get_current_user)],
+    db_session: Annotated[Session, Depends(get_session)],
+):
+    logger.info(f"Updating user with id: {user_id}")
+
+    if current_user.id == user_id:
+        logger.error("Cannot update own user!")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update yourself!",
+        )
+
+    if current_user.role != UserRole.ADMIN:
+        logger.error("Unauthorized access to update user!")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this resource!",
+        )
+
+    with db_session as session:
+        query = select(Users).where(Users.id == user_id)
+        user = session.exec(query).first()
+
+        if user is None:
+            logger.error(f"User with id {user_id} not found!")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found!",
+            )
+
+        user.organization = user_request.organization
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        return user
 
 
 @admin_router.post("/switch-user", response_model=AdminSwitchUserResponse)
