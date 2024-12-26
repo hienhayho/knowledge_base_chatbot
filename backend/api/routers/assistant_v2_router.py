@@ -1,3 +1,4 @@
+import re
 import time
 from uuid import UUID
 from typing import Annotated
@@ -9,6 +10,9 @@ from .user_router import get_current_user
 from api.services import AssistantService
 from src.constants import ApiResponse, SenderType
 from src.database import get_session, Users, Assistants, Conversations, Messages
+from src.utils import get_formatted_logger
+
+logger = get_formatted_logger(__file__, file_path="logs/assistant_v2_router.log")
 
 assistant_v2_router = APIRouter()
 
@@ -22,8 +26,6 @@ async def create_conversation(
         assistant = session.exec(
             select(Assistants).where(Assistants.user_id == current_user.id)
         ).first()
-
-        print(current_user)
 
         if not assistant:
             raise HTTPException(
@@ -121,6 +123,35 @@ async def production_send_message(
             start_time=start_time,
             use_parser=True,
         )
+
+        for product in result["products"]:
+            if product["price"]:
+                try:
+                    logger.debug(f"Try to parse with llm json_mode: {product['price']}")
+                    product["price"] = "{:,.0f} đ".format(product["price"]).replace(
+                        ",", "."
+                    )
+                except Exception as e:
+                    logger.error(f"Error when formatting with llm json_mode: {str(e)}")
+                    logger.debug(
+                        f"Product: {product}",
+                    )
+                    price = re.sub(r"\D", "", f"{product["price"]}")
+                    try:
+                        logger.debug("Try to using regex to get price: ", price)
+                        product["price"] = "{:,.0f} đ".format(int(price)).replace(
+                            ",", "."
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error when formatting with regex: {price}, {str(e)}"
+                        )
+                        logger.debug("Use default option...")
+                        product["price"] = "Liên hệ"
+            else:
+                product["price"] = "Liên hệ"
+
+        logger.info("=" * 100)
 
         return ApiResponse(
             data=result,
