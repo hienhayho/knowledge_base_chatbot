@@ -246,6 +246,7 @@ class AssistantService:
 
             return ChatResponse(
                 assistant_message=answer,
+                created_at=assistant_message.created_at,
             )
 
     def stream_chat_with_assistant(
