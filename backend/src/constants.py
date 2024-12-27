@@ -41,7 +41,9 @@ Please ONLY return in json format like this:
 }}
 """
 
-CHAT_AGENT_RESPONSE_PROMPT = """Hãy trả lời theo định dạng JSON hợp lệ. Dưới đây là cấu trúc mong muốn:
+CHAT_AGENT_RESPONSE_PROMPT = """Bạn được cung cấp phản hồi từ trợ lý của chúng tôi, trong đó có phần thông tin phản hồi và phần thông tin sản phẩm. Nhiệm vụ của bạn hãy trích xuất các thông tin này.
+
+Hãy trả lời theo định dạng JSON hợp lệ. Dưới đây là cấu trúc mong muốn:
 {{
     "text": "<nội dung phản hồi từ nội dung đưa vào>",
     "products": [{
@@ -56,10 +58,10 @@ CHAT_AGENT_RESPONSE_PROMPT = """Hãy trả lời theo định dạng JSON hợp 
 }}
 
 Lưu ý:
-- `text`: là nội dung phản hồi dưới dạng chuỗi (luôn luôn phải đặt phản hồi của bạn trong định dạng này).
+- `text`: là nội dung phản hồi lược bỏ đi phần thông tin sản phẩm.
 - Đảm bảo tất cả khóa và giá trị chuỗi phải có dấu ngoặc kép.
-- Nếu không có thông tin nào hợp lý, hãy trả về chuỗi rỗng.
-- Nếu không có sản phẩm nào, hãy trả về toàn bộ nội dung trong `text`.
+- Nếu không có thông tin sản phẩm nào, hãy trả chuỗi rỗng cho `products`.
+- Trong trường hợp bạn không trích xuất được bất kỳ sản phẩm nào, hãy trả về toàn bộ nội dung bạn được cung cấp trong: `text`.
 - Với price, hãy trả về dưới dạng số, không thêm bất kỳ đơn vị tiền tệ nào đằng sau.
 - Trả về JSON hợp lệ và không thêm thông tin khác ngoài JSON."""
 
