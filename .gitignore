@@ -6,6 +6,7 @@ postgres-data/
 .venv/
 old_frontend/
 qdrant_data/
-docker-compose-dev.yaml
 .vscode/
 logs/
+*.log
+docker-compose-*.yaml

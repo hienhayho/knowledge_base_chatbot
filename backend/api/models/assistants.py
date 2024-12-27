@@ -81,12 +81,14 @@ class ChatMessage(BaseModel):
 
 class ChatResponse(BaseModel):
     assistant_message: str
+    created_at: datetime
 
 
 class ChatMessageResponse(BaseModel):
     assistant_message: str
     type: str
     metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = None
 
 
 class MessageResponse(BaseModel):

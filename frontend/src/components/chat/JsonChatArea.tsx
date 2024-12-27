@@ -4,6 +4,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import LoadingClipLoader from "@/components/LoadingClipLoader";
 import { message, Popover } from "antd";
+import { getNow } from "@/utils/formatDate";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -12,6 +13,7 @@ interface IMessage {
     sender_type: string;
     content: string;
     media_type?: string;
+    created_at: string;
     type?: string;
     metadata?: Record<string, string>;
 }
@@ -76,6 +78,7 @@ const JsonChatArea = ({
             sender_type: "user",
             content: inputMessage,
             type: "text",
+            created_at: getNow(),
         };
         setMessages((prev) => [...prev, userMessage]);
         setInputMessage("");
@@ -104,6 +107,7 @@ const JsonChatArea = ({
                     sender_type: "assistant",
                     content: assistantResponse.assistant_message,
                     type: assistantResponse.type || "text",
+                    created_at: assistantResponse.created_at,
                     metadata: assistantResponse.metadata,
                 },
             ]);
@@ -224,6 +228,17 @@ const JsonChatArea = ({
                                     </span>
                                 </div>
                                 {renderMessage(message)}
+                                <div
+                                    className={`text-sm mt-2 text-right ${
+                                        message.sender_type === "user"
+                                            ? "text-gray-200"
+                                            : `text-gray-500`
+                                    }`}
+                                >
+                                    {new Date(
+                                        message.created_at
+                                    ).toLocaleString()}
+                                </div>
                             </div>
                         </div>
                     ))}

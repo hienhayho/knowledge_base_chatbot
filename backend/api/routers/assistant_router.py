@@ -692,13 +692,22 @@ async def send_message(
     conversation_id = str(conversation_id)
 
     start_time = time.time()
-    result = await assistant_service.achat_with_assistant(
-        conversation_id, current_user.id, message=message, start_time=start_time
-    )
+    try:
+        result = await assistant_service.achat_with_assistant(
+            conversation_id, current_user.id, message=message, start_time=start_time
+        )
+    except Exception as e:
+        return ChatMessageResponse(
+            assistant_message=str(e),
+            type="text",
+            metadata={"assistant_id": assistant_id},
+        )
+
     return ChatMessageResponse(
         assistant_message=result.assistant_message,
         type="text",
         metadata={"assistant_id": assistant_id},
+        created_at=result.created_at,
     )
 
 
