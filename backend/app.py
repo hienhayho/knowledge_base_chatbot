@@ -124,7 +124,7 @@ async def process_cookie_request(request: Request, call_next):
     url = request.url.path
 
     if cookie_values:
-        logger.debug(f"url: {url}, cookie: {cookie_values}")
+        logger.debug(f"url: {url}")
 
         request.headers.__dict__["_list"].append(
             (
