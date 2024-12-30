@@ -20,6 +20,7 @@ from api.routers import (
     dashboard_router,
     admin_router,
 )
+from src.database import init_db
 
 logger = get_formatted_logger(__file__)
 
@@ -94,6 +95,8 @@ async def delete_log_files():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting application ...")
+    logger.info("Initializing database ...")
+    init_db()
     logger.debug(f"Cleaning up download folder every {CLEAN_INTERVAL} minutes ...")
     asyncio.create_task(delete_old_files())
     logger.debug("Cleaning up log folder every 24 hours ...")

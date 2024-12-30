@@ -12,6 +12,7 @@ from pydantic import EmailStr, ConfigDict
 from sqlalchemy.dialects.postgresql import TEXT, JSON
 from sqlmodel import SQLModel, Field, String, create_engine, Session, UUID
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import sessionmaker
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
@@ -22,13 +23,21 @@ from src.settings import get_default_setting, GlobalSettings
 
 load_dotenv()
 
+engine = None
+SessionLocal = None
 
-def get_instance_session():
+
+def init_db():
+    global engine
+    global SessionLocal
     sql_url = os.getenv("SQL_DB_URL")
     assert sql_url, "SQL_DB_URL is not set"
+
     engine = create_engine(
         sql_url,
         pool_pre_ping=True,
+        pool_size=20,
+        max_overflow=5,
         connect_args={
             "keepalives": 1,
             "keepalives_idle": 30,
@@ -37,35 +46,24 @@ def get_instance_session():
         },
     )
     SQLModel.metadata.create_all(engine)
-    session = Session(engine, expire_on_commit=False)
-    return session
+    SessionLocal = sessionmaker(bind=engine, class_=Session)
 
 
-def get_session(setting: GlobalSettings = Depends(get_default_setting)):
-    sql_url = setting.sql_config.url
-
-    if not sql_url:
-        sql_url = os.getenv("SQL_DB_URL")
-
-    assert sql_url, "SQL_DB_URL is not set"
-
-    engine = create_engine(
-        sql_url,
-        pool_pre_ping=True,
-        connect_args={
-            "keepalives": 1,
-            "keepalives_idle": 30,
-            "keepalives_interval": 10,
-            "keepalives_count": 5,
-        },
-    )
-    SQLModel.metadata.create_all(engine)
+@contextmanager
+def get_instance_session():
     session = Session(engine, expire_on_commit=False)
     try:
         yield session
     finally:
         session.close()
-        engine.dispose()
+
+
+def get_session():
+    session = Session(engine, expire_on_commit=False)
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 @contextmanager
@@ -555,23 +553,3 @@ class Tokens(SQLModel, table=True):
         description="Updated At time",
         sa_column_kwargs={"onupdate": get_now},
     )
-
-
-def init_db():
-    sql_url = os.getenv("SQL_DB_URL")
-    assert sql_url, "SQL_DB_URL is not set"
-
-    engine = create_engine(
-        sql_url,
-        pool_pre_ping=True,
-        connect_args={
-            "keepalives": 1,
-            "keepalives_idle": 30,
-            "keepalives_interval": 10,
-            "keepalives_count": 5,
-        },
-    )
-    SQLModel.metadata.create_all(engine)
-
-
-init_db()

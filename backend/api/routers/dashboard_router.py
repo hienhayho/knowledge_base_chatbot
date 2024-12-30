@@ -8,7 +8,7 @@ from uuid import UUID
 from pathlib import Path
 from typing import Annotated
 from wordcloud import WordCloud
-from sqlmodel import Session, select, func, desc
+from sqlmodel import select, func, desc
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from .user_router import get_current_user
 from src.database import (
-    get_session,
     Users,
     Conversations,
     KnowledgeBases,
@@ -31,6 +30,7 @@ from api.models import (
     ConversationStaticsResponse,
     GetSourceReponse,
 )
+from api.deps import SessionDeps
 
 
 dashboard_router = APIRouter()
@@ -39,169 +39,168 @@ dashboard_router = APIRouter()
 @dashboard_router.get("", response_model=DashboardStaticsResponse)
 async def get_dashboard(
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ) -> JSONResponse:
-    with db_session as session:
-        conversations = session.exec(
-            select(Conversations).where(Conversations.user_id == current_user.id)
+    conversations = db_session.exec(
+        select(Conversations).where(Conversations.user_id == current_user.id)
+    ).all()
+
+    messages = [
+        db_session.exec(
+            select(Messages)
+            .where(Messages.conversation_id == conversation.id)
+            .order_by(Messages.created_at)
         ).all()
+        for conversation in conversations
+    ]
 
-        messages = [
-            session.exec(
-                select(Messages)
-                .where(Messages.conversation_id == conversation.id)
-                .order_by(Messages.created_at)
-            ).all()
-            for conversation in conversations
-        ]
+    total_conversations = len(conversations)
 
-        total_conversations = len(conversations)
-
-        average_assistant_response_time = (
-            session.exec(
-                select(func.avg(Messages.response_time).label("average_response_time"))
-                .join(Conversations, Conversations.id == Messages.conversation_id)
-                .join(Assistants, Assistants.id == Conversations.assistant_id)
-                .join(KnowledgeBases, KnowledgeBases.id == Assistants.knowledge_base_id)
-                .where(
-                    KnowledgeBases.user_id == current_user.id,
-                    Messages.sender_type == SenderType.ASSISTANT,
-                )
-            ).first()
-            or 0
-        )
-
-        knowledge_base_statistics = session.exec(
-            select(
-                KnowledgeBases.id,
-                KnowledgeBases.name,
-                func.count(Messages.id).label("total_user_messages"),
-            )
-            .join(Assistants, Assistants.knowledge_base_id == KnowledgeBases.id)
-            .join(Conversations, Conversations.assistant_id == Assistants.id)
-            .join(Messages, Messages.conversation_id == Conversations.id)
+    average_assistant_response_time = (
+        db_session.exec(
+            select(func.avg(Messages.response_time).label("average_response_time"))
+            .join(Conversations, Conversations.id == Messages.conversation_id)
+            .join(Assistants, Assistants.id == Conversations.assistant_id)
+            .join(KnowledgeBases, KnowledgeBases.id == Assistants.knowledge_base_id)
             .where(
                 KnowledgeBases.user_id == current_user.id,
-                Messages.sender_type == SenderType.USER,
+                Messages.sender_type == SenderType.ASSISTANT,
             )
-            .group_by(KnowledgeBases.id)
-        ).all()
+        ).first()
+        or 0
+    )
 
-        assistant_statistics = session.exec(
-            select(
-                Assistants.id,
-                Assistants.name,
-                func.count(Conversations.id).label("number_of_conversations"),
-            )
-            .join(Conversations, Conversations.assistant_id == Assistants.id)
-            .where(Assistants.user_id == current_user.id)
-            .group_by(Assistants.id)
-        ).all()
+    knowledge_base_statistics = db_session.exec(
+        select(
+            KnowledgeBases.id,
+            KnowledgeBases.name,
+            func.count(Messages.id).label("total_user_messages"),
+        )
+        .join(Assistants, Assistants.knowledge_base_id == KnowledgeBases.id)
+        .join(Conversations, Conversations.assistant_id == Assistants.id)
+        .join(Messages, Messages.conversation_id == Conversations.id)
+        .where(
+            KnowledgeBases.user_id == current_user.id,
+            Messages.sender_type == SenderType.USER,
+        )
+        .group_by(KnowledgeBases.id)
+    ).all()
 
-        # Save all data to excel
-        df = pd.DataFrame(
+    assistant_statistics = db_session.exec(
+        select(
+            Assistants.id,
+            Assistants.name,
+            func.count(Conversations.id).label("number_of_conversations"),
+        )
+        .join(Conversations, Conversations.assistant_id == Assistants.id)
+        .where(Assistants.user_id == current_user.id)
+        .group_by(Assistants.id)
+    ).all()
+
+    # Save all data to excel
+    df = pd.DataFrame(
+        [
+            {
+                "total_conversations": total_conversations,
+                "average_assistant_response_time": average_assistant_response_time,
+                "knowledge_base_statistics": json.dumps(
+                    [
+                        {
+                            "id": str(knowledge_base[0]),
+                            "name": knowledge_base[1],
+                            "total_user_messages": knowledge_base[2],
+                        }
+                        for knowledge_base in knowledge_base_statistics
+                    ]
+                ),
+                "assistant_statistics": json.dumps(
+                    [
+                        {
+                            "id": str(assistant[0]),
+                            "name": assistant[1],
+                            "number_of_conversations": assistant[2],
+                        }
+                        for assistant in assistant_statistics
+                    ]
+                ),
+                "conversations_statistics": json.dumps(
+                    [
+                        {
+                            "id": str(conversation.id),
+                            "average_session_chat_time": conversation.average_session_chat_time,
+                            "average_user_messages": conversation.average_user_messages,
+                        }
+                        for conversation in conversations
+                    ]
+                ),
+            }
+        ]
+    )
+
+    conversation_names = [
+        conversation.name or conversation.id for conversation in conversations
+    ]
+
+    conversation_contents = [
+        json.dumps(
             [
                 {
-                    "total_conversations": total_conversations,
-                    "average_assistant_response_time": average_assistant_response_time,
-                    "knowledge_base_statistics": json.dumps(
-                        [
-                            {
-                                "id": str(knowledge_base[0]),
-                                "name": knowledge_base[1],
-                                "total_user_messages": knowledge_base[2],
-                            }
-                            for knowledge_base in knowledge_base_statistics
-                        ]
-                    ),
-                    "assistant_statistics": json.dumps(
-                        [
-                            {
-                                "id": str(assistant[0]),
-                                "name": assistant[1],
-                                "number_of_conversations": assistant[2],
-                            }
-                            for assistant in assistant_statistics
-                        ]
-                    ),
-                    "conversations_statistics": json.dumps(
-                        [
-                            {
-                                "id": str(conversation.id),
-                                "average_session_chat_time": conversation.average_session_chat_time,
-                                "average_user_messages": conversation.average_user_messages,
-                            }
-                            for conversation in conversations
-                        ]
-                    ),
+                    "sender_type": m.sender_type,
+                    "content": m.content,
                 }
+                for m in message
             ]
         )
+        for message in messages
+    ]
 
-        conversation_names = [
-            conversation.name or conversation.id for conversation in conversations
-        ]
+    conversation_df = pd.DataFrame(
+        {
+            "conversation_name": conversation_names,
+            "conversation_content": conversation_contents,
+        }
+    )
 
-        conversation_contents = [
-            json.dumps(
-                [
-                    {
-                        "sender_type": m.sender_type,
-                        "content": m.content,
-                    }
-                    for m in message
-                ]
+    file_conversation_name = (
+        Path(DOWNLOAD_FOLDER) / f"conversation_{current_user.id}.xlsx"
+    )
+
+    conversation_df.to_excel(file_conversation_name, index=False)
+
+    file_name = Path(DOWNLOAD_FOLDER) / f"dashboard_{current_user.id}.xlsx"
+
+    df.to_excel(file_name, index=False)
+
+    return DashboardStaticsResponse(
+        total_conversations=total_conversations,
+        conversations_statistics=[
+            ConversationStaticsResponse(
+                id=conversation.id,
+                average_session_chat_time=conversation.average_session_chat_time,
+                average_user_messages=conversation.average_user_messages,
             )
-            for message in messages
-        ]
-
-        conversation_df = pd.DataFrame(
-            {
-                "conversation_name": conversation_names,
-                "conversation_content": conversation_contents,
-            }
-        )
-
-        file_conversation_name = (
-            Path(DOWNLOAD_FOLDER) / f"conversation_{current_user.id}.xlsx"
-        )
-
-        conversation_df.to_excel(file_conversation_name, index=False)
-
-        file_name = Path(DOWNLOAD_FOLDER) / f"dashboard_{current_user.id}.xlsx"
-
-        df.to_excel(file_name, index=False)
-
-        return DashboardStaticsResponse(
-            total_conversations=total_conversations,
-            conversations_statistics=[
-                ConversationStaticsResponse(
-                    id=conversation.id,
-                    average_session_chat_time=conversation.average_session_chat_time,
-                    average_user_messages=conversation.average_user_messages,
-                )
-                for conversation in conversations
-            ],
-            assistant_statistics=[
-                AssistantStaticsResponse(
-                    id=assistant[0],
-                    name=assistant[1],
-                    number_of_conversations=assistant[2],
-                )
-                for assistant in assistant_statistics
-            ],
-            average_assistant_response_time=round(average_assistant_response_time, 2),
-            knowledge_base_statistics=[
-                KnowledgeBaseStaticsResponse(
-                    id=knowledge_base[0],
-                    name=knowledge_base[1],
-                    total_user_messages=knowledge_base[2],
-                )
-                for knowledge_base in knowledge_base_statistics
-            ],
-            file_name=file_name.stem,
-            file_conversation_name=file_conversation_name.stem,
-        )
+            for conversation in conversations
+        ],
+        assistant_statistics=[
+            AssistantStaticsResponse(
+                id=assistant[0],
+                name=assistant[1],
+                number_of_conversations=assistant[2],
+            )
+            for assistant in assistant_statistics
+        ],
+        average_assistant_response_time=round(average_assistant_response_time, 2),
+        knowledge_base_statistics=[
+            KnowledgeBaseStaticsResponse(
+                id=knowledge_base[0],
+                name=knowledge_base[1],
+                total_user_messages=knowledge_base[2],
+            )
+            for knowledge_base in knowledge_base_statistics
+        ],
+        file_name=file_name.stem,
+        file_conversation_name=file_conversation_name.stem,
+    )
 
 
 @dashboard_router.get(
@@ -236,53 +235,52 @@ async def get_wordcloud_by_kb(
     knowledge_base_id: UUID,
     is_user: bool,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ) -> JSONResponse:
     sender_type = SenderType.USER if is_user else SenderType.ASSISTANT
 
-    with db_session as session:
-        knowledge_base = session.exec(
-            select(KnowledgeBases).where(
-                KnowledgeBases.id == knowledge_base_id,
-                KnowledgeBases.user_id == current_user.id,
-            )
+    knowledge_base = db_session.exec(
+        select(KnowledgeBases).where(
+            KnowledgeBases.id == knowledge_base_id,
+            KnowledgeBases.user_id == current_user.id,
+        )
+    )
+
+    if not knowledge_base:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Knowledge Base not found",
         )
 
-        if not knowledge_base:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Knowledge Base not found",
-            )
-
-        text = session.exec(
-            select(Messages.content)
-            .join(Conversations, Conversations.id == Messages.conversation_id)
-            .join(Assistants, Assistants.id == Conversations.assistant_id)
-            .join(KnowledgeBases, KnowledgeBases.id == Assistants.knowledge_base_id)
-            .where(
-                KnowledgeBases.id == knowledge_base_id,
-                KnowledgeBases.user_id == current_user.id,
-                Messages.sender_type == sender_type,
-            )
-        ).all()
-
-        if not text:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Empty Knowledge Base",
-            )
-
-        content = " ".join(text)
-        wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
-        image_path = (
-            Path(DOWNLOAD_FOLDER)
-            / f"{str(knowledge_base_id).replace('-', '_')}_{sender_type}.png"
+    text = db_session.exec(
+        select(Messages.content)
+        .join(Conversations, Conversations.id == Messages.conversation_id)
+        .join(Assistants, Assistants.id == Conversations.assistant_id)
+        .join(KnowledgeBases, KnowledgeBases.id == Assistants.knowledge_base_id)
+        .where(
+            KnowledgeBases.id == knowledge_base_id,
+            KnowledgeBases.user_id == current_user.id,
+            Messages.sender_type == sender_type,
         )
-        wordcloud.to_file(str(image_path))
+    ).all()
 
-        return FileResponse(
-            path=image_path, filename=image_path.name, media_type="image/jpeg"
+    if not text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty Knowledge Base",
         )
+
+    content = " ".join(text)
+    wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
+    image_path = (
+        Path(DOWNLOAD_FOLDER)
+        / f"{str(knowledge_base_id).replace('-', '_')}_{sender_type}.png"
+    )
+    wordcloud.to_file(str(image_path))
+
+    return FileResponse(
+        path=image_path, filename=image_path.name, media_type="image/jpeg"
+    )
 
 
 @dashboard_router.get("/wordcloud/assistant/{assistant_id}")
@@ -290,46 +288,45 @@ async def get_wordcloud_by_assistant(
     assistant_id: UUID,
     is_user: bool,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ) -> JSONResponse:
     sender_type = SenderType.USER if is_user else SenderType.ASSISTANT
 
-    with db_session as session:
-        assistant = session.exec(
-            select(Assistants).where(
-                Assistants.id == assistant_id,
-                Assistants.user_id == current_user.id,
-            )
+    assistant = db_session.exec(
+        select(Assistants).where(
+            Assistants.id == assistant_id,
+            Assistants.user_id == current_user.id,
+        )
+    )
+
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assistant not found",
         )
 
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Assistant not found",
-            )
-
-        text = session.exec(
-            select(Messages.content)
-            .join(Conversations, Conversations.id == Messages.conversation_id)
-            .join(Assistants, Assistants.id == Conversations.assistant_id)
-            .where(
-                Assistants.id == assistant_id,
-                Assistants.user_id == current_user.id,
-                Messages.sender_type == sender_type,
-            )
-        ).all()
-
-        content = " ".join(text)
-        wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
-        image_path = (
-            Path(DOWNLOAD_FOLDER)
-            / f"{str(assistant_id).replace('-', '_')}_{sender_type}.png"
+    text = db_session.exec(
+        select(Messages.content)
+        .join(Conversations, Conversations.id == Messages.conversation_id)
+        .join(Assistants, Assistants.id == Conversations.assistant_id)
+        .where(
+            Assistants.id == assistant_id,
+            Assistants.user_id == current_user.id,
+            Messages.sender_type == sender_type,
         )
-        wordcloud.to_file(str(image_path))
+    ).all()
 
-        return FileResponse(
-            path=image_path, filename=image_path.name, media_type="image/jpeg"
-        )
+    content = " ".join(text)
+    wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
+    image_path = (
+        Path(DOWNLOAD_FOLDER)
+        / f"{str(assistant_id).replace('-', '_')}_{sender_type}.png"
+    )
+    wordcloud.to_file(str(image_path))
+
+    return FileResponse(
+        path=image_path, filename=image_path.name, media_type="image/jpeg"
+    )
 
 
 @dashboard_router.get("/wordcloud/conversation/{conversation_id}")
@@ -337,92 +334,86 @@ async def get_wordcloud_by_conversation(
     conversation_id: UUID,
     is_user: bool,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ) -> JSONResponse:
     sender_type = SenderType.USER if is_user else SenderType.ASSISTANT
-    with db_session as session:
-        conversation = session.exec(
-            select(Conversations).where(
-                Conversations.id == conversation_id,
-                Conversations.user_id == current_user.id,
-            )
+    conversation = db_session.exec(
+        select(Conversations).where(
+            Conversations.id == conversation_id,
+            Conversations.user_id == current_user.id,
         )
-        if not conversation:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conversation not found",
-            )
-
-        text = session.exec(
-            select(Messages.content)
-            .join(Conversations, Conversations.id == Messages.conversation_id)
-            .where(
-                Conversations.id == conversation_id,
-                Conversations.user_id == current_user.id,
-                Messages.sender_type == sender_type,
-            )
-        ).all()
-
-        content = " ".join(text)
-        content = [c for c in content if c not in string.punctuation]
-        content = "".join(content)
-        wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
-        image_path = (
-            Path(DOWNLOAD_FOLDER)
-            / f"{str(conversation_id).replace('-', '_')}_{str(uuid.uuid4())}.png"
+    )
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
         )
-        wordcloud.to_file(str(image_path))
 
-        return FileResponse(
-            path=image_path, filename=image_path.name, media_type="image/jpeg"
+    text = db_session.exec(
+        select(Messages.content)
+        .join(Conversations, Conversations.id == Messages.conversation_id)
+        .where(
+            Conversations.id == conversation_id,
+            Conversations.user_id == current_user.id,
+            Messages.sender_type == sender_type,
         )
+    ).all()
+
+    content = " ".join(text)
+    content = [c for c in content if c not in string.punctuation]
+    content = "".join(content)
+    wordcloud = WordCloud(width=800, height=400, max_words=1000).generate(content)
+    image_path = (
+        Path(DOWNLOAD_FOLDER)
+        / f"{str(conversation_id).replace('-', '_')}_{str(uuid.uuid4())}.png"
+    )
+    wordcloud.to_file(str(image_path))
+
+    return FileResponse(
+        path=image_path, filename=image_path.name, media_type="image/jpeg"
+    )
 
 
 @dashboard_router.get("/kbs", response_model=list[GetSourceReponse])
 async def get_all_knowledge_bases(
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        knowledge_bases = session.exec(
-            select(KnowledgeBases)
-            .where(KnowledgeBases.user_id == current_user.id)
-            .order_by(desc(KnowledgeBases.updated_at))
-        ).all()
+    knowledge_bases = db_session.exec(
+        select(KnowledgeBases)
+        .where(KnowledgeBases.user_id == current_user.id)
+        .order_by(desc(KnowledgeBases.updated_at))
+    ).all()
 
-        return knowledge_bases
+    return knowledge_bases
 
 
 @dashboard_router.get("/assistants", response_model=list[GetSourceReponse])
 async def get_all_assistants(
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        assistants = session.exec(
-            select(Assistants)
-            .where(Assistants.user_id == current_user.id)
-            .order_by(desc(Assistants.updated_at))
-        ).all()
+    assistants = db_session.exec(
+        select(Assistants)
+        .where(Assistants.user_id == current_user.id)
+        .order_by(desc(Assistants.updated_at))
+    ).all()
 
-        return assistants
+    return assistants
 
 
 @dashboard_router.get("/conversations", response_model=list[GetSourceReponse])
 async def get_all_conversations(
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        conversations = session.exec(
-            select(Conversations)
-            .where(Conversations.user_id == current_user.id)
-            .order_by(desc(Conversations.updated_at))
-        ).all()
+    conversations = db_session.exec(
+        select(Conversations)
+        .where(Conversations.user_id == current_user.id)
+        .order_by(desc(Conversations.updated_at))
+    ).all()
 
-        return [
-            GetSourceReponse(
-                id=conversation.id, name=conversation.name or conversation.id
-            )
-            for conversation in conversations
-        ]
+    return [
+        GetSourceReponse(id=conversation.id, name=conversation.name or conversation.id)
+        for conversation in conversations
+    ]

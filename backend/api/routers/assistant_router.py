@@ -5,7 +5,7 @@ import pandas as pd
 from uuid import UUID
 from src.database import is_valid_uuid
 from typing import Annotated
-from sqlmodel import Session, select, desc
+from sqlmodel import select, desc
 from api.routers.user_router import get_current_user
 from api.models import (
     AssistantCreate,
@@ -30,7 +30,6 @@ from fastapi import (
 from src.database import (
     Assistants,
     Messages,
-    get_session,
     Users,
     KnowledgeBases,
     Conversations,
@@ -43,6 +42,7 @@ from src.database import (
 )
 from src.utils import get_formatted_logger
 from api.services import AssistantService
+from api.deps import SessionDeps
 from src.constants import DOWNLOAD_FOLDER, ApiResponse
 from fastapi.responses import JSONResponse, FileResponse
 
@@ -55,93 +55,90 @@ assistant_router = APIRouter()
 async def create_assistant(
     assistant: AssistantCreate,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     """
     Create a new assistant for the given user
     """
-    with db_session as session:
-        if not is_valid_uuid(assistant.knowledge_base_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid knowledge base id",
-            )
-
-        query = select(KnowledgeBases).where(
-            KnowledgeBases.id == assistant.knowledge_base_id
+    if not is_valid_uuid(assistant.knowledge_base_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid knowledge base id",
         )
 
-        knowledge_base = session.exec(query).first()
-        if not knowledge_base:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found"
-            )
+    query = select(KnowledgeBases).where(
+        KnowledgeBases.id == assistant.knowledge_base_id
+    )
 
-        if knowledge_base.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not authorized to access this knowledge base",
-            )
-
-        new_assistant = Assistants(
-            name=assistant.name,
-            description=assistant.description,
-            knowledge_base_id=assistant.knowledge_base_id,
-            configuration=assistant.configuration,
-            user_id=current_user.id,
-            agent_backstory=assistant.agent_backstory,
-            instruct_prompt=assistant.instruct_prompt,
+    knowledge_base = db_session.exec(query).first()
+    if not knowledge_base:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found"
         )
-        session.add(new_assistant)
-        session.commit()
-        session.refresh(new_assistant)
-        session.close()
 
-        return new_assistant
+    if knowledge_base.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this knowledge base",
+        )
+
+    new_assistant = Assistants(
+        name=assistant.name,
+        description=assistant.description,
+        knowledge_base_id=assistant.knowledge_base_id,
+        configuration=assistant.configuration,
+        user_id=current_user.id,
+        agent_backstory=assistant.agent_backstory,
+        instruct_prompt=assistant.instruct_prompt,
+    )
+    db_session.add(new_assistant)
+    db_session.commit()
+    db_session.refresh(new_assistant)
+    db_session.close()
+
+    return new_assistant
 
 
 @assistant_router.get("", response_model=list[AssistantResponse])
 async def get_all_assistants(
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        query = (
-            select(Assistants)
-            .where(Assistants.user_id == current_user.id)
-            .order_by(desc(Assistants.updated_at))
-        )
-        assistants = session.exec(query).all()
+    query = (
+        select(Assistants)
+        .where(Assistants.user_id == current_user.id)
+        .order_by(desc(Assistants.updated_at))
+    )
+    assistants = db_session.exec(query).all()
 
-        session.close()
+    db_session.close()
 
-        return assistants
+    return assistants
 
 
 @assistant_router.get("/{assistant_id}", response_model=AssistantResponse)
 async def get_assistant(
     assistant_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
-            )
-
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    if not is_valid_uuid(assistant_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
         )
-        assistant = session.exec(query).first()
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
 
-        session.close()
+    query = select(Assistants).where(
+        Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    )
+    assistant = db_session.exec(query).first()
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+        )
 
-        return assistant
+    db_session.close()
+
+    return assistant
 
 
 @assistant_router.post("/{assistant_id}/update", response_model=AssistantResponse)
@@ -149,30 +146,29 @@ async def update_assistant(
     assistant_id: str,
     assistant_phrases: AsistantUpdatePhraseRequest,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
-            )
-
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    if not is_valid_uuid(assistant_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
         )
-        assistant = session.exec(query).first()
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
 
-        assistant.instruct_prompt = assistant_phrases.instruct_prompt
-        assistant.agent_backstory = assistant_phrases.agent_backstory
+    query = select(Assistants).where(
+        Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    )
+    assistant = db_session.exec(query).first()
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+        )
 
-        session.commit()
-        session.refresh(assistant)
+    assistant.instruct_prompt = assistant_phrases.instruct_prompt
+    assistant.agent_backstory = assistant_phrases.agent_backstory
 
-        return assistant
+    db_session.commit()
+    db_session.refresh(assistant)
+
+    return assistant
 
 
 @assistant_router.post("/{assistant_id}/tools", response_model=AssistantResponse)
@@ -180,37 +176,36 @@ async def update_assistant_tool(
     assistant_id: str,
     assistant_phrases: AssistantUpdateToolsRequest,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
-            )
-
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    if not is_valid_uuid(assistant_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
         )
-        assistant = session.exec(query).first()
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
 
-        tool_configurations = {
-            tool.name: {
-                "description": tool.description,
-                "return_as_answer": tool.return_as_answer,
-            }
-            for tool in assistant_phrases.tools
+    query = select(Assistants).where(
+        Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    )
+    assistant = db_session.exec(query).first()
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+        )
+
+    tool_configurations = {
+        tool.name: {
+            "description": tool.description,
+            "return_as_answer": tool.return_as_answer,
         }
+        for tool in assistant_phrases.tools
+    }
 
-        assistant.tools = tool_configurations
+    assistant.tools = tool_configurations
 
-        session.commit()
-        session.refresh(assistant)
+    db_session.commit()
+    db_session.refresh(assistant)
 
-        return assistant
+    return assistant
 
 
 @assistant_router.get(
@@ -219,111 +214,105 @@ async def update_assistant_tool(
 async def get_assistant_with_total_cost(
     assistant_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
-            )
-
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    if not is_valid_uuid(assistant_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
         )
-        assistant = session.exec(query).first()
 
-        conversation_ids = session.exec(
-            select(Conversations.id).where(Conversations.assistant_id == assistant_id)
-        ).all()
+    query = select(Assistants).where(
+        Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    )
+    assistant = db_session.exec(query).first()
 
-        conversations = [
-            session.exec(select(Conversations).where(Conversations.id == c)).first()
-            for c in conversation_ids
-        ]
-        messages = [
-            session.exec(select(Messages).where(Messages.conversation_id == c)).all()
-            for c in conversation_ids
-        ]
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
+    conversation_ids = db_session.exec(
+        select(Conversations.id).where(Conversations.assistant_id == assistant_id)
+    ).all()
 
-        session.close()
-
-        return AssistantWithTotalCost(
-            id=assistant.id,
-            user_id=assistant.user_id,
-            name=assistant.name,
-            description=assistant.description,
-            knowledge_base_id=assistant.knowledge_base_id,
-            configuration=assistant.configuration,
-            created_at=assistant.created_at,
-            updated_at=assistant.updated_at,
-            total_cost=assistant.total_cost(
-                conversations=conversations, messages=messages
-            ),
+    conversations = [
+        db_session.exec(select(Conversations).where(Conversations.id == c)).first()
+        for c in conversation_ids
+    ]
+    messages = [
+        db_session.exec(select(Messages).where(Messages.conversation_id == c)).all()
+        for c in conversation_ids
+    ]
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
         )
+
+    db_session.close()
+
+    return AssistantWithTotalCost(
+        id=assistant.id,
+        user_id=assistant.user_id,
+        name=assistant.name,
+        description=assistant.description,
+        knowledge_base_id=assistant.knowledge_base_id,
+        configuration=assistant.configuration,
+        created_at=assistant.created_at,
+        updated_at=assistant.updated_at,
+        total_cost=assistant.total_cost(conversations=conversations, messages=messages),
+    )
 
 
 @assistant_router.post("/{assistant_id}/conversations")
 async def create_conversation(
     assistant_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
-            )
-
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    if not is_valid_uuid(assistant_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
         )
-        assistant = session.exec(query).first()
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
 
-        new_conversation = Conversations(
-            assistant_id=assistant_id, user_id=current_user.id
+    query = select(Assistants).where(
+        Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    )
+    assistant = db_session.exec(query).first()
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
         )
-        session.add(new_conversation)
-        session.commit()
-        return new_conversation
+
+    new_conversation = Conversations(assistant_id=assistant_id, user_id=current_user.id)
+    db_session.add(new_conversation)
+    db_session.commit()
+    db_session.refresh(new_conversation)
+    return new_conversation
 
 
 @assistant_router.get("/{assistant_id}/conversations")
 async def get_assistant_conversations(
     assistant_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
-            )
-
-        query = select(Assistants).where(
-            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    if not is_valid_uuid(assistant_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
         )
 
-        assistant = session.exec(query).first()
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
+    query = select(Assistants).where(
+        Assistants.id == assistant_id, Assistants.user_id == current_user.id
+    )
 
-        query = (
-            select(Conversations)
-            .where(Conversations.assistant_id == assistant.id)
-            .order_by(desc(Conversations.updated_at))
+    assistant = db_session.exec(query).first()
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
         )
-        conversations = session.exec(query).all()
-        return conversations
+
+    query = (
+        select(Conversations)
+        .where(Conversations.assistant_id == assistant.id)
+        .order_by(desc(Conversations.updated_at))
+    )
+    conversations = db_session.exec(query).all()
+    return conversations
 
 
 @assistant_router.delete("/{assistant_id}/conversations/{conversation_id}")
@@ -331,94 +320,92 @@ async def delete_conversation(
     assistant_id: str,
     conversation_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
     db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id) or not is_valid_uuid(conversation_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid assistant or conversation id",
-            )
-
-        assistant = session.exec(
-            select(Assistants).where(
-                Assistants.id == assistant_id, Assistants.user_id == current_user.id
-            )
-        ).first()
-
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
-
-        db_manager.delete_conversation(
-            conversation_id=conversation_id,
+    if not is_valid_uuid(assistant_id) or not is_valid_uuid(conversation_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid assistant or conversation id",
         )
 
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"message": "Conversation deleted successfully"},
+    assistant = db_session.exec(
+        select(Assistants).where(
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
         )
+    ).first()
+
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+        )
+
+    db_manager.delete_conversation(
+        conversation_id=conversation_id,
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": "Conversation deleted successfully"},
+    )
 
 
 @assistant_router.get("/{assistant_id}/export_conversations")
 async def export_conversations(
     assistant_id: UUID,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        conversations = session.exec(
-            select(Conversations)
-            .where(
-                Conversations.assistant_id == assistant_id,
-                Conversations.user_id == current_user.id,
-            )
-            .order_by(desc(Conversations.updated_at))
+    conversations = db_session.exec(
+        select(Conversations)
+        .where(
+            Conversations.assistant_id == assistant_id,
+            Conversations.user_id == current_user.id,
+        )
+        .order_by(desc(Conversations.updated_at))
+    ).all()
+
+    conversations_name = [
+        conversation.name or conversation.id for conversation in conversations
+    ]
+
+    conversations_content = [
+        db_session.exec(
+            select(Messages)
+            .where(Messages.conversation_id == conversation.id)
+            .order_by(Messages.created_at)
         ).all()
+        for conversation in conversations
+    ]
 
-        conversations_name = [
-            conversation.name or conversation.id for conversation in conversations
-        ]
-
-        conversations_content = [
-            session.exec(
-                select(Messages)
-                .where(Messages.conversation_id == conversation.id)
-                .order_by(Messages.created_at)
-            ).all()
-            for conversation in conversations
-        ]
-
-        conversations_string = [
-            json.dumps(
-                [
-                    {
-                        "sender": message.sender_type,
-                        "content": message.content,
-                    }
-                    for message in conversation
-                ]
-            )
-            for conversation in conversations_content
-        ]
-
-        df = pd.DataFrame(
-            {
-                "conversation_name": conversations_name,
-                "conversation_content": conversations_string,
-            }
+    conversations_string = [
+        json.dumps(
+            [
+                {
+                    "sender": message.sender_type,
+                    "content": message.content,
+                }
+                for message in conversation
+            ]
         )
+        for conversation in conversations_content
+    ]
 
-        # Save to excel
-        df.to_excel(DOWNLOAD_FOLDER / f"{assistant_id}.xlsx", index=False)
+    df = pd.DataFrame(
+        {
+            "conversation_name": conversations_name,
+            "conversation_content": conversations_string,
+        }
+    )
 
-        return FileResponse(
-            DOWNLOAD_FOLDER / f"{assistant_id}.xlsx",
-            filename=f"{assistant_id}.xlsx",
-            status_code=200,
-        )
+    # Save to excel
+    df.to_excel(DOWNLOAD_FOLDER / f"{assistant_id}.xlsx", index=False)
+
+    return FileResponse(
+        DOWNLOAD_FOLDER / f"{assistant_id}.xlsx",
+        filename=f"{assistant_id}.xlsx",
+        status_code=200,
+    )
 
 
 @assistant_router.get("/{assistant_id}/export/{conversation_id}")
@@ -426,33 +413,32 @@ async def export_conversation(
     assistant_id: UUID,
     conversation_id: UUID,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     def get_conversation_history(conversation_id):
-        with db_session as session:
-            conv = session.exec(
-                select(Conversations).where(
-                    Conversations.id == conversation_id,
-                    Conversations.assistant_id == assistant_id,
-                    Conversations.user_id == current_user.id,
-                )
-            ).first()
+        conv = db_session.exec(
+            select(Conversations).where(
+                Conversations.id == conversation_id,
+                Conversations.assistant_id == assistant_id,
+                Conversations.user_id == current_user.id,
+            )
+        ).first()
 
-            if not conv:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Conversation not found",
-                )
-
-            query = (
-                select(Messages)
-                .where(Messages.conversation_id == conversation_id)
-                .order_by(Messages.created_at)
+        if not conv:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found",
             )
 
-            messages = session.exec(query).all()
+        query = (
+            select(Messages)
+            .where(Messages.conversation_id == conversation_id)
+            .order_by(Messages.created_at)
+        )
 
-            return messages
+        messages = db_session.exec(query).all()
+
+        return messages
 
     conversation = [
         {
@@ -477,29 +463,28 @@ async def get_conversation_history(
     assistant_id: UUID,
     conversation_id: UUID,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        query = select(Conversations).where(
-            Conversations.assistant_id == assistant_id,
-            Conversations.id == conversation_id,
-            Conversations.user_id == current_user.id,
-        )
+    query = select(Conversations).where(
+        Conversations.assistant_id == assistant_id,
+        Conversations.id == conversation_id,
+        Conversations.user_id == current_user.id,
+    )
 
-        conversation = session.exec(query).first()
+    conversation = db_session.exec(query).first()
 
-        if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
 
-        query = (
-            select(Messages)
-            .where(Messages.conversation_id == conversation_id)
-            .order_by(Messages.created_at)
-        )
+    query = (
+        select(Messages)
+        .where(Messages.conversation_id == conversation_id)
+        .order_by(Messages.created_at)
+    )
 
-        messages = session.exec(query).all()
+    messages = db_session.exec(query).all()
 
-        return messages
+    return messages
 
 
 @assistant_router.patch("/{assistant_id}/conversations/{conversation_id}/rename")
@@ -508,64 +493,62 @@ async def rename_conversation_name(
     conversation_id: UUID,
     conversation_rename_body: ConversationRenameRequest,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
-    with db_session as session:
-        query = select(Conversations).where(
-            Conversations.id == conversation_id,
-            Conversations.assistant_id == assistant_id,
+    query = select(Conversations).where(
+        Conversations.id == conversation_id,
+        Conversations.assistant_id == assistant_id,
+    )
+    conversation = db_session.exec(query).first()
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
         )
-        conversation = session.exec(query).first()
-        if not conversation:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
-            )
-        if conversation.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not authorized to rename this conversation",
-            )
-
-        conversation.name = conversation_rename_body.name
-        session.add(conversation)
-        session.commit()
-        session.refresh(conversation)
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK, content={"message": "Conversation renamed"}
+    if conversation.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to rename this conversation",
         )
+
+    conversation.name = conversation_rename_body.name
+    db_session.add(conversation)
+    db_session.commit()
+    db_session.refresh(conversation)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"message": "Conversation renamed"}
+    )
 
 
 @assistant_router.delete("/{assistant_id}")
 async def delete_assistant(
     assistant_id: str,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
     db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
-    with db_session as session:
-        if not is_valid_uuid(assistant_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
-            )
-
-        assistant = session.exec(
-            select(Assistants).where(
-                Assistants.id == assistant_id, Assistants.user_id == current_user.id
-            )
-        ).first()
-
-        if not assistant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
-            )
-
-        db_manager.delete_assistant(assistant_id)
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"message": "Assistant deleted successfully"},
+    if not is_valid_uuid(assistant_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assistant id"
         )
+
+    assistant = db_session.exec(
+        select(Assistants).where(
+            Assistants.id == assistant_id, Assistants.user_id == current_user.id
+        )
+    ).first()
+
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found"
+        )
+
+    db_manager.delete_assistant(assistant_id)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": "Assistant deleted successfully"},
+    )
 
 
 @assistant_router.websocket(
@@ -576,7 +559,7 @@ async def websocket_endpoint(
     assistant_id: UUID,
     conversation_id: UUID,
     token: str,
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
     ws_manager: Annotated[WsManager, Depends(get_ws_manager)],
     assistant_service: Annotated[AssistantService, Depends()],
 ):
@@ -637,26 +620,25 @@ async def websocket_endpoint(
 
     except WebSocketDisconnect:
         if user_has_chat:
-            with db_session as session:
-                conversation = session.exec(
-                    select(Conversations).where(Conversations.id == conversation_id)
-                ).first()
-                if conversation:
-                    conversation.session_chat_time = conversation.session_chat_time + (
-                        time.time() - session_start_time
-                    )
+            conversation = db_session.exec(
+                select(Conversations).where(Conversations.id == conversation_id)
+            ).first()
+            if conversation:
+                conversation.session_chat_time = conversation.session_chat_time + (
+                    time.time() - session_start_time
+                )
 
-                    conversation.user_messages += session_message_count
+                conversation.user_messages += session_message_count
 
-                    conversation.number_of_sessions += 1
+                conversation.number_of_sessions += 1
 
-                    session.add(conversation)
-                    session.commit()
+                db_session.add(conversation)
+                db_session.commit()
 
-                else:
-                    logger.error(
-                        f"Conversation {conversation_id} not found while updating average chat time"
-                    )
+            else:
+                logger.error(
+                    f"Conversation {conversation_id} not found while updating average chat time"
+                )
 
         # Handle WebSocket disconnect
         ws_manager.disconnect(conversation_id)
