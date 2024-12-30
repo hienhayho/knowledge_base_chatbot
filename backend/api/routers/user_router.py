@@ -13,6 +13,7 @@ from api.models import (
     UserRequest,
     DeleteUserRequest,
 )
+from api.deps import SessionDeps
 
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -197,7 +198,7 @@ async def decode_user_token(
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     """
     Returns the current user
@@ -216,16 +217,15 @@ async def get_current_user(
 
         long_term_token = payload.get("long_term_token")
         if long_term_token:
-            with db_session as session:
-                query_token = select(Tokens).where(Tokens.token == token)
-                token = session.exec(query_token).first()
+            query_token = select(Tokens).where(Tokens.token == token)
+            token = db_session.exec(query_token).first()
 
-                if not token:
-                    logger.warning("Token not found !!!")
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid token!!!",
-                    )
+            if not token:
+                logger.warning("Token not found !!!")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token!!!",
+                )
 
         token_data = TokenData(username=username)
     except Exception as e:
@@ -243,9 +243,7 @@ async def get_current_user(
 @user_router.post(
     "/create", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
-def create_new_user(
-    userInfo: UserRequest, db_session: Annotated[Session, Depends(get_session)]
-):
+def create_new_user(userInfo: UserRequest, db_session: SessionDeps):
     """
     Endpoint to create a new user
     """
@@ -254,43 +252,42 @@ def create_new_user(
     password = userInfo.password
     admin_access_token = userInfo.admin_access_token
 
-    with db_session as session:
-        user = get_user(session, username)
-        if user:
+    user = get_user(db_session, username)
+    if user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already registered",
+        )
+
+    role = UserRole.USER
+    if admin_access_token is not None:
+        if admin_access_token == ADMIN_ACCESS_TOKEN:
+            role = UserRole.ADMIN
+        else:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username or email already registered",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Key not match, forbidden to create admin user",
             )
 
-        role = UserRole.USER
-        if admin_access_token is not None:
-            if admin_access_token == ADMIN_ACCESS_TOKEN:
-                role = UserRole.ADMIN
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Key not match, forbidden to create admin user",
-                )
+    new_user = Users(
+        username=username,
+        email=email,
+        hashed_password=get_password_hash(password),
+        role=role,
+        organization=userInfo.organization,
+    )
+    db_session.add(new_user)
+    db_session.commit()
+    db_session.refresh(new_user)
+    db_session.close()
 
-        new_user = Users(
-            username=username,
-            email=email,
-            hashed_password=get_password_hash(password),
-            role=role,
-            organization=userInfo.organization,
-        )
-        session.add(new_user)
-        session.commit()
-        session.refresh(new_user)
-        session.close()
-
-        return new_user
+    return new_user
 
 
 @user_router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     """
     Endpoint to login and get access token
@@ -322,7 +319,7 @@ async def current_user(current_user: Users = Depends(get_current_user)):
 @user_router.delete("/delete", response_class=JSONResponse)
 async def delete_user(
     delete_user_request: DeleteUserRequest,
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     """
     Endpoint to delete a user
@@ -334,19 +331,18 @@ async def delete_user(
             status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden to delete user"
         )
 
-    with db_session as session:
-        user = get_user(session, delete_user_request.username)
+    user = get_user(db_session, delete_user_request.username)
 
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
-
-        session.delete(user)
-        session.commit()
-        session.close()
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"message": f"User: {delete_user_request.username} deleted"},
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
+
+    db_session.delete(user)
+    db_session.commit()
+    db_session.close()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": f"User: {delete_user_request.username} deleted"},
+    )

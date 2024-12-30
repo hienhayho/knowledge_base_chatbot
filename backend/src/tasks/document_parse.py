@@ -72,7 +72,7 @@ def parse_document(
         dict: The task ID and status.
     """
     extension = Path(file_path_in_storage_service).suffix
-    file_path = Path("downloads") / f"{document_id}.{extension}"
+    file_path = Path("downloads") / f"{document_id}{extension}"
 
     self.update_state(state="PROGRESS", meta={"progress": 0})
 
@@ -136,7 +136,6 @@ def parse_document(
                 vector_id=chunk.metadata["vector_id"],
             )
             session.add(document_chunk)
-            session.refresh(document_chunk)
 
             self.update_state(
                 state="PROGRESS",
@@ -146,8 +145,6 @@ def parse_document(
             )
 
         session.commit()
-
-    # session.close()
 
     file_path.unlink()
 

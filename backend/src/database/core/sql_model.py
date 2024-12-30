@@ -12,6 +12,7 @@ from pydantic import EmailStr, ConfigDict
 from sqlalchemy.dialects.postgresql import TEXT, JSON
 from sqlmodel import SQLModel, Field, String, create_engine, Session, UUID
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import sessionmaker
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
@@ -23,10 +24,12 @@ from src.settings import get_default_setting, GlobalSettings
 load_dotenv()
 
 engine = None
+SessionLocal = None
 
 
 def init_db():
     global engine
+    global SessionLocal
     sql_url = os.getenv("SQL_DB_URL")
     assert sql_url, "SQL_DB_URL is not set"
 
@@ -43,15 +46,24 @@ def init_db():
         },
     )
     SQLModel.metadata.create_all(engine)
+    SessionLocal = sessionmaker(bind=engine, class_=Session)
 
 
+@contextmanager
 def get_instance_session():
-    return Session(engine)
+    session = Session(engine, expire_on_commit=False)
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 def get_session():
-    with Session(engine) as session:
+    session = Session(engine, expire_on_commit=False)
+    try:
         yield session
+    finally:
+        session.close()
 
 
 @contextmanager

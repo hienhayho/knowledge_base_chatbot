@@ -3,7 +3,7 @@ import copy
 from uuid import UUID
 from pathlib import Path
 from collections import deque
-from typing import Optional, Type
+from typing import Type
 from sqlmodel import Session, select
 from llama_index.core import Document
 from fastapi import Depends, HTTPException, status
@@ -12,7 +12,6 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from .contextual_rag_manager import ContextualRAG
 from .core import (
-    get_instance_session,
     Messages,
     Conversations,
     Assistants,
@@ -22,6 +21,7 @@ from .core import (
     DocumentChunks,
     KnowledgeBases,
 )
+from api.deps import SessionDeps
 
 from src.utils import get_formatted_logger
 from src.constants import DocumentMetadata, DOWNLOAD_FOLDER
@@ -35,7 +35,11 @@ class DatabaseManager:
     Database manager to handle all the database operations
     """
 
-    def __init__(self, setting: GlobalSettings, db_session: Optional[Session] = None):
+    def __init__(
+        self,
+        setting: GlobalSettings,
+        db_session: Session,
+    ):
         """
         Initialize the database manager
 
@@ -43,10 +47,7 @@ class DatabaseManager:
             setting (GlobalSettings): Global settings
         """
         self.setting = setting
-        if db_session is None:
-            self.db_session = get_instance_session()
-        else:
-            self.db_session = db_session
+        self.db_session = db_session
 
         self.storage_client: Type[BaseStorageClient] = load_storage_service(
             setting.storage_config.type
@@ -93,19 +94,18 @@ class DatabaseManager:
         Returns:
             str: Product file path or None
         """
-        with self.db_session as session:
-            query = select(Documents.file_path_in_storage_service).where(
-                Documents.knowledge_base_id == knowledge_base_id,
-                Documents.is_product_file,
-            )
-            product_file_path = session.exec(query).first()
-            file_path_to_save = str(DOWNLOAD_FOLDER / f"{knowledge_base_id}.xlsx")
+        query = select(Documents.file_path_in_storage_service).where(
+            Documents.knowledge_base_id == knowledge_base_id,
+            Documents.is_product_file,
+        )
+        product_file_path = self.db_session.exec(query).first()
+        file_path_to_save = str(DOWNLOAD_FOLDER / f"{knowledge_base_id}.xlsx")
 
-            if product_file_path:
-                self.download_file(product_file_path, file_path_to_save)
-                return file_path_to_save
+        if product_file_path:
+            self.download_file(product_file_path, file_path_to_save)
+            return file_path_to_save
 
-            return None
+        return None
 
     def download_file(self, object_name: str, file_path: str):
         """
@@ -216,31 +216,30 @@ class DatabaseManager:
             conversation_id (str | UUID): Conversation ID
             assistant_id (str | UUID): Assistant ID
         """
-        with self.db_session as session:
-            conversation = session.exec(
-                select(Conversations).where(
-                    Conversations.id == conversation_id,
-                )
-            ).first()
+        conversation = self.db_session.exec(
+            select(Conversations).where(
+                Conversations.id == conversation_id,
+            )
+        ).first()
 
-            if not conversation:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Conversation not found",
-                )
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found",
+            )
 
-            messages = session.exec(
-                select(Messages).where(Messages.conversation_id == conversation_id)
-            ).all()
+        messages = self.db_session.exec(
+            select(Messages).where(Messages.conversation_id == conversation_id)
+        ).all()
 
-            for message in messages:
-                session.delete(message)
-                session.commit()
+        for message in messages:
+            self.db_session.delete(message)
+            self.db_session.commit()
 
-            session.delete(conversation)
-            session.commit()
+        self.db_session.delete(conversation)
+        self.db_session.commit()
 
-            session.close()
+        self.db_session.close()
 
         logger.info("Deleting memory from crewAI, conversation_id: %s", conversation_id)
         # Delete collection which are memory from crewAI
@@ -260,30 +259,27 @@ class DatabaseManager:
         Args:
             assistant_id (str | UUID): Assistant ID
         """
-        with self.db_session as session:
-            assistant = session.exec(
-                select(Assistants).where(Assistants.id == assistant_id)
-            ).first()
+        assistant = self.db_session.exec(
+            select(Assistants).where(Assistants.id == assistant_id)
+        ).first()
 
-            if not assistant:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Assistant not found",
-                )
+        if not assistant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assistant not found",
+            )
 
-            conversations_ids = session.exec(
-                select(Conversations.id).where(
-                    Conversations.assistant_id == assistant_id
-                )
-            ).all()
+        conversations_ids = self.db_session.exec(
+            select(Conversations.id).where(Conversations.assistant_id == assistant_id)
+        ).all()
 
-            for conversation_id in conversations_ids:
-                self.delete_conversation(conversation_id)
+        for conversation_id in conversations_ids:
+            self.delete_conversation(conversation_id)
 
-            session.delete(assistant)
-            session.commit()
+        self.db_session.delete(assistant)
+        self.db_session.commit()
 
-            session.close()
+        self.db_session.close()
         logger.info(f"Deleted assistant: {assistant_id}")
 
     def delete_knowledge_base(self, knowledge_base_id: str | UUID):
@@ -293,83 +289,81 @@ class DatabaseManager:
         Args:
             knowledge_base_id (str | UUID): Knowledge base ID
         """
-        with self.db_session as session:
-            kb = session.exec(
-                select(KnowledgeBases).where(KnowledgeBases.id == knowledge_base_id)
+        kb = self.db_session.exec(
+            select(KnowledgeBases).where(KnowledgeBases.id == knowledge_base_id)
+        ).first()
+
+        documents = self.db_session.exec(
+            select(Documents).where(Documents.knowledge_base_id == knowledge_base_id)
+        ).all()
+        for doc in documents:
+            self.delete_file(
+                object_name=doc.file_path_in_storage_service,
+                document_id=doc.id,
+                delete_to_retry=False,
+            )
+
+            document_chunks = self.db_session.exec(
+                select(DocumentChunks).where(DocumentChunks.document_id == doc.id)
+            ).all()
+
+            for chunk in document_chunks:
+                self.db_session.delete(chunk)
+                # self.db_session.commit()
+
+            self.db_session.delete(doc)
+            self.db_session.commit()
+
+        # Delete the assistants associated with the knowledge base
+        assistants_ids = self.db_session.exec(
+            select(Assistants.id).where(
+                Assistants.knowledge_base_id == knowledge_base_id
+            )
+        ).all()
+
+        for assistant_id in assistants_ids:
+            self.delete_assistant(assistant_id=assistant_id)
+
+        parents_copy = copy.deepcopy(kb.parents)
+        # Delete the knowledge base from the parents of this knowledge base. Mean that this deleted knowledge base is no longer inheriting its parents
+        for parent_id in kb.parents:
+            parent_kb = self.db_session.exec(
+                select(KnowledgeBases).where(KnowledgeBases.id == parent_id)
             ).first()
 
-            documents = session.exec(
-                select(Documents).where(
-                    Documents.knowledge_base_id == knowledge_base_id
-                )
-            ).all()
-            for doc in documents:
-                self.delete_file(
-                    object_name=doc.file_path_in_storage_service,
-                    document_id=doc.id,
-                    delete_to_retry=False,
-                )
+            parent_kb_children = copy.deepcopy(parent_kb.children)
+            parent_kb_children = [
+                child for child in parent_kb_children if child != kb.id
+            ]
+            parent_kb.children = list(set(parent_kb_children))
 
-                document_chunks = session.exec(
-                    select(DocumentChunks).where(DocumentChunks.document_id == doc.id)
-                ).all()
+            self.db_session.add(parent_kb)
+            self.db_session.commit()
 
-                for chunk in document_chunks:
-                    session.delete(chunk)
-                    session.commit()
+        # Delete the knowledge base from the children of its parents. Mean that the knowledge base is no longer inheriting its parents
+        queue = deque(kb.children)
+        parents_copy.append(kb.id)
 
-                session.delete(doc)
-                session.commit()
+        while queue:
+            child_id = queue.popleft()
+            child_kb = self.db_session.exec(
+                select(KnowledgeBases).where(KnowledgeBases.id == child_id)
+            ).first()
 
-            # Delete the assistants associated with the knowledge base
-            assistants_ids = session.exec(
-                select(Assistants.id).where(
-                    Assistants.knowledge_base_id == knowledge_base_id
-                )
-            ).all()
+            child_kb_parents = copy.deepcopy(child_kb.parents)
+            child_kb_parents = [
+                parent for parent in child_kb_parents if parent not in parents_copy
+            ]
+            child_kb.parents = list(set(child_kb_parents))
 
-            for assistant_id in assistants_ids:
-                self.delete_assistant(assistant_id=assistant_id)
+            self.db_session.add(child_kb)
+            self.db_session.commit()
 
-            parents_copy = copy.deepcopy(kb.parents)
-            # Delete the knowledge base from the parents of this knowledge base. Mean that this deleted knowledge base is no longer inheriting its parents
-            for parent_id in kb.parents:
-                parent_kb = session.exec(
-                    select(KnowledgeBases).where(KnowledgeBases.id == parent_id)
-                ).first()
-
-                parent_kb_children = copy.deepcopy(parent_kb.children)
-                parent_kb_children = [
-                    child for child in parent_kb_children if child != kb.id
-                ]
-                parent_kb.children = list(set(parent_kb_children))
-
-                session.add(parent_kb)
-                session.commit()
-
-            # Delete the knowledge base from the children of its parents. Mean that the knowledge base is no longer inheriting its parents
-            queue = deque(kb.children)
-            parents_copy.append(kb.id)
-
-            while queue:
-                child_id = queue.popleft()
-                child_kb = session.exec(
-                    select(KnowledgeBases).where(KnowledgeBases.id == child_id)
-                ).first()
-
-                child_kb_parents = copy.deepcopy(child_kb.parents)
-                child_kb_parents = [
-                    parent for parent in child_kb_parents if parent not in parents_copy
-                ]
-                child_kb.parents = list(set(child_kb_parents))
-
-                session.add(child_kb)
-                session.commit()
-
-                queue.extend(child_kb.children)
+            queue.extend(child_kb.children)
 
 
 def get_db_manager(
+    db_session: SessionDeps,
     setting: GlobalSettings = Depends(get_default_setting),
 ) -> DatabaseManager:
-    return DatabaseManager(setting)
+    return DatabaseManager(setting, db_session=db_session)

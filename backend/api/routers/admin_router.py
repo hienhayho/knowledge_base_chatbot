@@ -1,13 +1,12 @@
 from uuid import UUID
 from datetime import timedelta
 from typing import List, Annotated
-from sqlmodel import Session, select, desc
+from sqlmodel import select, desc
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 
 from src.database import (
     Users,
     Tokens,
-    get_session,
     get_db_manager,
     DatabaseManager,
     KnowledgeBases,
@@ -27,6 +26,7 @@ from api.models import (
     AdminCreateTokenRequest,
     AdminCreateTokenResponse,
 )
+from api.deps import SessionDeps
 
 logger = get_formatted_logger(__file__)
 
@@ -36,7 +36,7 @@ admin_router = APIRouter()
 @admin_router.get("/users", response_model=List[UserResponse])
 async def get_all_users(
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     logger.info("Getting all users ...")
 
@@ -47,10 +47,9 @@ async def get_all_users(
             detail="You are not authorized to access this resource!",
         )
 
-    with db_session as session:
-        query = select(Users).order_by(desc(Users.updated_at))
-        users = session.exec(query).all()
-        return users
+    query = select(Users).order_by(desc(Users.updated_at))
+    users = db_session.exec(query).all()
+    return users
 
 
 @admin_router.put("/users/{user_id}", response_model=UserResponse)
@@ -58,7 +57,7 @@ async def update_user(
     user_id: UUID,
     user_request: Annotated[UpdateUserOrganizationRequest, Body(...)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     logger.info(f"Updating user with id: {user_id}")
 
@@ -76,30 +75,29 @@ async def update_user(
             detail="You are not authorized to access this resource!",
         )
 
-    with db_session as session:
-        query = select(Users).where(Users.id == user_id)
-        user = session.exec(query).first()
+    query = select(Users).where(Users.id == user_id)
+    user = db_session.exec(query).first()
 
-        if user is None:
-            logger.error(f"User with id {user_id} not found!")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found!",
-            )
+    if user is None:
+        logger.error(f"User with id {user_id} not found!")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found!",
+        )
 
-        user.organization = user_request.organization
-        session.add(user)
-        session.commit()
-        session.refresh(user)
+    user.organization = user_request.organization
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
 
-        return user
+    return user
 
 
 @admin_router.post("/switch-user", response_model=AdminSwitchUserResponse)
 async def switch_user(
     switchUserRequest: Annotated[AdminSwitchUserRequest, Body(...)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     logger.info(f"Switching to user: {switchUserRequest.username_to_switch}")
 
@@ -110,43 +108,40 @@ async def switch_user(
             detail="You are not authorized to access this resource!",
         )
 
-    with db_session as session:
-        query = select(Users).where(
-            Users.username == switchUserRequest.username_to_switch
-        )
-        user = session.exec(query).first()
+    query = select(Users).where(Users.username == switchUserRequest.username_to_switch)
+    user = db_session.exec(query).first()
 
-        if user is None:
-            logger.error(f"User {switchUserRequest.username_to_switch} not found!")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found!",
-            )
-
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token, expires = create_access_token(
-            data={"sub": user.username}, expires_delta=access_token_expires
+    if user is None:
+        logger.error(f"User {switchUserRequest.username_to_switch} not found!")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found!",
         )
 
-        return AdminSwitchUserResponse(
-            user=UserResponse(
-                id=user.id,
-                username=user.username,
-                role=user.role,
-                created_at=user.created_at,
-                updated_at=user.updated_at,
-            ),
-            access_token=access_token,
-            type="bearer",
-            expires=expires,
-        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token, expires = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+
+    return AdminSwitchUserResponse(
+        user=UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        ),
+        access_token=access_token,
+        type="bearer",
+        expires=expires,
+    )
 
 
 @admin_router.delete("/users/{user_id}")
 async def delete_user(
     user_id: UUID,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
     db_manager: Annotated[DatabaseManager, Depends(get_db_manager)],
 ):
     logger.info(f"Deleting user with id: {user_id}")
@@ -167,39 +162,38 @@ async def delete_user(
             detail="You are not authorized to access this resource!",
         )
 
-    with db_session as session:
-        query = select(Users).where(Users.id == user_id)
-        user = session.exec(query).first()
+    query = select(Users).where(Users.id == user_id)
+    user = db_session.exec(query).first()
 
-        if user is None:
-            logger.error(f"User with id {user_id} not found!")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found!",
-            )
+    if user is None:
+        logger.error(f"User with id {user_id} not found!")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found!",
+        )
 
-        # Get all knowledge bases associated with the user and delete them
-        query = select(KnowledgeBases).where(KnowledgeBases.user_id == user_id)
+    # Get all knowledge bases associated with the user and delete them
+    query = select(KnowledgeBases).where(KnowledgeBases.user_id == user_id)
 
-        knowledge_bases = session.exec(query).all()
+    knowledge_bases = db_session.exec(query).all()
 
-        # Delete all knowledge bases since all data of each user is within knowledge bases
-        for kb in knowledge_bases:
-            db_manager.delete_knowledge_base(kb.id)
-            session.delete(kb)
-            session.commit()
+    # Delete all knowledge bases since all data of each user is within knowledge bases
+    for kb in knowledge_bases:
+        db_manager.delete_knowledge_base(kb.id)
+        db_session.delete(kb)
+        db_session.commit()
 
-        # Delete the user
-        session.delete(user)
-        session.commit()
+    # Delete the user
+    db_session.delete(user)
+    db_session.commit()
 
-        return {"message": "User deleted successfully!"}
+    return {"message": "User deleted successfully!"}
 
 
 @admin_router.get("/tokens", response_model=List[Tokens])
 async def get_all_tokens(
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     logger.info("Getting all tokens ...")
 
@@ -210,10 +204,9 @@ async def get_all_tokens(
             detail="You are not authorized to access this resource!",
         )
 
-    with db_session as session:
-        query = select(Tokens).order_by(desc(Tokens.updated_at))
-        tokens = session.exec(query).all()
-        return tokens
+    query = select(Tokens).order_by(desc(Tokens.updated_at))
+    tokens = db_session.exec(query).all()
+    return tokens
 
 
 @admin_router.post(
@@ -224,7 +217,7 @@ async def get_all_tokens(
 async def create_user_token(
     admin_create_token_request: Annotated[AdminCreateTokenRequest, Body(...)],
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     username = admin_create_token_request.username
     logger.info(f"Creating token for user: {username}")
@@ -236,53 +229,52 @@ async def create_user_token(
             detail="You are not authorized to access this resource!",
         )
 
-    with db_session as session:
-        query = select(Users).where(Users.username == username)
-        user = session.exec(query).first()
+    query = select(Users).where(Users.username == username)
+    user = db_session.exec(query).first()
 
-        if user is None:
-            logger.error(f"User {username} not found!")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found!",
-            )
-
-        if user.role == UserRole.ADMIN:
-            logger.warning("Admin don't need long term token!")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Admin doesn't need this token!",
-            )
-
-        access_token = create_access_token(
-            data={"sub": user.username}, long_term_token=True
+    if user is None:
+        logger.error(f"User {username} not found!")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found!",
         )
 
-        added_token = Tokens(
-            token=access_token, user_id=user.id, username=user.username, role=user.role
+    if user.role == UserRole.ADMIN:
+        logger.warning("Admin don't need long term token!")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin doesn't need this token!",
         )
 
-        session.add(added_token)
-        session.commit()
-        session.refresh(added_token)
+    access_token = create_access_token(
+        data={"sub": user.username}, long_term_token=True
+    )
 
-        return AdminCreateTokenResponse(
-            id=added_token.id,
-            user_id=user.id,
-            username=added_token.username,
-            role=added_token.role,
-            token=access_token,
-            type=added_token.token_type,
-            created_at=added_token.created_at,
-            updated_at=added_token.updated_at,
-        )
+    added_token = Tokens(
+        token=access_token, user_id=user.id, username=user.username, role=user.role
+    )
+
+    db_session.add(added_token)
+    db_session.commit()
+    db_session.refresh(added_token)
+
+    return AdminCreateTokenResponse(
+        id=added_token.id,
+        user_id=user.id,
+        username=added_token.username,
+        role=added_token.role,
+        token=access_token,
+        type=added_token.token_type,
+        created_at=added_token.created_at,
+        updated_at=added_token.updated_at,
+    )
 
 
 @admin_router.delete("/delete-token/{token_id}")
 async def delete_token(
     token_id: UUID,
     current_user: Annotated[Users, Depends(get_current_user)],
-    db_session: Annotated[Session, Depends(get_session)],
+    db_session: SessionDeps,
 ):
     logger.info(f"Deleting token with id: {token_id}")
 
@@ -293,18 +285,17 @@ async def delete_token(
             detail="You are not authorized to access this resource!",
         )
 
-    with db_session as session:
-        query = select(Tokens).where(Tokens.id == token_id)
-        token = session.exec(query).first()
+    query = select(Tokens).where(Tokens.id == token_id)
+    token = db_session.exec(query).first()
 
-        if token is None:
-            logger.error(f"Token with id {token_id} not found!")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Token not found!",
-            )
+    if token is None:
+        logger.error(f"Token with id {token_id} not found!")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Token not found!",
+        )
 
-        session.delete(token)
-        session.commit()
+    db_session.delete(token)
+    db_session.commit()
 
-        return {"message": "Token deleted successfully!"}
+    return {"message": "Token deleted successfully!"}
