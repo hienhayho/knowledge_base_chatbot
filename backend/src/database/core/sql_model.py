@@ -33,6 +33,8 @@ def init_db():
     engine = create_engine(
         sql_url,
         pool_pre_ping=True,
+        pool_size=20,
+        max_overflow=5,
         connect_args={
             "keepalives": 1,
             "keepalives_idle": 30,

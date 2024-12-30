@@ -15,10 +15,13 @@ from src.readers import parse_multiple_files, get_extractor
 from src.database import (
     DatabaseManager,
     DocumentChunks,
+    init_db,
     get_instance_session,
 )
 
 logger = get_formatted_logger(__file__)
+
+init_db()
 
 db_manager: DatabaseManager = DatabaseManager.from_setting(setting=default_settings)
 
@@ -121,25 +124,30 @@ def parse_document(
 
     indexed_document = contextual_documents if is_contextual_rag else new_chunks
 
-    session = get_instance_session()
-    for idx, (chunk, original_chunk) in enumerate(zip(indexed_document, new_chunks)):
-        document_chunk = DocumentChunks(
-            chunk_index=idx,
-            original_content=original_chunk.text,
-            content=chunk.text,
-            document_id=document_id,
-            vector_id=chunk.metadata["vector_id"],
-        )
-        session.add(document_chunk)
+    with get_instance_session() as session:
+        for idx, (chunk, original_chunk) in enumerate(
+            zip(indexed_document, new_chunks)
+        ):
+            document_chunk = DocumentChunks(
+                chunk_index=idx,
+                original_content=original_chunk.text,
+                content=chunk.text,
+                document_id=document_id,
+                vector_id=chunk.metadata["vector_id"],
+            )
+            session.add(document_chunk)
+            session.refresh(document_chunk)
+
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "progress": 80 + math.ceil(20 / len(indexed_document) * (idx + 1))
+                },
+            )
+
         session.commit()
-        session.refresh(document_chunk)
 
-        self.update_state(
-            state="PROGRESS",
-            meta={"progress": 80 + math.ceil(20 / len(indexed_document) * (idx + 1))},
-        )
-
-    session.close()
+    # session.close()
 
     file_path.unlink()
 
