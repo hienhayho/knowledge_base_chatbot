@@ -22,32 +22,13 @@ from src.settings import get_default_setting, GlobalSettings
 
 load_dotenv()
 
+engine = None
 
-def get_instance_session():
+
+def init_db():
+    global engine
     sql_url = os.getenv("SQL_DB_URL")
     assert sql_url, "SQL_DB_URL is not set"
-    engine = create_engine(
-        sql_url,
-        pool_pre_ping=True,
-        connect_args={
-            "keepalives": 1,
-            "keepalives_idle": 30,
-            "keepalives_interval": 10,
-            "keepalives_count": 5,
-        },
-    )
-    SQLModel.metadata.create_all(engine)
-    session = Session(engine, expire_on_commit=False)
-    return session
-
-
-def get_session(setting: GlobalSettings = Depends(get_default_setting)):
-    sql_url = setting.sql_config.url
-
-    if not sql_url:
-        sql_url = os.getenv("SQL_DB_URL")
-
-    assert sql_url, "SQL_DB_URL is not set"
 
     engine = create_engine(
         sql_url,
@@ -60,12 +41,15 @@ def get_session(setting: GlobalSettings = Depends(get_default_setting)):
         },
     )
     SQLModel.metadata.create_all(engine)
-    session = Session(engine, expire_on_commit=False)
-    try:
+
+
+def get_instance_session():
+    return Session(engine)
+
+
+def get_session():
+    with Session(engine) as session:
         yield session
-    finally:
-        session.close()
-        engine.dispose()
 
 
 @contextmanager
@@ -555,23 +539,3 @@ class Tokens(SQLModel, table=True):
         description="Updated At time",
         sa_column_kwargs={"onupdate": get_now},
     )
-
-
-def init_db():
-    sql_url = os.getenv("SQL_DB_URL")
-    assert sql_url, "SQL_DB_URL is not set"
-
-    engine = create_engine(
-        sql_url,
-        pool_pre_ping=True,
-        connect_args={
-            "keepalives": 1,
-            "keepalives_idle": 30,
-            "keepalives_interval": 10,
-            "keepalives_count": 5,
-        },
-    )
-    SQLModel.metadata.create_all(engine)
-
-
-init_db()
