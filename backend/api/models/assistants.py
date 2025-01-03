@@ -26,6 +26,7 @@ class AssistantResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     exist_tools: list[str]
+    agent_type: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,6 +34,7 @@ class AssistantResponse(BaseModel):
 class AsistantUpdatePhraseRequest(BaseModel):
     instruct_prompt: str
     agent_backstory: str = None
+    agent_type: str = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -36,7 +36,7 @@ Given this information, please answer the question: {query_str}
 
 Please ONLY return in json format like this:
 {{
-    "result": ### Your answer here, MUST BE IN MARKDOWN FORMAT
+    "result": ### Your answer here
     "is_chat_false": ### You must decide if the answer is true with the context and question provided
 }}
 """
@@ -83,8 +83,6 @@ Here are something you should pay attention to:
 {instruct_prompt}
 
 If there are any product's link, please provide the link in the response.
-
-Please answer in markdown format.
 """
 
 embedding_dim = {"text-embedding-ada-002": 1536, "text-embedding-3-large": 3072}
@@ -155,6 +153,7 @@ class ChatAssistantConfig(BaseModel):
     is_contextual_rag: bool
     instruct_prompt: str
     file_product_path: str | None
+    agent_type: str
 
 
 class MesssageHistory(BaseModel):
@@ -319,6 +318,15 @@ class ExistTools(str, enum.Enum):
 
     KNOWLEDGE_BASE_QUERY = "knowledge_base_query"
     PRODUCT_SEARCH = "product_search"
+
+
+class ExistAgentType(str, enum.Enum):
+    """
+    Enum class for all existing agent type
+    """
+
+    OPENAI_AGENT = "openai_agent"
+    CREWAI_AGENT = "crewai_agent"
 
 
 class ResponseType(str, enum.Enum):

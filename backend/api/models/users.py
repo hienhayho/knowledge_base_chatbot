@@ -17,7 +17,7 @@ class UserRequest(BaseModel):
     username: str = Field(..., min_length=4, max_length=20, description="Username")
     email: Optional[EmailStr] = Field(None, description="Email")
     password: str = Field(..., min_length=6, description="Password")
-    organization: Optional[str] = Field(..., description="Organization")
+    organization: Optional[str] = Field(None, description="Organization")
     admin_access_token: Optional[str] = Field(None, description="Admin access token")
 
 

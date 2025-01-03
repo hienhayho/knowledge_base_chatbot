@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from src.utils import get_now
-from src.constants import FileStatus, SenderType, UserRole, ExistTools
+from src.constants import FileStatus, SenderType, UserRole, ExistTools, ExistAgentType
 from src.settings import get_default_setting, GlobalSettings
 
 
@@ -234,6 +234,10 @@ class Assistants(SQLModel, table=True):
                 for conversation, messages in zip(conversations, messages)
             ]
         )
+
+    @property
+    def agent_type(self):
+        return self.configuration.get("agent_type", ExistAgentType.CREWAI_AGENT)
 
     @property
     def exist_tools(self):
