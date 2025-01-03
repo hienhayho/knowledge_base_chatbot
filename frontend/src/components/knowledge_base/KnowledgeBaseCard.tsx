@@ -2,18 +2,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FileText, MoreVertical, Trash2, Combine } from "lucide-react";
 import { Modal, Select, message } from "antd";
-
-interface IMergeableKnowledgeBase {
-    id: string;
-    name: string;
-}
-
-interface IMergeableKnowledgeBaseResponse {
-    inheritable_knowledge_bases: IMergeableKnowledgeBase[];
-    parents: string[];
-    children: string[];
-    detail?: string;
-}
+import {
+    IMergeableKnowledgeBase,
+    IMergeableKnowledgeBaseResponse,
+} from "@/types";
+import { knowledgeBaseEndpoints } from "@/endpoints";
 
 const KnowledgeBaseCard = ({
     title,
@@ -71,11 +64,11 @@ const KnowledgeBaseCard = ({
         });
     };
 
-    const fetchKnowledgeBases = async (kb_id: string) => {
+    const fetchKnowledgeBases = async (kbId: string) => {
         setLoading(true);
         try {
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/kb/get_kb/${kb_id}`,
+                knowledgeBaseEndpoints.fetchKnowledgeBase(kbId),
                 {
                     method: "GET",
                     credentials: "include",
@@ -107,7 +100,7 @@ const KnowledgeBaseCard = ({
     const handleInheritKnowledgeBase = async () => {
         try {
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/kb/inherit_kb`,
+                knowledgeBaseEndpoints.inheritKNowledgeBase,
                 {
                     method: "POST",
                     headers: {

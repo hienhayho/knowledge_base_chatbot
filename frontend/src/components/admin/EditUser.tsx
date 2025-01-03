@@ -3,6 +3,7 @@ import { Modal, message, Input, Divider } from "antd";
 import { useState } from "react";
 import DetailToolTip from "../DetailToolTip";
 import { Info } from "lucide-react";
+import { adminEndpoints } from "@/endpoints";
 
 const EditUserModal = ({
     icon,
@@ -32,19 +33,16 @@ const EditUserModal = ({
     const handleOk = async () => {
         try {
             setIsUpdating(true);
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/users/${user.id}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        organization: userUpdateForm.organization,
-                    }),
-                }
-            );
+            const response = await fetch(adminEndpoints.editUser(user.id), {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                    organization: userUpdateForm.organization,
+                }),
+            });
             if (!response.ok) {
                 throw new Error("Failed to update user");
             }

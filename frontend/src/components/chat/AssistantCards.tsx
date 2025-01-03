@@ -1,20 +1,12 @@
 "use client";
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import {
-    Cpu,
-    Book,
-    MoreVertical,
-    Trash2,
-    // LoaderCircle,
-    Download,
-    IdCard,
-} from "lucide-react";
+import { Cpu, Book, MoreVertical, Trash2, Download } from "lucide-react";
 import { IAssistant, IKnowledgeBase } from "@/types";
 import AddToolsModal from "./AddToolsModal";
 import { Settings } from "lucide-react";
-import { Button, Popover, Tooltip, message } from "antd";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
+import { Tooltip, message } from "antd";
+import UpdateAssistantModal from "./UpdateAssistantModal";
+import { assistantApi, knowledgeBaseApi } from "@/api";
 
 const getRandomGradient = () => {
     const colors = ["#FCA5A5", "#FBBF24", "#34D399", "#60A5FA", "#A78BFA"];
@@ -49,10 +41,12 @@ const AssistantCard = ({
     assistant,
     onSelect,
     onDelete,
+    agentChoices,
 }: {
     assistant: IAssistant;
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
+    agentChoices: { value: string; label: string }[];
 }) => {
     const menuRef = useRef<HTMLDivElement>(null);
     const [knowledgeBase, setKnowledgeBase] = useState<IKnowledgeBase | null>(
@@ -67,22 +61,23 @@ const AssistantCard = ({
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
             try {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/kb/get_kb/${assistant.knowledge_base_id}`,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        credentials: "include",
-                    }
+                const data = await knowledgeBaseApi.fetchKnowledgeBase(
+                    assistant.knowledge_base_id
                 );
-                if (!response.ok) {
-                    throw new Error("Failed to fetch knowledge base");
-                }
-                const data = await response.json();
+
+                messageApi.success({
+                    content: "Knowledge base loaded",
+                    duration: 1,
+                });
+
                 setKnowledgeBase(data);
             } catch (error) {
+                const errMessage = (error as Error).message;
                 console.error("Error fetching knowledge base:", error);
+                messageApi.error({
+                    content: errMessage,
+                    duration: 2,
+                });
             }
         };
 
@@ -148,16 +143,9 @@ const AssistantCard = ({
         e.stopPropagation();
         setIsMenuOpen(false);
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistant.id}/export_conversations`,
-                {
-                    credentials: "include",
-                }
+            const blob = await assistantApi.exportFileConversations(
+                assistant.id
             );
-            if (!response.ok) {
-                throw new Error("Failed to export conversations");
-            }
-            const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -165,7 +153,12 @@ const AssistantCard = ({
             a.click();
             window.URL.revokeObjectURL(url);
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error("Error exporting conversations:", error);
+            messageApi.error({
+                content: errMessage,
+                duration: 2,
+            });
         }
     };
 
@@ -186,41 +179,27 @@ const AssistantCard = ({
                     </div>
                 )}
             </div>
-            <div className="p-4 flex justify-around items-center border gap-4">
-                <div className="border-2 p-3 rounded-lg border-green-200 w-full h-full">
+            <div className="p-4 flex items-center border gap-4">
+                <div className="border-2 p-4 rounded-lg border-green-200 flex-1">
                     <Tooltip title="Tên trợ lý">
                         <h3 className="font-semibold text-lg text-gray-800 truncate">
                             {assistant.name}
                         </h3>
                     </Tooltip>
                     <Tooltip title="Mô tả về trợ lý">
-                        <p className="text-gray-600 text-sm mt-1 truncate">
+                        <p className="text-gray-600 text-sm mt-2 truncate">
                             {assistant.description}
                         </p>
                     </Tooltip>
                 </div>
-                <div className="flex items-center flex-col text-gray-700 text-sm mt-2 gap-4">
-                    <Popover
-                        content={<div>{"Sao chép AssistantID"}</div>}
-                        className=""
-                    >
-                        <Button
-                            className="w-full border-gray-500"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(assistant.id);
-                                messageApi.success({
-                                    content: "Copied AssistantID",
-                                    duration: 1,
-                                });
-                            }}
-                            icon={<IdCard size={16} />}
-                        >
-                            <span className="font-medium">{"AssistantID"}</span>
-                        </Button>
-                    </Popover>
-
-                    <div>
+                <div className="flex items-center flex-col text-gray-700 text-sm mt-2 gap-4 w-[50%]">
+                    <div className="w-full">
+                        <UpdateAssistantModal
+                            selectedAssistant={assistant}
+                            agentChoices={agentChoices}
+                        />
+                    </div>
+                    <div className="w-full">
                         <AddToolsModal
                             icon={<Settings size={16} />}
                             buttonTitle="Chỉnh tools"
@@ -230,6 +209,7 @@ const AssistantCard = ({
                     </div>
                 </div>
             </div>
+
             <div className="px-4 pt-2 pb-4">
                 <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
                     <Cpu size={16} className="inline mr-1" />
@@ -282,10 +262,12 @@ const AssistantCards = ({
     assistants,
     onSelect,
     onDelete,
+    agentsChoices,
 }: {
     assistants: IAssistant[];
     onSelect: (assistant: IAssistant) => void;
     onDelete: (assistantId: string) => void;
+    agentsChoices: { value: string; label: string }[];
 }) => {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -295,6 +277,7 @@ const AssistantCards = ({
                     assistant={assistant}
                     onSelect={onSelect}
                     onDelete={onDelete}
+                    agentChoices={agentsChoices}
                 />
             ))}
         </div>

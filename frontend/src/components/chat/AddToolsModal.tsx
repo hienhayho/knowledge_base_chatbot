@@ -14,6 +14,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { Rocket, MoveRight, Info } from "lucide-react";
 import DetailToolTip from "../DetailToolTip";
+import { assistantEndpoints, toolsEndpoints } from "@/endpoints";
 
 interface Item {
     id: string;
@@ -55,16 +56,13 @@ const AddToolsModal = ({
     useEffect(() => {
         const fetchTools = async () => {
             try {
-                const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/tools`,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        credentials: "include",
-                    }
-                );
+                const response = await fetch(toolsEndpoints.fetchTools, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: "include",
+                });
                 if (!response.ok) {
                     throw new Error("Failed to fetch tools");
                 }
@@ -77,7 +75,7 @@ const AddToolsModal = ({
                 const choosenTools: Item[] = [];
                 if (assistantId) {
                     const response = await fetch(
-                        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/assistant/${assistantId}`,
+                        assistantEndpoints.fetchAssistant(assistantId),
                         {
                             method: "GET",
                             headers: {
@@ -192,7 +190,7 @@ const AddToolsModal = ({
         try {
             setIsUpdatingTools(true);
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/assistant/${assistantId}/tools`,
+                assistantEndpoints.updateTools(assistantId),
                 {
                     method: "POST",
                     headers: {
@@ -241,9 +239,10 @@ const AddToolsModal = ({
                     icon={icon}
                     style={{
                         borderColor: "gray",
+                        width: "100%",
                     }}
                 >
-                    <span className="font-medium">
+                    <span className="font-medium truncate">
                         {buttonTitle || "Thêm tools"}
                     </span>
                 </Button>

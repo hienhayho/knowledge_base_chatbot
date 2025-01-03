@@ -2,8 +2,7 @@ import { useState } from "react";
 import { FolderPen, Trash2, MessageSquare, Download } from "lucide-react";
 import { Popover, Row, Col, message, Input, Button } from "antd";
 import { IAssistant, IConversation } from "@/types";
-
-const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
+import { assistantEndpoints } from "@/endpoints";
 
 const ConversationCard = ({
     conversation,
@@ -50,7 +49,10 @@ const ConversationCard = ({
     const handleRenameConversation = (conversationId: string) => async () => {
         try {
             const response = await fetch(
-                `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/conversations/${conversationId}/rename`,
+                assistantEndpoints.renameConversation(
+                    selectedAssistant?.id,
+                    conversationId
+                ),
                 {
                     method: "PATCH",
                     headers: {
@@ -91,7 +93,10 @@ const ConversationCard = ({
         try {
             setIsDeleting(true);
             const response = await fetch(
-                `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/conversations/${conversationId}`,
+                assistantEndpoints.deleteConversation(
+                    selectedAssistant?.id,
+                    conversationId
+                ),
                 {
                     method: "DELETE",
                     credentials: "include",
@@ -121,7 +126,10 @@ const ConversationCard = ({
     const handleExportConversation = (conversationId: string) => async () => {
         try {
             const response = await fetch(
-                `${BASE_API_URL}/api/assistant/${selectedAssistant?.id}/export/${conversationId}`,
+                assistantEndpoints.exportConversation(
+                    selectedAssistant?.id,
+                    conversationId
+                ),
                 {
                     method: "GET",
                     credentials: "include",

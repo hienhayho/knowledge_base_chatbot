@@ -1,5 +1,24 @@
 import { INavItem } from "./types";
 
+export const ALLOWED_FILE_TYPES = [
+    ".docx",
+    ".hwp",
+    ".pdf",
+    ".epub",
+    ".txt",
+    ".html",
+    ".htm",
+    ".ipynb",
+    ".md",
+    ".mbox",
+    ".pptx",
+    ".csv",
+    ".xlsx",
+    ".xml",
+    ".rtf",
+    ".mp4",
+];
+
 export const userNavItems: INavItem[] = [
     {
         name: "Knowledge Base",

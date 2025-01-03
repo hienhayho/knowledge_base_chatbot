@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import LoadingClipLoader from "@/components/LoadingClipLoader";
 import { message, Popover } from "antd";
 import { getNow } from "@/utils/formatDate";
+import { assistantEndpoints } from "@/endpoints";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -51,7 +52,10 @@ const JsonChatArea = ({
     const fetchConversationHistory = async () => {
         try {
             const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/history`,
+                assistantEndpoints.fetchConversationHistory(
+                    assistantId,
+                    conversation.id
+                ),
                 {
                     headers: {
                         "Content-Type": "application/json",
@@ -86,7 +90,7 @@ const JsonChatArea = ({
 
         try {
             const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/messages`,
+                assistantEndpoints.sendMessage(assistantId, conversation.id),
                 {
                     method: "POST",
                     headers: {
@@ -305,7 +309,9 @@ const JsonChatArea = ({
                                             return;
                                         }
                                         navigator.clipboard.writeText(
-                                            `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/production_messages`
+                                            assistantEndpoints.productionMessage(
+                                                conversation.id
+                                            )
                                         );
                                         messageApi.open({
                                             type: "success",

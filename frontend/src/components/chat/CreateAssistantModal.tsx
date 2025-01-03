@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { X, Info } from "lucide-react";
 import { message, Input } from "antd";
+import { IKnowledgeBase } from "@/types";
+import { assistantEndpoints, knowledgeBaseEndpoints } from "@/endpoints";
 
 const { TextArea } = Input;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-interface IKnowledgeBase {
-    id: string;
-    name: string;
-}
 
 const CreateAssistantModal = ({
     isOpen,
@@ -56,9 +53,12 @@ const CreateAssistantModal = ({
 
     const fetchKnowledgeBases = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/kb/get_all`, {
-                credentials: "include",
-            });
+            const response = await fetch(
+                knowledgeBaseEndpoints.fetchKnowledgeBases,
+                {
+                    credentials: "include",
+                }
+            );
             if (response.ok) {
                 const data = await response.json();
                 setKnowledgeBases(data);
@@ -91,7 +91,7 @@ const CreateAssistantModal = ({
             },
         };
         try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant`, {
+            const response = await fetch(assistantEndpoints.createAssistant, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -163,7 +163,7 @@ const CreateAssistantModal = ({
 
                 <div className="p-6 space-y-2">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
                             Assistant name{" "}
                             <span className="text-red-500">*</span>
                         </label>
@@ -175,7 +175,7 @@ const CreateAssistantModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 my-2">
+                        <label className="block text-sm font-bold text-gray-700 my-2">
                             Description{" "}
                         </label>
                         <TextArea
@@ -184,7 +184,7 @@ const CreateAssistantModal = ({
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="e.g A helpful assistant for math problem"
                         />
-                        <label className="block text-sm font-medium text-gray-700 my-2">
+                        <label className="block text-sm font-bold text-gray-700 my-2">
                             {
                                 "Nhập vào những lưu ý cho trợ lý khi trả lời trong phạm vi knowledge base này"
                             }
@@ -197,7 +197,7 @@ const CreateAssistantModal = ({
                             }
                             placeholder="e.g. I don't want you to talk about my personal life"
                         />
-                        <label className="block text-sm font-medium text-gray-700 my-2">
+                        <label className="block text-sm font-bold text-gray-700 my-2">
                             {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}
                         </label>
                         <TextArea
@@ -209,7 +209,7 @@ const CreateAssistantModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-bold text-gray-700">
                             Model <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -222,7 +222,7 @@ const CreateAssistantModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-bold text-gray-700">
                             Knowledgebases{" "}
                             <span className="text-red-500">*</span>{" "}
                             <Info className="inline-block w-4 h-4 text-gray-400" />

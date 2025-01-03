@@ -5,15 +5,9 @@ import { Select, Button, message } from "antd";
 import { Download, Rocket } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Image from "next/image";
-
-interface SelectOption {
-    value: string;
-    label: string;
-}
-
-type WordCloudSource = "Knowledge Base" | "Assistant" | "Conversation" | "";
-
-const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
+import { SelectOption, WordCloudSource } from "@/types";
+import { dashboardEndpoints } from "@/endpoints";
+import { dashboardApi } from "@/api";
 
 const WordcloudPage = () => {
     const [loading, setLoading] = useState<boolean>(false);
@@ -76,20 +70,9 @@ const WordcloudPage = () => {
 
     const handleFetchOption = async (source: WordCloudSource) => {
         try {
-            const response = await fetch(
-                `${BASE_API_URL}/api/dashboard/${wordCloudSourceMap[source]}`,
-                {
-                    credentials: "include",
-                }
+            const data = await dashboardApi.fetchOptions(
+                wordCloudSourceMap[source]
             );
-            const data = await response.json();
-            if (!response.ok) {
-                errorMessage({
-                    content: data?.detail || "Something wrong happened !!!",
-                });
-                return;
-            }
-
             setOptions(
                 data.map((item: { id: string; name: string }) => ({
                     value: item.id,
@@ -126,16 +109,25 @@ const WordcloudPage = () => {
 
             setLoading(true);
 
-            const userWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=true`;
-            const assistantWordCloudUrl = `${BASE_API_URL}/api/dashboard/wordcloud/${createWordCloudMap[source]}/${selectedOption.value}?is_user=false`;
-
             const [userResponse, assistantResponse] = await Promise.all([
-                fetch(userWordCloudUrl, {
-                    credentials: "include",
-                }),
-                fetch(assistantWordCloudUrl, {
-                    credentials: "include",
-                }),
+                await fetch(
+                    dashboardEndpoints.userWordCloudUrl(
+                        createWordCloudMap[source],
+                        selectedOption.value
+                    ),
+                    {
+                        credentials: "include",
+                    }
+                ),
+                await fetch(
+                    dashboardEndpoints.assistantWordCloudUrl(
+                        createWordCloudMap[source],
+                        selectedOption.value
+                    ),
+                    {
+                        credentials: "include",
+                    }
+                ),
             ]);
 
             if (!userResponse.ok) {
