@@ -6,7 +6,7 @@ import {
     IMergeableKnowledgeBase,
     IMergeableKnowledgeBaseResponse,
 } from "@/types";
-import { knowledgeBaseEndpoints } from "@/endpoints";
+import { knowledgeBaseApi } from "@/api";
 
 const KnowledgeBaseCard = ({
     title,
@@ -67,70 +67,34 @@ const KnowledgeBaseCard = ({
     const fetchKnowledgeBases = async (kbId: string) => {
         setLoading(true);
         try {
-            const response = await fetch(
-                knowledgeBaseEndpoints.fetchKnowledgeBase(kbId),
-                {
-                    method: "GET",
-                    credentials: "include",
-                }
-            );
+            const data: IMergeableKnowledgeBaseResponse =
+                await knowledgeBaseApi.fetchKnowledgeBase(kbId);
 
-            const data: IMergeableKnowledgeBaseResponse = await response.json();
-
-            if (!response.ok) {
-                errorMessage({
-                    content:
-                        data.detail ||
-                        "Failed to fetch mergeable knowledge bases",
-                });
-                console.error("Failed to fetch mergeable knowledge bases");
-                return;
-            }
             setIsHasParent(data.parents.length > 0);
             setInheritableKnowledgeBases(data.inheritable_knowledge_bases);
         } catch (error) {
+            const errMessage = (error as Error).message;
             errorMessage({
-                content: "Failed to fetch mergeable knowledge bases",
+                content: errMessage,
             });
             console.error("Failed to fetch mergeable knowledge bases", error);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleInheritKnowledgeBase = async () => {
         try {
-            const response = await fetch(
-                knowledgeBaseEndpoints.inheritKNowledgeBase,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        source_knowledge_base_id: selectedKbId,
-                        target_knowledge_base_id: kb_id,
-                    }),
-                }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                errorMessage({
-                    content: data.detail || "Failed to inherit knowledge base",
-                });
-                console.error("Failed to inherit knowledge base");
-                return;
-            }
+            await knowledgeBaseApi.inheritKnowledgeBase(selectedKbId!, kb_id);
 
             successMessage({
                 content: "Knowledge base inherited successfully",
                 duration: 2,
             });
         } catch (error) {
+            const errMessage = (error as Error).message;
             errorMessage({
-                content: "Failed to inherit knowledge base",
+                content: errMessage,
             });
             console.error("Failed to inherit knowledge base", error);
         }

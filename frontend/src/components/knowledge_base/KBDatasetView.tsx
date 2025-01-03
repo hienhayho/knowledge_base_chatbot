@@ -19,7 +19,6 @@ import ErrorComponent from "@/components/Error";
 import { useRouter } from "next/navigation";
 import { message, Popconfirm, Tooltip } from "antd";
 import { formatDate } from "@/utils";
-import { knowledgeBaseEndpoints } from "@/endpoints";
 import { ALLOWED_FILE_TYPES } from "@/constants";
 import { knowledgeBaseApi } from "@/api";
 import { IUploadFile } from "@/types";

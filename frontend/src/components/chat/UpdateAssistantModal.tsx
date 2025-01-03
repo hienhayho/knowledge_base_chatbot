@@ -3,7 +3,7 @@ import DetailToolTip from "../DetailToolTip";
 import { Info, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { IAssistant } from "@/types";
-import { assistantEndpoints } from "@/endpoints";
+import { assistantApi } from "@/api";
 
 const { TextArea } = Input;
 
@@ -57,43 +57,29 @@ const UpdateAssistantModal = ({
                 return;
             }
             setIsUpdatingPrompt(true);
-            const response = await fetch(
-                assistantEndpoints.updateAssistant(selectedAssistant.id),
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        instruct_prompt: instructPrompt,
-                        agent_backstory: agentBackstory,
-                        agent_type: selectedAgent,
-                    }),
-                }
+
+            await assistantApi.updateAssistant(
+                selectedAssistant.id,
+                instructPrompt,
+                agentBackstory,
+                selectedAgent
             );
-            if (response.ok) {
-                if (!selectedAssistant) {
-                    errorMessage("No assistant selected");
-                    setIsModalOpen(false);
-                    return;
-                }
-                successMessage("Updated assistant successfully");
-                setTimeout(() => {
-                    if (setSelectedAssistant) {
-                        setSelectedAssistant({
-                            ...selectedAssistant,
-                            instruct_prompt: instructPrompt,
-                            agent_backstory: agentBackstory,
-                            agent_type: selectedAgent,
-                        });
-                    }
-                    setIsModalOpen(false);
-                }, 1000);
+
+            successMessage("Updated assistant successfully");
+
+            if (setSelectedAssistant) {
+                setSelectedAssistant({
+                    ...selectedAssistant,
+                    instruct_prompt: instructPrompt,
+                    agent_backstory: agentBackstory,
+                    agent_type: selectedAgent,
+                });
             }
+            setIsModalOpen(false);
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error(error);
-            errorMessage(`Update failed. Error: ${(error as Error).message}`);
+            errorMessage(errMessage);
             setIsModalOpen(false);
         } finally {
             setIsUpdatingPrompt(false);
@@ -157,6 +143,7 @@ const UpdateAssistantModal = ({
                         {"Chọn loại agent:"}
                     </label>
                     <Select
+                        showSearch
                         defaultValue={selectedAgent}
                         style={{ width: "30%" }}
                         onChange={handleSelectAgent}

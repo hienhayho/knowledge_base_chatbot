@@ -14,7 +14,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { Rocket, MoveRight, Info } from "lucide-react";
 import DetailToolTip from "../DetailToolTip";
-import { assistantEndpoints, toolsEndpoints } from "@/endpoints";
+import { assistantApi, toolsApi } from "@/api";
 
 interface Item {
     id: string;
@@ -56,17 +56,8 @@ const AddToolsModal = ({
     useEffect(() => {
         const fetchTools = async () => {
             try {
-                const response = await fetch(toolsEndpoints.fetchTools, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                });
-                if (!response.ok) {
-                    throw new Error("Failed to fetch tools");
-                }
-                const data = await response.json();
+                const data = await toolsApi.fetchTools();
+
                 const tools: Tool[] = data.tools.map((tool: string) => ({
                     id: uuidv4(),
                     name: tool,
@@ -74,20 +65,9 @@ const AddToolsModal = ({
 
                 const choosenTools: Item[] = [];
                 if (assistantId) {
-                    const response = await fetch(
-                        assistantEndpoints.fetchAssistant(assistantId),
-                        {
-                            method: "GET",
-                            headers: {
-                                "Content-Type": "application/json",
-                            },
-                            credentials: "include",
-                        }
+                    const dataAssistant = await assistantApi.fetchAssistant(
+                        assistantId
                     );
-                    if (!response.ok) {
-                        throw new Error("Failed to fetch assistant tools");
-                    }
-                    const dataAssistant = await response.json();
                     // Get all keys from dataAssistant.tools
                     const toolsName = Object.keys(dataAssistant.tools);
                     toolsName.forEach((tool: string) => {
@@ -103,7 +83,7 @@ const AddToolsModal = ({
                         });
                     });
                 }
-                console.log(choosenTools);
+
                 const choosableTools = tools.map((tool) => {
                     if (choosenTools.some((t) => t.name === tool.name)) {
                         return null;
@@ -118,7 +98,12 @@ const AddToolsModal = ({
                 setChoosenTools(choosenTools);
                 setExistTools(tools);
             } catch (error) {
+                const errMessage = (error as Error).message;
                 console.error(error);
+                messageApi.error({
+                    content: errMessage,
+                    duration: 0.5,
+                });
             }
         };
         fetchTools();
@@ -189,23 +174,9 @@ const AddToolsModal = ({
         });
         try {
             setIsUpdatingTools(true);
-            const response = await fetch(
-                assistantEndpoints.updateTools(assistantId),
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        tools: updatedTools,
-                    }),
-                }
-            );
 
-            if (!response.ok) {
-                throw new Error("Failed to update tools");
-            }
+            await assistantApi.updateTools(assistantId, updatedTools);
+
             messageApi.success({
                 content: "Updated tools successfully",
                 duration: 0.5,

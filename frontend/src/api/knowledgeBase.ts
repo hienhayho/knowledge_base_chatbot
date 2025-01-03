@@ -36,6 +36,31 @@ export const fetchKnowledgeBase = async (id?: string) => {
     return data;
 };
 
+export const inheritKnowledgeBase = async (
+    source_knowledge_base_id?: string,
+    target_knowledge_base_id?: string
+) => {
+    const response = await fetch(knowledgeBaseEndpoints.inheritKNowledgeBase, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+            source_knowledge_base_id,
+            target_knowledge_base_id,
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to inherit knowledge base");
+    }
+
+    return data;
+};
+
 export const uploadToKnowledgeBase = async (kbId: string, body: FormData) => {
     const response = await fetch(
         knowledgeBaseEndpoints.uploadToKnowledgeBase(kbId),

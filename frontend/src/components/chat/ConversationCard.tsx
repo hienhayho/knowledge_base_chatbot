@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FolderPen, Trash2, MessageSquare, Download } from "lucide-react";
 import { Popover, Row, Col, message, Input, Button } from "antd";
 import { IAssistant, IConversation } from "@/types";
-import { assistantEndpoints } from "@/endpoints";
+import { assistantApi } from "@/api";
 
 const ConversationCard = ({
     conversation,
@@ -48,35 +48,23 @@ const ConversationCard = ({
 
     const handleRenameConversation = (conversationId: string) => async () => {
         try {
-            const response = await fetch(
-                assistantEndpoints.renameConversation(
-                    selectedAssistant?.id,
-                    conversationId
-                ),
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({ name: newName }),
-                }
+            await assistantApi.renameConversation(
+                selectedAssistant.id,
+                conversationId,
+                newName
             );
-            if (response.ok) {
-                successMessage("Conversation renamed successfully");
-                setTimeout(() => {
-                    setConversations(
-                        conversations.map((conversation) =>
-                            conversation.id === conversationId
-                                ? { ...conversation, name: newName }
-                                : conversation
-                        )
-                    );
-                }, 1000);
-            }
+            successMessage("Conversation renamed successfully");
+            setConversations(
+                conversations.map((conversation) =>
+                    conversation.id === conversationId
+                        ? { ...conversation, name: newName }
+                        : conversation
+                )
+            );
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error(error);
-            errorMessage(`Rename failed. Error: ${(error as Error).message}`);
+            errorMessage(errMessage);
         }
     };
 
@@ -92,32 +80,25 @@ const ConversationCard = ({
     const handleDeleteConversation = (conversationId: string) => async () => {
         try {
             setIsDeleting(true);
-            const response = await fetch(
-                assistantEndpoints.deleteConversation(
-                    selectedAssistant?.id,
-                    conversationId
-                ),
-                {
-                    method: "DELETE",
-                    credentials: "include",
-                }
+
+            await assistantApi.deleteConversation(
+                selectedAssistant.id,
+                conversationId
             );
-            if (response.ok) {
-                successMessage("Conversation deleted successfully");
-                setTimeout(() => {
-                    setConversations(
-                        conversations.filter(
-                            (conversation) => conversation.id !== conversationId
-                        )
-                    );
-                    if (conversation && conversation.id === conversationId) {
-                        onConversationSelect(null);
-                    }
-                }, 1000);
+
+            successMessage("Conversation deleted successfully");
+            setConversations(
+                conversations.filter(
+                    (conversation) => conversation.id !== conversationId
+                )
+            );
+            if (conversation && conversation.id === conversationId) {
+                onConversationSelect(null);
             }
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error(error);
-            errorMessage(`Delete failed. Error: ${(error as Error).message}`);
+            errorMessage(errMessage);
         } finally {
             setIsDeleting(false);
         }
@@ -125,27 +106,18 @@ const ConversationCard = ({
 
     const handleExportConversation = (conversationId: string) => async () => {
         try {
-            const response = await fetch(
-                assistantEndpoints.exportConversation(
-                    selectedAssistant?.id,
-                    conversationId
-                ),
-                {
-                    method: "GET",
-                    credentials: "include",
-                }
+            const blob = await assistantApi.exportConversation(
+                selectedAssistant.id,
+                conversationId
             );
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `${conversationId}.json`;
-                a.click();
-                window.URL.revokeObjectURL(url);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${conversationId}.json`;
+            a.click();
+            window.URL.revokeObjectURL(url);
 
-                successMessage("Conversation exported successfully");
-            }
+            successMessage("Conversation exported successfully");
         } catch (error) {
             console.error(error);
             errorMessage(`Export failed. Error: ${(error as Error).message}`);

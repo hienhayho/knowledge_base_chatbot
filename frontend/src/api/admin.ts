@@ -18,6 +18,27 @@ export const getUsers = async () => {
     return data;
 };
 
+export const updateUser = async (userId: string, organization: string) => {
+    const response = await fetch(adminEndpoints.editUser(userId), {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+            organization,
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to update user");
+    }
+
+    return data;
+};
+
 export const fetchTokens = async () => {
     const respose = await fetch(adminEndpoints.fetchTokens, {
         headers: {

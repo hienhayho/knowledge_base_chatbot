@@ -41,6 +41,15 @@ export interface ICreateKnowledgeBase {
     is_contextual_rag: boolean;
 }
 
+export interface ICreateAssistant {
+    name: string;
+    description: string;
+    instruct_prompt: string;
+    knowledge_base_id: string;
+    agent_backstory: string;
+    configuration: Record<string, string | number>;
+}
+
 export interface IDashBoardResponse {
     file_name: string;
     file_conversation_name: string;

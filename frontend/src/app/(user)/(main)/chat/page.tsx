@@ -68,8 +68,7 @@ const ChatMainPage = () => {
 
     useEffect(() => {
         setIsLoading(true);
-        fetchAssistants();
-        fetchAllAgentsChoices();
+        Promise.all([fetchAssistants(), fetchAllAgentsChoices()]);
         setIsLoading(false);
     }, [redirectUrl, router]);
 
@@ -151,6 +150,7 @@ const ChatMainPage = () => {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onCreateSuccess={fetchAssistants}
+                agentChoices={agentsChoices}
             />
         </div>
     );
