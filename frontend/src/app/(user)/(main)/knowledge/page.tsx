@@ -13,8 +13,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { knowledgeBaseApi } from "@/api";
 import { ICreateKnowledgeBase, IKnowledgeBase } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
 const KnowledgeBasePage: React.FC = () => {
     const [knowledgeBases, setKnowledgeBases] = useState<IKnowledgeBase[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -64,12 +62,13 @@ const KnowledgeBasePage: React.FC = () => {
                 });
 
                 setKnowledgeBases(data);
-                setIsLoading(false);
             } catch (err) {
+                const errMessage = (err as Error).message;
                 errorMessage({
-                    content: (err as Error).message,
+                    content: errMessage,
                 });
-                setError((err as Error).message);
+                setError(errMessage);
+            } finally {
                 setIsLoading(false);
             }
         };
@@ -91,9 +90,10 @@ const KnowledgeBasePage: React.FC = () => {
 
             setKnowledgeBases([newKnowledgeBase, ...knowledgeBases]);
         } catch (err) {
+            const errMessage = (err as Error).message;
             console.error("Error creating knowledge base:", err);
             errorMessage({
-                content: "Failed to create knowledge base",
+                content: errMessage,
             });
         }
     };
@@ -106,22 +106,8 @@ const KnowledgeBasePage: React.FC = () => {
                 duration: 0,
             });
 
-            const response = await fetch(
-                `${API_BASE_URL}/api/kb/delete_kb/${id}`,
-                {
-                    method: "DELETE",
-                    credentials: "include",
-                }
-            );
-
+            await knowledgeBaseApi.deleteKnowledgeBase(id);
             messageApi.destroy();
-
-            if (!response.ok) {
-                errorMessage({
-                    content: "Failed to delete knowledge base",
-                });
-                return;
-            }
 
             setKnowledgeBases(knowledgeBases.filter((kb) => kb.id !== id));
 
@@ -129,9 +115,10 @@ const KnowledgeBasePage: React.FC = () => {
                 content: "Deleted successfully",
             });
         } catch (err) {
+            const errMessage = (err as Error).message;
             console.error("Error deleting knowledge base:", err);
             errorMessage({
-                content: "Failed to delete knowledge base",
+                content: errMessage,
             });
         }
     };

@@ -1,6 +1,6 @@
 "use client";
 
-import { LockOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "@/hooks/auth";
 import {
     IAdminSwitchUserResponse,
@@ -9,22 +9,17 @@ import {
     SignUpFormValues,
 } from "@/types";
 import {
-    Button,
     Form,
     FormProps,
     Input,
-    InputRef,
     message,
     Popconfirm,
     Space,
     Table,
-    TableColumnType,
     Tag,
     Tooltip,
 } from "antd";
-import Highlighter from "react-highlight-words";
-import { useEffect, useRef, useState } from "react";
-import { FilterDropdownProps } from "antd/es/table/interface";
+import { useEffect, useState } from "react";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import {
     Mail,
@@ -41,16 +36,13 @@ import { setCookie } from "cookies-next";
 import { formatDate } from "@/utils";
 import DetailToolTip from "@/components/DetailToolTip";
 import EditUserModal from "@/components/admin/EditUser";
-
-type DataIndex = keyof IUser;
+import { Key } from "antd/es/table/interface";
 
 const AdminUserPage = () => {
     const { changeUser } = useAuth();
     const [loadingPage, setLoadingPage] = useState(true);
     const [users, setUsers] = useState<IUser[]>([]);
     const [searchText, setSearchText] = useState("");
-    const [searchedColumn, setSearchedColumn] = useState("");
-    const searchInput = useRef<InputRef>(null);
     const [messageApi, contextHolder] = message.useMessage();
     const [open, setOpen] = useState<boolean>(false);
     const [loadingRegister, setLoadingRegister] = useState<boolean>(false);
@@ -59,23 +51,7 @@ const AdminUserPage = () => {
     useEffect(() => {
         const fetchAllUser = async () => {
             try {
-                const respone = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/users`,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        credentials: "include",
-                    }
-                );
-
-                const data = await respone.json();
-
-                if (!respone.ok) {
-                    throw new Error(data.detail || "Failed to fetch users");
-                }
-
-                console.log(data);
+                const data = await adminApi.getUsers();
 
                 messageApi.success("Lấy thông tin người dùng thành công");
 
@@ -91,8 +67,9 @@ const AdminUserPage = () => {
                     }))
                 );
             } catch (error) {
+                const errMessage = (error as Error).message;
                 console.error("Lấy thông tin người dùng thất bại", error);
-                messageApi.error((error as Error).message);
+                messageApi.error(errMessage);
             } finally {
                 setLoadingPage(false);
             }
@@ -100,38 +77,9 @@ const AdminUserPage = () => {
         fetchAllUser();
     }, []);
 
-    const handleSearch = (
-        selectedKeys: string[],
-        confirm: FilterDropdownProps["confirm"],
-        dataIndex: DataIndex
-    ) => {
-        confirm();
-        setSearchText(selectedKeys[0]);
-        setSearchedColumn(dataIndex);
-    };
-
-    const handleReset = (clearFilters: () => void) => {
-        clearFilters();
-        setSearchText("");
-    };
-
     const deleteUser = async (id: string) => {
         try {
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/users/${id}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                }
-            );
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.detail || "Failed to delete user");
-            }
+            await adminApi.deleteUser(id);
 
             messageApi.success("Xóa người dùng thành công");
             setUsers(users.filter((user) => user.id !== id));
@@ -171,132 +119,35 @@ const AdminUserPage = () => {
         }
     };
 
-    const getColumnSearchProps = (
-        dataIndex: DataIndex,
-        renderFunction?: (text: string) => JSX.Element
-    ): TableColumnType<IUser> => ({
-        filterDropdown: ({
-            setSelectedKeys,
-            selectedKeys,
-            confirm,
-            clearFilters,
-            close,
-        }) => (
-            <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
-                <Input
-                    ref={searchInput}
-                    placeholder={`Search ${dataIndex}`}
-                    value={selectedKeys[0]}
-                    onChange={(e) =>
-                        setSelectedKeys(e.target.value ? [e.target.value] : [])
-                    }
-                    onPressEnter={() =>
-                        handleSearch(
-                            selectedKeys as string[],
-                            confirm,
-                            dataIndex
-                        )
-                    }
-                    style={{ marginBottom: 8, display: "block" }}
-                />
-                <Space>
-                    <Button
-                        type="primary"
-                        onClick={() =>
-                            handleSearch(
-                                selectedKeys as string[],
-                                confirm,
-                                dataIndex
-                            )
-                        }
-                        icon={<SearchOutlined />}
-                        size="small"
-                        style={{ width: 90 }}
-                    >
-                        Search
-                    </Button>
-                    <Button
-                        onClick={() =>
-                            clearFilters && handleReset(clearFilters)
-                        }
-                        size="small"
-                        style={{ width: 90 }}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={() => {
-                            confirm({ closeDropdown: false });
-                            setSearchText((selectedKeys as string[])[0]);
-                            setSearchedColumn(dataIndex);
-                        }}
-                    >
-                        Filter
-                    </Button>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={() => {
-                            close();
-                        }}
-                    >
-                        close
-                    </Button>
-                </Space>
-            </div>
-        ),
-        filterIcon: (filtered: boolean) => (
-            <SearchOutlined
-                style={{ color: filtered ? "#1677ff" : undefined }}
-            />
-        ),
-        onFilter: (value, record) =>
-            record[dataIndex]
-                ? record[dataIndex]
-                      .toString()
-                      .toLowerCase()
-                      .includes((value as string).toLowerCase())
-                : false,
-
-        // @ts-expect-error - Not sure why antd is throwing an error here
-        filterDropdownProps: {
-            onOpenChange(open: boolean) {
-                if (open) {
-                    setTimeout(() => searchInput.current?.select(), 100);
-                }
-            },
-        },
-
-        render: (text) =>
-            searchedColumn === dataIndex ? (
-                <Highlighter
-                    highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
-                    searchWords={[searchText]}
-                    autoEscape
-                    textToHighlight={text ? text.toString() : ""}
-                />
-            ) : renderFunction ? (
-                renderFunction(text)
-            ) : (
-                text
-            ),
-    });
-
     const columns = [
         {
             title: "Tên đăng nhập",
             dataIndex: "username",
             key: "username",
-            ...getColumnSearchProps("username", (text: string) => (
+            filteredValue: searchText ? [searchText] : null,
+            onFilter: (value: Key | boolean, record: IUser) => {
+                return (
+                    record.username
+                        .toLowerCase()
+                        .includes((value as string).toLowerCase()) ||
+                    (record.organization &&
+                        record.organization
+                            .toLowerCase()
+                            .includes((value as string).toLowerCase())) ||
+                    record.role
+                        .toLowerCase()
+                        .includes((value as string).toLowerCase())
+                );
+            },
+
+            render: (text: string) => (
                 <div className="flex items-center ml-2">
                     <span className="text-cyan-500 font-semibold">{text}</span>
                 </div>
-            )),
+            ),
         },
         {
-            title: "Organization",
+            title: "Tổ chức",
             dataIndex: "organization",
             key: "organization",
             render: (text: string) => (
@@ -309,7 +160,7 @@ const AdminUserPage = () => {
             title: "Quyền",
             dataIndex: "role",
             key: "role",
-            ...getColumnSearchProps("role", (text: string) => {
+            render: (text: string) => {
                 let color;
                 if (text === "user") {
                     color = "green";
@@ -317,7 +168,7 @@ const AdminUserPage = () => {
                     color = "red";
                 }
                 return <Tag color={color}>{text.toUpperCase()}</Tag>;
-            }),
+            },
         },
         {
             title: "Thời gian tạo",
@@ -622,10 +473,10 @@ const AdminUserPage = () => {
     }
 
     return (
-        <div className="w-[90%] border shadow-sm rounded-lg mx-auto">
+        <div className="w-[90%] max-w-7xl border shadow-sm rounded-lg mx-auto px-4 md:px-6">
             {contextHolder}
-            <div className="flex justify-around my-5">
-                <span className="text-xl text-red-500 font-bold">
+            <div className="flex flex-col md:flex-row flex-wrap justify-between md:justify-around items-center my-5 gap-4">
+                <span className="text-lg md:text-xl text-red-500 font-bold text-center">
                     Người dùng
                 </span>
                 <AddModal
@@ -642,7 +493,30 @@ const AdminUserPage = () => {
                     submitButtonContent="Đăng ký người dùng"
                 />
             </div>
-            <Table<IUser> dataSource={users} columns={columns} />
+            <div className="overflow-x-auto">
+                <div className="flex mb-2 w-full md:max-w-[40%]">
+                    <Input.Search
+                        placeholder="Tìm theo tên đăng nhập, tên công ty, quyền..."
+                        onSearch={(value) => {
+                            setSearchText(value);
+                        }}
+                        onChange={(e) => {
+                            setSearchText(e.target.value);
+                        }}
+                    />
+                </div>
+
+                <Table<IUser>
+                    dataSource={users}
+                    columns={columns}
+                    pagination={{
+                        defaultPageSize: 10,
+                        showSizeChanger: true,
+                        pageSizeOptions: ["10", "20", "30"],
+                    }}
+                    scroll={{ x: "max-content", y: 55 * 8 }}
+                />
+            </div>
         </div>
     );
 };

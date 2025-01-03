@@ -1,8 +1,9 @@
 import { IUser, IUserUpdateFormValues } from "@/types";
 import { Modal, message, Input, Divider } from "antd";
+import DetailToolTip from "@/components/DetailToolTip";
 import { useState } from "react";
-import DetailToolTip from "../DetailToolTip";
 import { Info } from "lucide-react";
+import { adminApi } from "@/api";
 
 const EditUserModal = ({
     icon,
@@ -32,22 +33,9 @@ const EditUserModal = ({
     const handleOk = async () => {
         try {
             setIsUpdating(true);
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/admin/users/${user.id}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        organization: userUpdateForm.organization,
-                    }),
-                }
-            );
-            if (!response.ok) {
-                throw new Error("Failed to update user");
-            }
+
+            await adminApi.updateUser(user.id, userUpdateForm.organization);
+
             messageApi.success({
                 content: `Updated successfully !!!`,
                 duration: 1,
@@ -63,10 +51,9 @@ const EditUserModal = ({
                 )
             );
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error(error);
-            messageApi.error(
-                (error as Error).message || "Failed to update organization"
-            );
+            messageApi.error(errMessage);
         } finally {
             setIsModalOpen(false);
             setIsUpdating(false);

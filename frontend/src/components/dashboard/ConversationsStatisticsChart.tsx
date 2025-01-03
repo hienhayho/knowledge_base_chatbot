@@ -37,10 +37,8 @@ const ConversationsStatisticsChart: React.FC<
 
     useEffect(() => {
         if (chartRef.current) {
-            // Xóa biểu đồ cũ (nếu có) để tránh lỗi ghi đè
             ChartJS.getChart(chartRef.current)?.destroy();
 
-            // Tạo biểu đồ mới
             new ChartJS(chartRef.current, {
                 type: "bar",
                 data: {

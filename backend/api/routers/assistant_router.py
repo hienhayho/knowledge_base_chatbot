@@ -1,5 +1,6 @@
 import time
 import json
+import copy
 import pandas as pd
 
 from uuid import UUID
@@ -164,7 +165,17 @@ async def update_assistant(
 
     assistant.instruct_prompt = assistant_phrases.instruct_prompt
     assistant.agent_backstory = assistant_phrases.agent_backstory
+    config = copy.deepcopy(assistant.configuration)
 
+    config.update(
+        {
+            "agent_type": assistant_phrases.agent_type,
+        }
+    )
+
+    assistant.configuration = config
+
+    db_session.add(assistant)
     db_session.commit()
     db_session.refresh(assistant)
 

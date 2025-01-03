@@ -75,7 +75,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             pathname !== "/register" &&
             pathname !== "/admin/register"
         ) {
-            console.log("pathname", pathname);
             router.push(`/login?redirect=${redirectURL}`);
             setIsLoggedOut(true);
         }

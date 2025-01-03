@@ -11,8 +11,7 @@ import ErrorComponent from "@/components/Error";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { IAssistant, IConversation } from "@/types";
 import JsonChatArea from "@/components/chat/JsonChatArea";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
+import { agentApi, assistantApi } from "@/api";
 
 const ChatAssistantPage = () => {
     const router = useRouter();
@@ -20,7 +19,7 @@ const ChatAssistantPage = () => {
 
     const searchParams = useSearchParams();
 
-    const assistant_id = params.assistant_id;
+    const assistant_id = params.assistant_id as string;
     const conversation_id = searchParams.get("conversation");
 
     const [isSideView, setIsSideView] = useState(true);
@@ -29,6 +28,12 @@ const ChatAssistantPage = () => {
         useState<IAssistant | null>(null);
     const [selectedConversation, setSelectedConversation] =
         useState<IConversation | null>(null);
+    const [agentsChoices, setAgentsChoices] = useState<
+        {
+            value: string;
+            label: string;
+        }[]
+    >([]);
     const [sidebarWidth, setSidebarWidth] = useState(256);
     const [conversations, setConversations] = useState<IConversation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,19 +54,11 @@ const ChatAssistantPage = () => {
     useEffect(() => {
         const fetchAssistant = async () => {
             try {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/assistant/${assistant_id}`,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        credentials: "include",
-                    }
-                );
-                if (!response.ok) {
-                    throw new Error("Failed to fetch assistant");
-                }
-                const data = await response.json();
+                const data = await assistantApi.fetchAssistant(assistant_id);
+                messageApi.success({
+                    content: "Assistant loaded",
+                    duration: 1,
+                });
                 setSelectedAssistant(data);
                 setIsLoading(false);
             } catch (err) {
@@ -72,19 +69,9 @@ const ChatAssistantPage = () => {
 
         const fetchConversations = async () => {
             try {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/assistant/${assistant_id}/conversations`,
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        credentials: "include",
-                    }
+                const data = await assistantApi.fetchAssistantConversations(
+                    assistant_id
                 );
-                if (!response.ok) {
-                    throw new Error("Failed to fetch conversations");
-                }
-                const data = await response.json();
                 messageApi.success({
                     content: "Conversations loaded",
                     duration: 1,
@@ -101,8 +88,39 @@ const ChatAssistantPage = () => {
             }
         };
 
-        fetchAssistant();
-        fetchConversations();
+        const fetchAllAgentsChoices = async () => {
+            try {
+                const data = await agentApi.fetchAllAgentChoices();
+
+                const agents = data.agents;
+
+                setAgentsChoices(
+                    agents.map((agent: string) => ({
+                        value: agent,
+                        label: agent,
+                    }))
+                );
+
+                messageApi.success({
+                    content: "Successfully fetched agents",
+                    duration: 1,
+                });
+            } catch (error) {
+                messageApi.error({
+                    content:
+                        (error as Error).message ||
+                        "Failed to fetch agents choices",
+                    duration: 1,
+                });
+                setError((error as Error).message);
+            }
+        };
+
+        Promise.all([
+            fetchAssistant(),
+            fetchConversations(),
+            fetchAllAgentsChoices(),
+        ]);
     }, [assistant_id, redirectUrl, router]);
 
     const handleConversationSelect = (conversation: IConversation | null) => {
@@ -116,22 +134,9 @@ const ChatAssistantPage = () => {
 
     const handleCreateConversation = async () => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistant_id}/conversations`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                }
+            const newConversation = await assistantApi.createConversation(
+                assistant_id
             );
-
-            if (!response.ok) {
-                throw new Error("Failed to create conversation");
-            }
-
-            const newConversation = await response.json();
             messageApi.success({
                 content: "Conversation created successfully !",
                 duration: 1,
@@ -179,6 +184,7 @@ const ChatAssistantPage = () => {
                         showSidebarButton={true}
                         showCreateAssistantButton={false}
                         showUpdateAssistantButton={true}
+                        agentChoices={agentsChoices}
                     />
                     {selectedConversation && selectedAssistant ? (
                         useWebsocket ? (

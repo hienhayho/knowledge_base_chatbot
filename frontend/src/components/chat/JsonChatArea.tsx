@@ -5,6 +5,8 @@ import remarkGfm from "remark-gfm";
 import LoadingClipLoader from "@/components/LoadingClipLoader";
 import { message, Popover } from "antd";
 import { getNow } from "@/utils/formatDate";
+import { assistantEndpoints } from "@/endpoints";
+import { assistantApi } from "@/api";
 
 const API_BASE_URL =
     process.env.NEXT_PUBLIC_BASE_API_URL || "http://localhost:8000";
@@ -50,21 +52,20 @@ const JsonChatArea = ({
 
     const fetchConversationHistory = async () => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/history`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                }
+            const data = await assistantApi.fetchConversationHistory(
+                assistantId,
+                conversation.id
             );
-            if (!response.ok)
-                throw new Error("Failed to fetch conversation history");
-            const data = await response.json();
             setMessages(data);
         } catch (error) {
+            const errMessage = (error as Error).message;
+
             console.error("Error fetching conversation history:", error);
+
+            messageApi.error({
+                content: errMessage,
+                duration: 1.5,
+            });
         } finally {
             setIsLoadingPage(false);
         }
@@ -85,21 +86,11 @@ const JsonChatArea = ({
         setIsLoading(true);
 
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/messages`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({ content: inputMessage }),
-                }
+            const assistantResponse = await assistantApi.sendMessage(
+                assistantId,
+                conversation.id,
+                inputMessage
             );
-
-            if (!response.ok) throw new Error("Failed to send message");
-
-            const assistantResponse = await response.json();
 
             setMessages((prev) => [
                 ...prev,
@@ -305,7 +296,9 @@ const JsonChatArea = ({
                                             return;
                                         }
                                         navigator.clipboard.writeText(
-                                            `${API_BASE_URL}/api/assistant/${assistantId}/conversations/${conversation.id}/production_messages`
+                                            assistantEndpoints.productionMessage(
+                                                conversation.id
+                                            )
                                         );
                                         messageApi.open({
                                             type: "success",

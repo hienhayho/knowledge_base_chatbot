@@ -1,24 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { X, Info } from "lucide-react";
-import { message, Input } from "antd";
+import { message, Input, Select } from "antd";
+import { IKnowledgeBase } from "@/types";
+import { assistantApi, knowledgeBaseApi } from "@/api";
 
 const { TextArea } = Input;
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-interface IKnowledgeBase {
-    id: string;
-    name: string;
-}
 
 const CreateAssistantModal = ({
     isOpen,
     onClose,
     onCreateSuccess,
+    agentChoices,
 }: {
     isOpen: boolean;
     onClose: () => void;
     onCreateSuccess: () => void;
+    agentChoices: { value: string; label: string }[];
 }) => {
     const [isVisible, setIsVisible] = useState<boolean>(false);
     const [assistantName, setAssistantName] = useState<string>("");
@@ -29,6 +26,7 @@ const CreateAssistantModal = ({
     const [selectedKnowledgeBase, setSelectedKnowledgeBase] =
         useState<string>("");
     const [model, setModel] = useState<string>("gpt-4o-mini");
+    const [agentType, setAgentType] = useState<string>("");
     const [messageApi, contextHolder] = message.useMessage();
 
     useEffect(() => {
@@ -56,15 +54,8 @@ const CreateAssistantModal = ({
 
     const fetchKnowledgeBases = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/kb/get_all`, {
-                credentials: "include",
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setKnowledgeBases(data);
-            } else {
-                console.error("Failed to fetch knowledge bases");
-            }
+            const data = await knowledgeBaseApi.fetchKnowledgeBases();
+            setKnowledgeBases(data);
         } catch (error) {
             console.error("Error fetching knowledge bases:", error);
         }
@@ -88,36 +79,20 @@ const CreateAssistantModal = ({
                 model: model,
                 service: "openai",
                 temperature: "0.8",
+                agent_type: agentType,
             },
         };
         try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify(payload),
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                successMessage(
-                    `Assistant "${data.name}" created successfully!`
-                );
-                setTimeout(() => {
-                    onClose();
-                    onCreateSuccess();
-                    // router.push(`/chat/${data.id}`);
-                }, 1500);
-            } else {
-                errorMessage(data.detail);
-                console.error("Failed to create assistant");
-            }
+            const data = await assistantApi.createAssistant(payload);
+            successMessage(`Assistant "${data.name}" created successfully!`);
+            setTimeout(() => {
+                onClose();
+                onCreateSuccess();
+                // router.push(`/chat/${data.id}`);
+            }, 1000);
         } catch (error) {
-            errorMessage(
-                `Error creating assistant: ${(error as Error).message}`
-            );
+            const errMessage = (error as Error).message;
+            errorMessage(errMessage);
             console.error("Error creating assistant:", error);
         }
     };
@@ -163,8 +138,8 @@ const CreateAssistantModal = ({
 
                 <div className="p-6 space-y-2">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Assistant name{" "}
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                            Assistant name&nbsp;
                             <span className="text-red-500">*</span>
                         </label>
                         <Input
@@ -173,9 +148,24 @@ const CreateAssistantModal = ({
                             onChange={(e) => setAssistantName(e.target.value)}
                         />
                     </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                            Agent Type&nbsp;
+                            <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                            placeholder="Choose your agent type..."
+                            style={{
+                                width: "100%",
+                            }}
+                            showSearch
+                            options={agentChoices}
+                            onChange={(value) => setAgentType(value)}
+                        />
+                    </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 my-2">
+                        <label className="block text-sm font-bold text-gray-700 my-2">
                             Description{" "}
                         </label>
                         <TextArea
@@ -184,7 +174,7 @@ const CreateAssistantModal = ({
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="e.g A helpful assistant for math problem"
                         />
-                        <label className="block text-sm font-medium text-gray-700 my-2">
+                        <label className="block text-sm font-bold text-gray-700 my-2">
                             {
                                 "Nhập vào những lưu ý cho trợ lý khi trả lời trong phạm vi knowledge base này"
                             }
@@ -197,7 +187,7 @@ const CreateAssistantModal = ({
                             }
                             placeholder="e.g. I don't want you to talk about my personal life"
                         />
-                        <label className="block text-sm font-medium text-gray-700 my-2">
+                        <label className="block text-sm font-bold text-gray-700 my-2">
                             {"Nhiệm vụ bạn muốn trợ lý của mình thực hiện:"}
                         </label>
                         <TextArea
@@ -209,7 +199,7 @@ const CreateAssistantModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-bold text-gray-700">
                             Model <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -222,7 +212,7 @@ const CreateAssistantModal = ({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-bold text-gray-700">
                             Knowledgebases{" "}
                             <span className="text-red-500">*</span>{" "}
                             <Info className="inline-block w-4 h-4 text-gray-400" />

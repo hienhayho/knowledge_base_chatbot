@@ -5,33 +5,8 @@ import AssistantStatisticsChart from "@/components/dashboard/AssistantStatistics
 import KnowledgeBaseStatisticsChart from "@/components/dashboard/KnowledgeBaseStatisticsChart";
 import ConversationsStatisticsChart from "@/components/dashboard/ConversationsStatisticsChart";
 import ProtectedRoute from "@/components/ProtectedRoute";
-
-const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-interface IDashBoardResponse {
-    file_name: string;
-    file_conversation_name: string;
-    total_conversations: number;
-    average_assistant_response_time: number;
-
-    assistant_statistics: {
-        id: string;
-        name: string;
-        number_of_conversations: number;
-    }[];
-    conversations_statistics: {
-        id: string;
-        average_session_chat_time: number;
-        average_user_messages: number;
-    }[];
-    knowledge_base_statistics: {
-        id: string;
-        name: string;
-        total_user_messages: number;
-    }[];
-
-    detail?: string;
-}
+import { IDashBoardResponse } from "@/types";
+import { dashboardApi } from "@/api";
 
 const DashBoardPage = () => {
     const [messageApi, contextHolder] = message.useMessage();
@@ -69,30 +44,21 @@ const DashBoardPage = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const response = await fetch(`${BASE_API_URL}/api/dashboard`, {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                });
-                const data: IDashBoardResponse = await response.json();
-                if (!response.ok) {
-                    console.error(data?.detail || "Something wrong happened");
-                    return;
-                }
+                const data: IDashBoardResponse =
+                    await dashboardApi.fetchDashboardData();
+
                 successMessage({
                     content: "Get statistic successfully !!!",
                 });
                 setDashboardData(data);
             } catch (error) {
+                const errMessage = (error as Error).message;
                 errorMessage({
-                    content:
-                        (error as string) || "Something wrong happened !!!",
+                    content: errMessage,
                 });
                 console.error(error);
             }
         };
-        // Fetch data on first load
         fetchDashboardData();
 
         // Fetch data each 30 minutes
@@ -105,27 +71,20 @@ const DashBoardPage = () => {
 
     const handleExport = async (file_name: string) => {
         try {
-            const response = await fetch(
-                `${BASE_API_URL}/api/dashboard/export/${file_name}`,
-                {
-                    credentials: "include",
-                }
-            );
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `${file_name}.xlsx` || "export.xlsx";
-                a.click();
-                window.URL.revokeObjectURL(url);
-                successMessage({
-                    content: "Export successfully !!!",
-                });
-            }
+            const blob = await dashboardApi.exportFile(file_name);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${file_name}.xlsx` || "export.xlsx";
+            a.click();
+            window.URL.revokeObjectURL(url);
+            successMessage({
+                content: "Export successfully !!!",
+            });
         } catch (error) {
+            const errMessage = (error as Error).message;
             errorMessage({
-                content: (error as string) || "Something wrong happened !!!",
+                content: errMessage,
             });
             console.error(error);
         }

@@ -14,7 +14,7 @@ logger = get_formatted_logger(
 
 
 def load_product_search_tool(
-    file_product_path: str | Path, description: str = ""
+    file_product_path: str | Path, description: str = "", return_direct: bool = True
 ) -> FunctionTool:
     assert Path(file_product_path).suffix == ".xlsx", "Only support xlsx file"
 
@@ -55,6 +55,6 @@ def load_product_search_tool(
 
     return FunctionTool.from_defaults(
         fn=product_search,
-        return_direct=True,
+        return_direct=return_direct,
         description=description or "Useful tool for searching product",
     )

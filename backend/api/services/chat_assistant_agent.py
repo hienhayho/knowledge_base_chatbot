@@ -2,12 +2,15 @@ import uuid
 from crewai import Agent, Task
 from dotenv import load_dotenv
 from llama_index.core import Settings
+from llama_index.llms.openai import OpenAI
+from llama_index.core.tools import FunctionTool
+from llama_index.agent.openai import OpenAIAgent
+from llama_index.core.callbacks import CallbackManager
+from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
+
 from langfuse.decorators import observe
 from langchain_openai import ChatOpenAI
-from llama_index.core.tools import FunctionTool
-from llama_index.core.callbacks import CallbackManager
 from langfuse.llama_index import LlamaIndexCallbackHandler
-from llama_index.core.base.llms.types import ChatMessage as LLamaIndexChatMessage
 
 from src.agents import CrewAIAgent
 from src.settings import default_settings
@@ -18,6 +21,7 @@ from src.constants import (
     ChatAssistantConfig,
     MesssageHistory,
     ExistTools,
+    ExistAgentType,
 )
 
 logger = get_formatted_logger(__file__, file_path="logs/chat_assistant/log.log")
@@ -41,16 +45,25 @@ class ChatAssistant:
         Initialize the agent with the given configuration.
         """
 
+        agent_type = self.configuration.agent_type
+        logger.info(f"Initializing agent with type: {agent_type}")
+
+        if agent_type == ExistAgentType.CREWAI_AGENT:
+            self.agent = self._init_crewai_agent()
+        elif agent_type == ExistAgentType.OPENAI_AGENT:
+            self.agent = self._init_openai_agent()
+
+    def _init_crewai_agent(self):
         model_name = self.configuration.model
         service = self.configuration.service
 
-        self.llm = self._init_model(service, model_name)
+        llm = self._init_langchain_model(service, model_name)
 
         system_prompt = ASSISTANT_SYSTEM_PROMPT.format(
             instruct_prompt=self.configuration.instruct_prompt,
         ).strip("\n")
 
-        self.tools: list[FunctionTool] = []
+        tools: list[FunctionTool] = []
         return_as_answer_flags: list[bool] = []
 
         for tool_name in self.configuration.tools:
@@ -66,7 +79,7 @@ class ChatAssistant:
             )
 
             if tool_name == ExistTools.KNOWLEDGE_BASE_QUERY:
-                self.tools.append(
+                tools.append(
                     load_llama_index_kb_tool(
                         setting=default_settings,
                         kb_ids=self.configuration.kb_ids,
@@ -82,7 +95,7 @@ class ChatAssistant:
                         f"Tool {tool_name} requires file_product_path to be set! But not found, so this tool will be ignored."
                     )
                     continue
-                self.tools.append(
+                tools.append(
                     load_product_search_tool(
                         file_product_path=self.configuration.file_product_path,
                         description=description,
@@ -98,7 +111,7 @@ class ChatAssistant:
             role="Assistant",
             goal="Trả lời câu hỏi của người dùng",
             backstory=self.configuration.agent_backstory,
-            llm=self.llm,
+            llm=llm,
             max_execution_time=40,
         )
 
@@ -108,22 +121,87 @@ class ChatAssistant:
             agent=kb_agent,
             tools=[
                 LlamaIndexTool.from_tool(tool, result_as_answer=return_as_answer_flag)
-                for tool, return_as_answer_flag in zip(
-                    self.tools, return_as_answer_flags
-                )
+                for tool, return_as_answer_flag in zip(tools, return_as_answer_flags)
             ],
         )
 
-        self.agent = CrewAIAgent(
+        self.tools = tools
+
+        return CrewAIAgent(
             agents=[kb_agent],
             tasks=[kb_task],
-            manager_llm=self.llm,
+            manager_llm=llm,
             verbose=True,
             conversation_id=self.configuration.conversation_id,
             use_memory=default_settings.agent_config.use_agent_memory,
         )
 
-    def _init_model(self, service, model_id):
+    def _init_openai_agent(self):
+        model = self.configuration.model
+        service = self.configuration.service
+
+        llm = self._init_llama_index_model(service, model)
+
+        tools = []
+
+        self.descriptions = []
+
+        system_prompt = ASSISTANT_SYSTEM_PROMPT.format(
+            instruct_prompt=self.configuration.instruct_prompt,
+        ).strip("\n")
+
+        for tool_name in self.configuration.tools:
+            description = self.configuration.tools[tool_name]["description"]
+            return_as_answer = self.configuration.tools[tool_name]["return_as_answer"]
+
+            logger.info(
+                {
+                    "tool_name": tool_name,
+                    "return_as_answer": return_as_answer,
+                    "description": description,
+                },
+            )
+
+            self.descriptions.append(description)
+
+            if tool_name == ExistTools.KNOWLEDGE_BASE_QUERY:
+                kb_tool = load_llama_index_kb_tool(
+                    setting=default_settings,
+                    kb_ids=self.configuration.kb_ids,
+                    session_id=self.configuration.session_id,
+                    is_contextual_rag=self.configuration.is_contextual_rag,
+                    system_prompt=system_prompt,
+                    return_direct=return_as_answer,
+                )
+                tools.append(kb_tool)
+
+            elif tool_name == ExistTools.PRODUCT_SEARCH:
+                if self.configuration.file_product_path is None:
+                    logger.warning(
+                        f"Tool {tool_name} requires file_product_path to be set! But not found, so this tool will be ignored."
+                    )
+                    continue
+
+                product_search_tool = load_product_search_tool(
+                    file_product_path=self.configuration.file_product_path,
+                    return_direct=return_as_answer,
+                )
+                tools.append(product_search_tool)
+            else:
+                logger.warning(f"Tool {tool_name} is not supported yet!")
+                continue
+
+        self.tools = tools
+
+        return OpenAIAgent.from_tools(
+            tools=tools,
+            llm=llm,
+            verbose=True,
+            # We use agent_backstory from crewai agent configuration to set system_prompt here
+            system_prompt=self.configuration.agent_backstory,
+        )
+
+    def _init_langchain_model(self, service, model_id):
         """
         Select a model for text generation using multiple services.
         Args:
@@ -134,8 +212,7 @@ class ChatAssistant:
         Raises:
             ValueError: If an unsupported model or device type is provided.
         """
-        logger.info(f"Loading Model: {model_id}")
-        logger.info("This action can take a few minutes!")
+        logger.info(f"Loading langchain model: {model_id}")
 
         if service == "openai":
             logger.info(f"Loading OpenAI Model: {model_id}")
@@ -145,6 +222,21 @@ class ChatAssistant:
                 temperature=self.configuration.temperature,
             )
 
+        else:
+            raise NotImplementedError(
+                "The implementation for other types of LLMs are not ready yet!"
+            )
+
+    def _init_llama_index_model(self, service: str, model_id: str):
+        logger.info(f"Loading llama-index model: {model_id}")
+
+        if service == "openai":
+            logger.info(f"Loading OpenAI Model: {model_id}")
+
+            return OpenAI(
+                model_id,
+                temperature=self.configuration.temperature,
+            )
         else:
             raise NotImplementedError(
                 "The implementation for other types of LLMs are not ready yet!"
@@ -180,16 +272,43 @@ class ChatAssistant:
             session_id=str(session_id),
         )
 
-        inputs = {
-            "query": message,
-        }
-        response = await self.agent.chat_async(inputs, message_history)
+        if self.configuration.agent_type == ExistAgentType.CREWAI_AGENT:
+            inputs = {
+                "query": message,
+            }
+            response = await self.agent.chat_async(inputs, message_history)
 
-        logger.debug(f"message: {message}")
-        logger.debug(f"response: {response}")
-        logger.debug(f"\n{"=" * 100}\n")
+            logger.debug("Use CrewAIAgent")
+            logger.debug(f"message: {message}")
+            logger.debug(f"response: {response}")
+            logger.debug(f"\n{"=" * 100}\n")
 
-        return response
+            return response
+
+        elif self.configuration.agent_type == ExistAgentType.OPENAI_AGENT:
+            logger.debug("Use OpenAIAgent")
+            logger.debug(f"message: {message}")
+
+            # Since OpenAIAgent does not support tool with long description yet
+            # Use workaround method: https://docs.llamaindex.ai/en/stable/examples/agentopenai_agent_lengthy_tools/#moving-tool-descriptions-to-the-prompt
+            tools_description = "\n\n".join(
+                [
+                    f"Tool Name: {tool.metadata.name}\n"
+                    + f"Tool Description: {description} "
+                    for tool, description in zip(self.tools, self.descriptions)
+                ]
+            )
+
+            prompt = f"{tools_description}\n\nMessage: {message}"
+
+            result = await self.agent.achat(prompt)
+
+            response = result.response
+
+            logger.debug(f"response: {response}")
+            logger.debug(f"\n{"=" * 100}\n")
+
+            return response
 
     def stream_chat(self, message: str, message_history: list[MesssageHistory]):
         message_history = [

@@ -146,7 +146,11 @@ def parse_document(
 
         session.commit()
 
-    file_path.unlink()
+    try:
+        file_path.unlink()
+    except Exception as e:
+        logger.error(f"Failed to delete file: {file_path}, {e}")
+        pass
 
     return {
         "task_id": self.request.id,

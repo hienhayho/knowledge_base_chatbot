@@ -9,8 +9,7 @@ import { useRouter } from "next/navigation";
 import { message } from "antd";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { IAssistant } from "@/types";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
+import { agentApi, assistantApi } from "@/api";
 
 const ChatMainPage = () => {
     const router = useRouter();
@@ -19,22 +18,19 @@ const ChatMainPage = () => {
     const [selectedAssistant, setSelectedAssistant] =
         useState<IAssistant | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [agentsChoices, setAgentsChoices] = useState<
+        {
+            value: string;
+            label: string;
+        }[]
+    >([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const redirectUrl = encodeURIComponent("/chat");
 
     const fetchAssistants = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/assistant`, {
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-            });
-            if (!response.ok) {
-                throw new Error("Failed to fetch assistants");
-            }
-            const data: IAssistant[] = await response.json();
+            const data: IAssistant[] = await assistantApi.fetchAssistants();
             const sortedAssistants = data.sort(
                 (a, b) =>
                     new Date(b.created_at).getTime() -
@@ -43,16 +39,37 @@ const ChatMainPage = () => {
 
             successMessage("Successfully fetched assistants");
             setAssistants(sortedAssistants);
-            setIsLoading(false);
         } catch (err) {
-            errorMessage("Failed to fetch assistants");
-            setError(err instanceof Error ? err.message : "An error occurred");
-            setIsLoading(false);
+            const errMessage = (err as Error).message;
+            errorMessage(errMessage);
+            setError(errMessage);
+        }
+    };
+
+    const fetchAllAgentsChoices = async () => {
+        try {
+            const data = await agentApi.fetchAllAgentChoices();
+
+            const agents = data.agents;
+
+            setAgentsChoices(
+                agents.map((agent: string) => ({
+                    value: agent,
+                    label: agent,
+                }))
+            );
+            successMessage("Successfully fetched agents");
+        } catch (error) {
+            const errMessage = (error as Error).message;
+            errorMessage(errMessage);
+            setError(errMessage);
         }
     };
 
     useEffect(() => {
-        fetchAssistants();
+        setIsLoading(true);
+        Promise.all([fetchAssistants(), fetchAllAgentsChoices()]);
+        setIsLoading(false);
     }, [redirectUrl, router]);
 
     const successMessage = (content: string) => {
@@ -82,18 +99,7 @@ const ChatMainPage = () => {
 
     const handleDeleteAssistant = async (assistantId: string) => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/assistant/${assistantId}`,
-                {
-                    method: "DELETE",
-                    credentials: "include",
-                }
-            );
-
-            if (!response.ok) {
-                errorMessage(`Failed to delete assistant: ${assistantId}`);
-                throw new Error("Failed to delete assistant");
-            }
+            await assistantApi.deleteAssistant(assistantId);
 
             successMessage(
                 `Assistant: ${assistantId} was deleted successfully!`
@@ -103,7 +109,9 @@ const ChatMainPage = () => {
                 prev.filter((assistant) => assistant.id !== assistantId)
             );
         } catch (err) {
-            setError(err instanceof Error ? err.message : "An error occurred");
+            const errMessage = (err as Error).message;
+            errorMessage(errMessage);
+            setError(errMessage);
         }
     };
 
@@ -123,6 +131,7 @@ const ChatMainPage = () => {
                 selectedAssistant={selectedAssistant}
                 onCreateAssistant={handleCreateAssistant}
                 showSidebarButton={false}
+                agentChoices={agentsChoices}
             />
             <main className="flex-1 overflow-auto p-6">
                 <div className="max-w-7xl mx-auto">
@@ -133,6 +142,7 @@ const ChatMainPage = () => {
                         assistants={assistants}
                         onSelect={handleAssistantSelect}
                         onDelete={handleDeleteAssistant}
+                        agentsChoices={agentsChoices}
                     />
                 </div>
             </main>
@@ -140,6 +150,7 @@ const ChatMainPage = () => {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onCreateSuccess={fetchAssistants}
+                agentChoices={agentsChoices}
             />
         </div>
     );

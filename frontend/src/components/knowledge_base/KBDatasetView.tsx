@@ -19,27 +19,9 @@ import ErrorComponent from "@/components/Error";
 import { useRouter } from "next/navigation";
 import { message, Popconfirm, Tooltip } from "antd";
 import { formatDate } from "@/utils";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_URL;
-
-const ALLOWED_FILE_TYPES = [
-    ".docx",
-    ".hwp",
-    ".pdf",
-    ".epub",
-    ".txt",
-    ".html",
-    ".htm",
-    ".ipynb",
-    ".md",
-    ".mbox",
-    ".pptx",
-    ".csv",
-    ".xlsx",
-    ".xml",
-    ".rtf",
-    ".mp4",
-];
+import { ALLOWED_FILE_TYPES } from "@/constants";
+import { knowledgeBaseApi } from "@/api";
+import { IUploadFile } from "@/types";
 
 interface Document {
     id: string;
@@ -54,15 +36,6 @@ interface Document {
 interface KnowledgeBase {
     name: string;
     documents: Document[];
-}
-
-interface IUploadFile {
-    doc_id: string;
-    file_name: string;
-    file_type: string;
-    file_size_in_mb: number;
-    created_at: string;
-    status: string;
 }
 
 const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
@@ -83,23 +56,19 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
     useEffect(() => {
         const fetchKnowledgeBase = async () => {
             try {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/kb/get_kb/${knowledgeBaseID}`,
-                    {
-                        credentials: "include",
-                    }
-                );
-                const data: KnowledgeBase = await response.json();
-                if (!response.ok) {
-                    throw new Error("Failed to fetch knowledge base data");
-                }
+                const data: KnowledgeBase =
+                    await knowledgeBaseApi.fetchKnowledgeBase(knowledgeBaseID);
 
                 setKnowledgeBase(data);
                 setDocuments(data.documents);
-                setIsLoading(false);
             } catch (error) {
+                const errMessage = (error as Error).message;
                 console.error("Error fetching knowledge base data:", error);
-                setError((error as Error).message);
+                setError(errMessage);
+                errorMessage({
+                    content: errMessage,
+                });
+            } finally {
                 setIsLoading(false);
             }
         };
@@ -115,16 +84,9 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
             if (processingDocs.length > 0) {
                 const updatedStatuses = await Promise.all(
                     processingDocs.map(async (doc) => {
-                        const response = await fetch(
-                            `${API_BASE_URL}/api/kb/document_status/${doc.id}`,
-                            {
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
-                                credentials: "include",
-                            }
+                        const status = await knowledgeBaseApi.getDocumentStatus(
+                            doc.id
                         );
-                        const status = await response.json();
                         return { id: doc.id, ...status };
                     })
                 );
@@ -195,26 +157,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
             formData.append("file", file);
 
             try {
-                const response = await fetch(
-                    `${API_BASE_URL}/api/kb/upload?knowledge_base_id=${knowledgeBaseID}`,
-                    {
-                        method: "POST",
-                        body: formData,
-                        credentials: "include",
-                    }
-                );
+                const result: IUploadFile =
+                    await knowledgeBaseApi.uploadToKnowledgeBase(
+                        knowledgeBaseID,
+                        formData
+                    );
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    errorMessage({
-                        content:
-                            errorData.detail || "Failed to upload document",
-                        duration: 3,
-                    });
-                    continue;
-                }
-
-                const result: IUploadFile = await response.json();
                 setDocuments((prevDocuments) => [
                     ...prevDocuments,
                     {
@@ -231,11 +179,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                     content: `File ${file.name} uploaded successfully`,
                 });
             } catch (error) {
+                const errMessage = (error as Error).message;
                 console.error("Error uploading document:", error);
                 errorMessage({
-                    content: (error as Error).message,
+                    content: errMessage,
                 });
-                setError((error as Error).message);
+                setError(errMessage);
             }
         }
     };
@@ -245,24 +194,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
         fileName: string
     ) => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/kb/download/${documentId}`,
-                {
-                    credentials: "include",
-                }
-            );
-            if (!response.ok) {
-                errorMessage({
-                    content: "Failed to download document",
-                });
-                return;
-            }
+            const blob = await knowledgeBaseApi.downloadDocument(documentId);
 
             successMessage({
                 content: `Get ${fileName} successfully !!!`,
             });
 
-            const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -271,34 +208,18 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
             a.click();
             window.URL.revokeObjectURL(url);
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error("Error downloading document:", error);
             errorMessage({
-                content: (error as Error).message,
+                content: errMessage,
             });
-            setError((error as Error).message);
+            setError(errMessage);
         }
     };
 
     const handleDeleteDocument = async (documentId: string) => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({ delete_to_retry: false }),
-                }
-            );
-            if (!response.ok) {
-                const errorData = await response.json();
-                errorMessage({
-                    content: errorData.detail || "Failed to delete document",
-                });
-                return;
-            }
+            await knowledgeBaseApi.deleteDocument(documentId, false);
 
             successMessage({
                 content: "Document deleted successfully",
@@ -308,30 +229,18 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 prevDocuments.filter((doc) => doc.id !== documentId)
             );
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error("Error deleting document:", error);
             errorMessage({
-                content: (error as Error).message,
+                content: errMessage,
             });
-            setError((error as Error).message);
+            setError(errMessage);
         }
     };
 
     const handleProcessDocument = async (documentId: string) => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/kb/process/${documentId}`,
-                {
-                    method: "POST",
-                    credentials: "include",
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(
-                    errorData.detail || "Failed to process document"
-                );
-            }
+            await knowledgeBaseApi.processDocument(documentId);
 
             setDocuments((prevDocuments) =>
                 prevDocuments.map((doc) =>
@@ -344,30 +253,18 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 )
             );
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error("Error processing document:", error);
             errorMessage({
-                content: (error as Error).message,
+                content: errMessage,
             });
-            setError((error as Error).message);
+            setError(errMessage);
         }
     };
 
     const handleStopProcessingDocument = async (documentId: string) => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/kb/stop_processing/${documentId}`,
-                {
-                    method: "POST",
-                    credentials: "include",
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(
-                    errorData.detail || "Failed to stop processing document"
-                );
-            }
+            await knowledgeBaseApi.stopProcessingDocument(documentId);
 
             setDocuments((prevDocuments) =>
                 prevDocuments.map((doc) =>
@@ -380,11 +277,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 )
             );
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error("Error stopping processing document:", error);
             errorMessage({
-                content: (error as Error).message,
+                content: errMessage,
             });
-            setError((error as Error).message);
+            setError(errMessage);
         }
     };
 
@@ -412,44 +310,9 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
 
     const handleRetryProcessingDocument = async (documentId: string) => {
         try {
-            const deleteResponse = await fetch(
-                `${API_BASE_URL}/api/kb/delete_document/${documentId}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({ delete_to_retry: true }),
-                }
-            );
+            await knowledgeBaseApi.deleteDocument(documentId, true);
 
-            if (!deleteResponse.ok) {
-                const errorData = await deleteResponse.json();
-                errorMessage({
-                    content:
-                        errorData.detail || "Failed to clean up old document",
-                });
-                return;
-            }
-
-            const response = await fetch(
-                `${API_BASE_URL}/api/kb/process/${documentId}`,
-                {
-                    method: "POST",
-                    credentials: "include",
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                errorMessage({
-                    content:
-                        errorData.detail ||
-                        "Failed to retry processing document",
-                });
-                return;
-            }
+            await knowledgeBaseApi.processDocument(documentId);
 
             setDocuments((prevDocuments) =>
                 prevDocuments.map((doc) =>
@@ -462,11 +325,12 @@ const DatasetView: React.FC<{ knowledgeBaseID: string }> = ({
                 )
             );
         } catch (error) {
+            const errMessage = (error as Error).message;
             console.error("Error retrying processing document:", error);
             errorMessage({
-                content: (error as Error).message,
+                content: errMessage,
             });
-            setError((error as Error).message);
+            setError(errMessage);
         }
     };
 

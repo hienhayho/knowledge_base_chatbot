@@ -102,6 +102,7 @@ class AssistantService:
             is_contextual_rag=is_contextual_rag,
             instruct_prompt=assistant.instruct_prompt,
             file_product_path=file_product_path,
+            agent_type=configuration["agent_type"],
         )
 
         assistant_instance = ChatAssistant(configuration=assistant_config)
@@ -215,6 +216,7 @@ class AssistantService:
             is_contextual_rag=is_contextual_rag,
             instruct_prompt=assistant.instruct_prompt,
             file_product_path=file_product_path,
+            agent_type=configuration["agent_type"],
         )
 
         assistant_instance = ChatAssistant(configuration=assistant_config)
@@ -365,6 +367,7 @@ class AssistantService:
             is_contextual_rag=is_contextual_rag,
             instruct_prompt=assistant.instruct_prompt,
             file_product_path=file_product_path,
+            agent_type=configuration["agent_type"],
         )
 
         assistant_instance = ChatAssistant(configuration=assistant_config)

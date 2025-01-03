@@ -19,6 +19,7 @@ from api.routers import (
     tool_router,
     dashboard_router,
     admin_router,
+    agent_router,
 )
 from src.database import init_db
 
@@ -42,14 +43,23 @@ pprint(
 )
 
 
-async def delete_old_files():
+async def delete_old_files(file_interval: int, clean_interval: int, folder: str):
+    """
+    Delete old files in the specified folder
+
+    Args:
+        file_interval (int): File interval in minutes
+        clean_interval (int): Clean interval in minutes
+        folder (str): Folder to clean up
+    """
+
     while True:
         logger.warning("Cleaning up download folder ...")
 
-        interval = 20
+        interval = file_interval * 60
         current_time = datetime.now()
 
-        for file in Path(DOWNLOAD_FOLDER).iterdir():
+        for file in Path(folder).iterdir():
             try:
                 if file.is_file():
                     file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
@@ -63,33 +73,7 @@ async def delete_old_files():
             except Exception as e:
                 logger.error(f"Error deleting file {file}: {e}")
 
-        await asyncio.sleep(CLEAN_INTERVAL * 60)
-
-
-async def delete_log_files():
-    while True:
-        logger.warning("Cleaning up log folder ...")
-
-        # 2 days
-        interval = 2 * 24 * 60 * 60
-        current_time = datetime.now()
-
-        for file in Path(LOG_FOLDER).rglob("*"):
-            try:
-                if file.is_file():
-                    file_mod_time = datetime.fromtimestamp(file.stat().st_mtime)
-                    age = (current_time - file_mod_time).total_seconds()
-
-                    if age > interval:
-                        file.unlink()
-                        logger.warning(f"Deleted file: {file}")
-                    else:
-                        logger.debug(f"Skipping file: {file}")
-            except Exception as e:
-                logger.error(f"Error deleting file {file}: {e}")
-
-        # 1 day check interval
-        await asyncio.sleep(24 * 60 * 60)
+        await asyncio.sleep(clean_interval * 60)
 
 
 @asynccontextmanager
@@ -98,9 +82,17 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database ...")
     init_db()
     logger.debug(f"Cleaning up download folder every {CLEAN_INTERVAL} minutes ...")
-    asyncio.create_task(delete_old_files())
+    asyncio.create_task(
+        delete_old_files(
+            file_interval=1, clean_interval=CLEAN_INTERVAL, folder=DOWNLOAD_FOLDER
+        )
+    )
     logger.debug("Cleaning up log folder every 24 hours ...")
-    asyncio.create_task(delete_log_files())
+    asyncio.create_task(
+        delete_old_files(
+            file_interval=7 * 24 * 60, clean_interval=24 * 60, folder=LOG_FOLDER
+        )
+    )
     yield
 
     logger.info("Shutting down application ...")
@@ -124,11 +116,8 @@ app.add_middleware(
 @app.middleware("http")
 async def process_cookie_request(request: Request, call_next):
     cookie_values = request.cookies.get("CHATBOT_SSO")
-    url = request.url.path
 
     if cookie_values:
-        logger.debug(f"url: {url}")
-
         request.headers.__dict__["_list"].append(
             (
                 "authorization".encode(),
@@ -155,6 +144,7 @@ app.include_router(
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(tool_router, tags=["tools"], prefix="/api/tools")
 app.include_router(admin_router, tags=["admin"], prefix="/api/admin")
+app.include_router(agent_router, tags=["agent"], prefix="/api/agent")
 
 if __name__ == "__main__":
     import uvicorn

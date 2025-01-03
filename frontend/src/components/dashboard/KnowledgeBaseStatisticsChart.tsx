@@ -36,10 +36,8 @@ const KnowledgeBaseStatisticsChart: React.FC<
 
     useEffect(() => {
         if (chartRef.current) {
-            // Hủy biểu đồ cũ nếu đã tồn tại
             ChartJS.getChart(chartRef.current)?.destroy();
 
-            // Khởi tạo biểu đồ mới
             new ChartJS(chartRef.current, {
                 type: "bar",
                 data: {
